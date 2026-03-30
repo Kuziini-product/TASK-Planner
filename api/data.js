@@ -8,14 +8,34 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Helper: read current data from Edge Config
+  async function readData() {
+    const ecUrl = process.env.EDGE_CONFIG;
+    const url = new URL(ecUrl);
+    url.pathname = url.pathname + '/items';
+    const resp = await fetch(url.toString());
+    return await resp.json();
+  }
+
+  // Helper: write items to Edge Config
+  async function writeItems(items) {
+    const resp = await fetch(
+      `https://api.vercel.com/v1/edge-config/${EC_ID}/items?teamId=${TEAM_ID}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items }),
+      }
+    );
+    return await resp.json();
+  }
+
   try {
     if (req.method === 'GET') {
-      // Read from Edge Config - URL has format: https://edge-config.vercel.com/ecfg_xxx?token=yyy
-      const ecUrl = process.env.EDGE_CONFIG;
-      const url = new URL(ecUrl);
-      url.pathname = url.pathname + '/items';
-      const resp = await fetch(url.toString());
-      const data = await resp.json();
+      const data = await readData();
       return res.status(200).json({
         tasks: data.tasks || [],
         team: data.team || [],
@@ -27,8 +47,31 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = req.body;
-      const items = [];
 
+      // Atomic operations on tasks
+      if (body.action) {
+        const data = await readData();
+        let tasks = data.tasks || [];
+
+        if (body.action === 'addTask') {
+          tasks.push(body.task);
+        }
+        else if (body.action === 'updateTask') {
+          const idx = tasks.findIndex(t => t.id === body.task.id);
+          if (idx !== -1) tasks[idx] = { ...tasks[idx], ...body.task };
+        }
+        else if (body.action === 'deleteTask') {
+          tasks = tasks.filter(t => t.id !== body.taskId);
+        }
+
+        const result = await writeItems([
+          { operation: 'upsert', key: 'tasks', value: tasks }
+        ]);
+        return res.status(200).json({ status: 'ok', tasks });
+      }
+
+      // Bulk write (for team, pin, activities, statuses, full tasks override)
+      const items = [];
       if (body.tasks !== undefined) {
         items.push({ operation: 'upsert', key: 'tasks', value: body.tasks });
       }
@@ -49,18 +92,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No data to save' });
       }
 
-      const resp = await fetch(
-        `https://api.vercel.com/v1/edge-config/${EC_ID}/items?teamId=${TEAM_ID}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ items }),
-        }
-      );
-      const result = await resp.json();
+      const result = await writeItems(items);
       return res.status(200).json(result);
     }
 

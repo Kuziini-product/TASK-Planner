@@ -1239,18 +1239,53 @@ async function loadData() {
   }
 }
 
+// Atomic task operations
+async function apiAddTask(task) {
+  savingNow = true;
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'addTask', task }),
+    });
+    const data = await resp.json();
+    if (data.tasks) { tasks = data.tasks; lastTaskSnapshot = JSON.stringify(tasks); }
+  } catch (e) { console.error('Add task failed:', e); }
+  savingNow = false;
+}
+
+async function apiUpdateTask(task) {
+  savingNow = true;
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'updateTask', task }),
+    });
+    const data = await resp.json();
+    if (data.tasks) { tasks = data.tasks; lastTaskSnapshot = JSON.stringify(tasks); }
+  } catch (e) { console.error('Update task failed:', e); }
+  savingNow = false;
+}
+
+async function apiDeleteTask(taskId) {
+  savingNow = true;
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteTask', taskId }),
+    });
+    const data = await resp.json();
+    if (data.tasks) { tasks = data.tasks; lastTaskSnapshot = JSON.stringify(tasks); }
+  } catch (e) { console.error('Delete task failed:', e); }
+  savingNow = false;
+}
+
+// Legacy saveTasks for bulk operations (team save etc)
 async function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
   lastTaskSnapshot = JSON.stringify(tasks);
-  savingNow = true;
-  try {
-    await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tasks }),
-    });
-  } catch (e) { console.error('Save tasks failed:', e); }
-  savingNow = false;
 }
 
 async function saveTeam() {
@@ -1711,7 +1746,6 @@ function toggleTask(id) {
   const t = tasks.find(t => t.id === id);
   if (!t) return;
   t.interactions = (t.interactions || 0) + 1;
-  // Cycle: nou -> in-lucru -> finalizat (or toggle back)
   const current = t.status || 'nou';
   if (current === 'finalizat') {
     t.status = 'nou';
@@ -1720,7 +1754,7 @@ function toggleTask(id) {
     t.status = 'finalizat';
     t.done = true;
   }
-  saveTasks();
+  apiUpdateTask(t);
   renderAll();
 }
 
@@ -1728,7 +1762,7 @@ function deleteTask(id) {
   const t = tasks.find(t => t.id === id);
   if (t) logActivity('&#10060;', '#FFE0E0', 'Sters: ' + t.title);
   tasks = tasks.filter(t => t.id !== id);
-  saveTasks();
+  apiDeleteTask(id);
   renderAll();
 }
 
@@ -1843,7 +1877,7 @@ function openEditModal(id) {
   }
   t.views = (t.views || 0) + 1;
   t.interactions = (t.interactions || 0) + 1;
-  saveTasks();
+  apiUpdateTask(t);
 
   overlay.classList.add('active');
 }
@@ -1870,7 +1904,11 @@ function saveTask() {
     const t = tasks.find(t => t.id === editingTaskId);
     if (t) {
       const oldStatus = t.status;
-      t.interactions = (t.interactions || 0) + 1;
+      data.interactions = (t.interactions || 0) + 1;
+      data.views = t.views || 0;
+      data.viewedBy = t.viewedBy || [];
+      data.createdBy = t.createdBy || '';
+      data.createdAt = t.createdAt || '';
       Object.assign(t, data);
       if (oldStatus !== data.status) {
         const s = getStatusInfo(data.status);
@@ -1878,9 +1916,10 @@ function saveTask() {
       } else {
         logActivity('&#9998;', '#DBE4FF', 'Editat: ' + data.title);
       }
+      apiUpdateTask(t);
     }
   } else {
-    tasks.push({
+    const newTask = {
       id: genId(),
       done: false,
       createdBy: currentUser || 'Admin',
@@ -1889,13 +1928,13 @@ function saveTask() {
       viewedBy: [],
       interactions: 0,
       ...data
-    });
+    };
+    tasks.push(newTask);
     logActivity('&#10133;', '#D3F9D8', 'Task nou: ' + data.title + (data.assignee ? ' (asignat: ' + getShortName(data.assignee) + ')' : ''));
+    apiAddTask(newTask);
   }
 
-  saveTasks();
   closeModal();
-  // Switch selected date to task date
   selectedDate = data.date;
   renderAll();
 }

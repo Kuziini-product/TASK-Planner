@@ -410,10 +410,7 @@ body {
   color: white;
   flex-shrink: 0;
 }
-.avatar-rv { background: #FF6B6B; }
-.avatar-mn { background: #6C63FF; }
-.avatar-en { background: #51CF66; }
-.avatar-me { background: #FFD43B; color: #333; }
+/* avatar colors are now set dynamically via inline styles */
 
 .task-assignee {
   display: inline-flex;
@@ -436,6 +433,190 @@ body {
   font-weight: 700;
   color: white;
 }
+
+/* Admin */
+.admin-section { padding: 16px; }
+.admin-section h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  margin-top: 20px;
+}
+.admin-section h3:first-child { margin-top: 0; }
+
+.member-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.25s ease;
+}
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.member-info { flex: 1; min-width: 0; }
+.member-name { font-size: 15px; font-weight: 600; }
+.member-role { font-size: 12px; color: var(--text-light); }
+.member-tasks-count { font-size: 11px; color: var(--primary); font-weight: 600; }
+
+.member-actions { display: flex; gap: 6px; }
+.member-actions button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.member-actions button:active { transform: scale(0.95); }
+.btn-accept { background: var(--success); color: white; }
+.btn-reject { background: var(--danger); color: white; }
+.btn-remove { background: var(--bg); color: var(--danger); border: 1px solid var(--danger) !important; }
+
+.add-member-form {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+}
+.add-member-form .form-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.add-member-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+.add-member-form input:focus { border-color: var(--primary); }
+.add-member-form .btn-add {
+  padding: 10px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pending-badge {
+  display: inline-block;
+  background: var(--warning);
+  color: #333;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+.join-section {
+  padding: 16px;
+}
+.join-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 24px 20px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.join-card h3 { font-size: 16px; margin-bottom: 8px; color: var(--text); text-transform: none; letter-spacing: 0; }
+.join-card p { font-size: 13px; color: var(--text-light); margin-bottom: 16px; }
+.join-card input {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.join-card input:focus { border-color: var(--primary); }
+.join-card .btn { width: 100%; }
+
+.admin-lock {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 24px 20px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  margin: 16px;
+}
+.admin-lock p { font-size: 13px; color: var(--text-light); margin-bottom: 16px; }
+.admin-lock input {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.admin-lock input:focus { border-color: var(--primary); }
+
+.share-link-box {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.share-link-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  font-family: monospace;
+}
+.share-link-box button {
+  padding: 6px 12px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -452,6 +633,7 @@ body {
 <div class="tabs">
   <button class="tab active" data-view="calendar">Calendar</button>
   <button class="tab" data-view="tasks">Toate</button>
+  <button class="tab" data-view="admin">Admin</button>
 </div>
 
 <!-- Calendar View -->
@@ -477,18 +659,15 @@ body {
     <div class="stat-card"><div class="num" id="statPending">0</div><div class="label">De facut</div></div>
     <div class="stat-card"><div class="num" id="statDone">0</div><div class="label">Gata</div></div>
   </div>
-  <div class="filter-row">
-    <button class="chip active" data-filter="all">Toate</button>
-    <button class="chip" data-filter="pending">De facut</button>
-    <button class="chip" data-filter="done">Finalizate</button>
-    <button class="chip" data-filter="high">Urgente</button>
-    <button class="chip" data-filter="Radu Vladascau">Radu</button>
-    <button class="chip" data-filter="Madalina Nistor">Madalina</button>
-    <button class="chip" data-filter="Ezgi Nalbant">Ezgi</button>
-  </div>
+  <div class="filter-row" id="filterRow"></div>
   <div class="task-section">
     <div id="allTasksList"></div>
   </div>
+</div>
+
+<!-- Admin View -->
+<div class="view" id="view-admin">
+  <div id="adminContent"></div>
 </div>
 
 <!-- FAB -->
@@ -513,11 +692,7 @@ body {
       <button class="priority-btn" data-priority="low">Scazut</button>
     </div>
     <label>Asignat la</label>
-    <div class="assignee-select" id="assigneeSelect">
-      <button class="assignee-btn" data-assignee="Radu Vladascau"><span class="avatar avatar-rv">RV</span>Radu</button>
-      <button class="assignee-btn" data-assignee="Madalina Nistor"><span class="avatar avatar-mn">MN</span>Madalina</button>
-      <button class="assignee-btn" data-assignee="Ezgi Nalbant"><span class="avatar avatar-en">EN</span>Ezgi</button>
-    </div>
+    <div class="assignee-select" id="assigneeSelect"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="cancelBtn">Anuleaza</button>
       <button class="btn btn-primary" id="saveBtn">Salveaza</button>
@@ -533,15 +708,53 @@ let currentYear = new Date().getFullYear();
 let selectedDate = formatDate(new Date());
 let currentFilter = 'all';
 let editingTaskId = null;
+let adminUnlocked = false;
+
+const ADMIN_PIN = '1234';
+const AVATAR_COLORS = ['#FF6B6B','#6C63FF','#51CF66','#FFD43B','#FF922B','#CC5DE8','#20C997','#339AF0','#F06595','#845EF7'];
 
 const MONTHS_RO = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 const DAYS_RO = ['Lu','Ma','Mi','Jo','Vi','Sa','Du'];
 
-const TEAM = [
-  { name: 'Radu Vladascau', short: 'Radu', initials: 'RV', css: 'avatar-rv' },
-  { name: 'Madalina Nistor', short: 'Madalina', initials: 'MN', css: 'avatar-mn' },
-  { name: 'Ezgi Nalbant', short: 'Ezgi', initials: 'EN', css: 'avatar-en' },
+const DEFAULT_TEAM = [
+  { id: 'rv1', name: 'Radu Vladascau', status: 'active' },
+  { id: 'mn1', name: 'Madalina Nistor', status: 'active' },
+  { id: 'en1', name: 'Ezgi Nalbant', status: 'active' },
 ];
+
+function loadTeam() {
+  const saved = localStorage.getItem('team');
+  if (saved) return JSON.parse(saved);
+  localStorage.setItem('team', JSON.stringify(DEFAULT_TEAM));
+  return [...DEFAULT_TEAM];
+}
+function saveTeam() { localStorage.setItem('team', JSON.stringify(team)); }
+let team = loadTeam();
+
+function getActiveTeam() { return team.filter(m => m.status === 'active'); }
+function getPendingTeam() { return team.filter(m => m.status === 'pending'); }
+
+function getInitials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0,2);
+}
+function getAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function getShortName(name) {
+  return name.split(' ')[0];
+}
+
+// Build dynamic TEAM-compatible array for existing code
+function getTEAM() {
+  return getActiveTeam().map(m => ({
+    name: m.name,
+    short: getShortName(m.name),
+    initials: getInitials(m.name),
+    color: getAvatarColor(m.name),
+  }));
+}
 
 // ---- Helpers ----
 function formatDate(d) {
@@ -645,7 +858,7 @@ function renderAllTasks() {
   if (currentFilter === 'pending') filtered = filtered.filter(t => !t.done);
   else if (currentFilter === 'done') filtered = filtered.filter(t => t.done);
   else if (currentFilter === 'high') filtered = filtered.filter(t => t.priority === 'high' && !t.done);
-  else if (TEAM.some(m => m.name === currentFilter)) filtered = filtered.filter(t => t.assignee === currentFilter);
+  else if (getTEAM().some(m => m.name === currentFilter)) filtered = filtered.filter(t => t.assignee === currentFilter);
 
   filtered.sort((a,b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || priorityWeight(a.priority) - priorityWeight(b.priority));
 
@@ -667,13 +880,13 @@ function priorityWeight(p) {
 }
 
 function getAssigneeInfo(name) {
-  return TEAM.find(m => m.name === name);
+  return getTEAM().find(m => m.name === name);
 }
 
 function assigneeBadgeHTML(name) {
   const m = getAssigneeInfo(name);
-  if (!m) return '';
-  return `<span class="task-assignee"><span class="avatar ${m.css}">${m.initials}</span>${m.short}</span>`;
+  if (!m) return `<span class="task-assignee" style="opacity:0.5">${escapeHTML(getShortName(name))}</span>`;
+  return `<span class="task-assignee"><span class="avatar" style="background:${m.color}">${m.initials}</span>${m.short}</span>`;
 }
 
 function taskCardHTML(t, showDate = false) {
@@ -805,6 +1018,269 @@ function setAssignee(name) {
   });
 }
 
+// ---- Dynamic UI builders ----
+function renderFilterChips() {
+  const row = document.getElementById('filterRow');
+  const chips = [
+    { filter: 'all', label: 'Toate' },
+    { filter: 'pending', label: 'De facut' },
+    { filter: 'done', label: 'Finalizate' },
+    { filter: 'high', label: 'Urgente' },
+  ];
+  getTEAM().forEach(m => chips.push({ filter: m.name, label: m.short }));
+
+  row.innerHTML = chips.map(c =>
+    `<button class="chip ${currentFilter === c.filter ? 'active' : ''}" data-filter="${escapeHTML(c.filter)}">${escapeHTML(c.label)}</button>`
+  ).join('');
+
+  row.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      row.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.dataset.filter;
+      renderAllTasks();
+    });
+  });
+}
+
+function renderAssigneeButtons() {
+  const container = document.getElementById('assigneeSelect');
+  container.innerHTML = getTEAM().map(m =>
+    `<button class="assignee-btn ${currentAssignee === m.name ? 'active' : ''}" data-assignee="${escapeHTML(m.name)}"><span class="avatar" style="background:${m.color}">${m.initials}</span>${escapeHTML(m.short)}</button>`
+  ).join('');
+
+  container.querySelectorAll('.assignee-btn').forEach(btn => {
+    btn.addEventListener('click', () => setAssignee(btn.dataset.assignee));
+  });
+}
+
+// ---- Admin Panel ----
+function renderAdmin() {
+  const container = document.getElementById('adminContent');
+  if (!adminUnlocked) {
+    container.innerHTML = `
+      <div class="admin-lock">
+        <h3 style="font-size:16px;margin-bottom:8px;">Admin Panel</h3>
+        <p>Introdu PIN-ul de admin pentru a accesa setarile echipei</p>
+        <input type="password" id="adminPinInput" placeholder="PIN" maxlength="10" inputmode="numeric">
+        <button class="btn btn-primary" style="width:100%" id="adminUnlockBtn">Deblocheaza</button>
+      </div>`;
+    document.getElementById('adminUnlockBtn').addEventListener('click', tryUnlockAdmin);
+    document.getElementById('adminPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlockAdmin(); });
+    return;
+  }
+
+  const active = getActiveTeam();
+  const pending = getPendingTeam();
+  const pendingCount = pending.length;
+
+  let html = '<div class="admin-section">';
+  html += '<h3>Adauga membru</h3>';
+  html += `<div class="add-member-form">
+    <div class="form-row">
+      <input type="text" id="newMemberName" placeholder="Nume complet">
+      <button class="btn-add" id="addMemberBtn">Adauga</button>
+    </div>
+  </div>`;
+
+  if (pendingCount > 0) {
+    html += `<h3>Cereri de acces <span class="pending-badge">${pendingCount}</span></h3>`;
+    pending.forEach(m => {
+      html += `<div class="member-card">
+        <div class="member-avatar" style="background:${getAvatarColor(m.name)}">${getInitials(m.name)}</div>
+        <div class="member-info">
+          <div class="member-name">${escapeHTML(m.name)}</div>
+          <div class="member-role">Asteapta aprobare</div>
+        </div>
+        <div class="member-actions">
+          <button class="btn-accept" data-action="accept" data-id="${m.id}">Accepta</button>
+          <button class="btn-reject" data-action="reject" data-id="${m.id}">Refuza</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  html += '<h3>Echipa activa</h3>';
+  if (active.length === 0) {
+    html += '<div class="empty-state"><p>Niciun membru in echipa</p></div>';
+  } else {
+    active.forEach(m => {
+      const taskCount = tasks.filter(t => t.assignee === m.name && !t.done).length;
+      html += `<div class="member-card">
+        <div class="member-avatar" style="background:${getAvatarColor(m.name)}">${getInitials(m.name)}</div>
+        <div class="member-info">
+          <div class="member-name">${escapeHTML(m.name)}</div>
+          <div class="member-tasks-count">${taskCount} task${taskCount !== 1 ? '-uri' : ''} active</div>
+        </div>
+        <div class="member-actions">
+          <button class="btn-remove" data-action="remove" data-id="${m.id}">Sterge</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // Share link for join requests
+  html += '<h3>Link de acces</h3>';
+  html += `<div class="add-member-form">
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:8px;">Trimite acest link colegilor pentru a solicita acces:</p>
+    <div class="share-link-box">
+      <input type="text" id="shareLinkInput" readonly value="${location.href.split('?')[0]}?join=1">
+      <button id="copyLinkBtn">Copiaza</button>
+    </div>
+  </div>`;
+
+  // Change PIN
+  html += '<h3>Schimba PIN</h3>';
+  html += `<div class="add-member-form">
+    <div class="form-row">
+      <input type="password" id="newPinInput" placeholder="PIN nou" maxlength="10" inputmode="numeric">
+      <button class="btn-add" id="changePinBtn">Schimba</button>
+    </div>
+  </div>`;
+
+  html += '<div style="height:20px"></div>';
+  html += `<button class="btn btn-secondary" style="width:100%" id="lockAdminBtn">Blocheaza Admin</button>`;
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  // Events
+  document.getElementById('addMemberBtn').addEventListener('click', addMember);
+  document.getElementById('newMemberName').addEventListener('keydown', e => { if (e.key === 'Enter') addMember(); });
+  document.getElementById('copyLinkBtn').addEventListener('click', () => {
+    const input = document.getElementById('shareLinkInput');
+    navigator.clipboard.writeText(input.value).then(() => {
+      document.getElementById('copyLinkBtn').textContent = 'Copiat!';
+      setTimeout(() => document.getElementById('copyLinkBtn').textContent = 'Copiaza', 2000);
+    });
+  });
+  document.getElementById('changePinBtn').addEventListener('click', changePin);
+  document.getElementById('lockAdminBtn').addEventListener('click', () => { adminUnlocked = false; renderAdmin(); });
+
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === 'accept') acceptMember(id);
+      else if (action === 'reject') rejectMember(id);
+      else if (action === 'remove') removeMember(id);
+    });
+  });
+}
+
+function getPin() {
+  return localStorage.getItem('adminPin') || ADMIN_PIN;
+}
+
+function tryUnlockAdmin() {
+  const input = document.getElementById('adminPinInput');
+  if (input.value === getPin()) {
+    adminUnlocked = true;
+    renderAdmin();
+  } else {
+    input.style.borderColor = 'var(--danger)';
+    input.value = '';
+    input.placeholder = 'PIN gresit!';
+    setTimeout(() => { input.style.borderColor = ''; input.placeholder = 'PIN'; }, 1500);
+  }
+}
+
+function changePin() {
+  const input = document.getElementById('newPinInput');
+  const val = input.value.trim();
+  if (val.length < 4) {
+    input.style.borderColor = 'var(--danger)';
+    input.placeholder = 'Min 4 caractere';
+    input.value = '';
+    setTimeout(() => { input.style.borderColor = ''; input.placeholder = 'PIN nou'; }, 1500);
+    return;
+  }
+  localStorage.setItem('adminPin', val);
+  input.value = '';
+  input.placeholder = 'PIN schimbat!';
+  setTimeout(() => { input.placeholder = 'PIN nou'; }, 1500);
+}
+
+function addMember() {
+  const input = document.getElementById('newMemberName');
+  const name = input.value.trim();
+  if (!name) return;
+  if (team.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+    input.value = '';
+    input.placeholder = 'Exista deja!';
+    setTimeout(() => { input.placeholder = 'Nume complet'; }, 1500);
+    return;
+  }
+  team.push({ id: genId(), name, status: 'active' });
+  saveTeam();
+  input.value = '';
+  renderAdmin();
+  renderFilterChips();
+  renderAssigneeButtons();
+}
+
+function acceptMember(id) {
+  const m = team.find(m => m.id === id);
+  if (m) { m.status = 'active'; saveTeam(); renderAdmin(); renderFilterChips(); renderAssigneeButtons(); }
+}
+
+function rejectMember(id) {
+  team = team.filter(m => m.id !== id);
+  saveTeam();
+  renderAdmin();
+}
+
+function removeMember(id) {
+  team = team.filter(m => m.id !== id);
+  saveTeam();
+  renderAdmin();
+  renderFilterChips();
+  renderAssigneeButtons();
+}
+
+// ---- Join request (from URL param) ----
+function checkJoinRequest() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('join') === '1') {
+    // Show join form instead of normal app
+    const joinHTML = `
+      <div class="join-section">
+        <div class="join-card">
+          <h3>Solicita acces</h3>
+          <p>Introdu numele tau complet pentru a solicita acces la echipa</p>
+          <input type="text" id="joinNameInput" placeholder="Numele tau complet">
+          <button class="btn btn-primary" id="joinSubmitBtn">Trimite cererea</button>
+          <p id="joinMsg" style="margin-top:12px;display:none;"></p>
+        </div>
+      </div>`;
+
+    // Show on top of the page
+    const wrapper = document.createElement('div');
+    wrapper.id = 'joinOverlay';
+    wrapper.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;';
+    wrapper.innerHTML = joinHTML;
+    document.body.appendChild(wrapper);
+
+    document.getElementById('joinSubmitBtn').addEventListener('click', () => {
+      const name = document.getElementById('joinNameInput').value.trim();
+      if (!name) return;
+      if (team.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+        document.getElementById('joinMsg').style.display = 'block';
+        document.getElementById('joinMsg').textContent = 'Esti deja in echipa sau cererea ta exista!';
+        document.getElementById('joinMsg').style.color = 'var(--warning)';
+        return;
+      }
+      team.push({ id: genId(), name, status: 'pending' });
+      saveTeam();
+      document.getElementById('joinMsg').style.display = 'block';
+      document.getElementById('joinMsg').textContent = 'Cererea a fost trimisa! Asteapta aprobarea adminului.';
+      document.getElementById('joinMsg').style.color = 'var(--success)';
+      document.getElementById('joinSubmitBtn').disabled = true;
+      document.getElementById('joinNameInput').disabled = true;
+    });
+  }
+}
+
 // ---- Events ----
 document.getElementById('addBtn').addEventListener('click', openModal);
 document.getElementById('cancelBtn').addEventListener('click', closeModal);
@@ -829,28 +1305,14 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    if (tab.dataset.view === 'admin') renderAdmin();
     renderAll();
-  });
-});
-
-// Filters
-document.querySelectorAll('.chip').forEach(chip => {
-  chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    currentFilter = chip.dataset.filter;
-    renderAllTasks();
   });
 });
 
 // Priority buttons
 document.querySelectorAll('.priority-btn').forEach(btn => {
   btn.addEventListener('click', () => setPriority(btn.dataset.priority));
-});
-
-// Assignee buttons
-document.querySelectorAll('.assignee-btn').forEach(btn => {
-  btn.addEventListener('click', () => setAssignee(btn.dataset.assignee));
 });
 
 // Enter key in title input
@@ -862,7 +1324,9 @@ document.getElementById('taskTitleInput').addEventListener('keydown', e => {
 function renderAll() {
   renderCalendar();
   renderDayTasks();
+  renderFilterChips();
   renderAllTasks();
+  renderAssigneeButtons();
 }
 
 // Header date
@@ -870,6 +1334,7 @@ document.getElementById('headerDate').textContent = formatDisplayDate(formatDate
 
 // Init
 renderAll();
+checkJoinRequest();
 
 // ---- Service Worker Registration ----
 if ('serviceWorker' in navigator) {

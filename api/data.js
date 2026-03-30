@@ -19,7 +19,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         tasks: data.tasks || [],
         team: data.team || [],
-        adminPin: data.adminPin || '1234'
+        adminPin: data.adminPin || '1234',
+        customStatuses: data.customStatuses || []
       });
     }
 
@@ -35,6 +36,9 @@ export default async function handler(req, res) {
       }
       if (body.adminPin !== undefined) {
         items.push({ operation: 'upsert', key: 'adminPin', value: body.adminPin });
+      }
+      if (body.customStatuses !== undefined) {
+        items.push({ operation: 'upsert', key: 'customStatuses', value: body.customStatuses });
       }
 
       if (items.length === 0) {

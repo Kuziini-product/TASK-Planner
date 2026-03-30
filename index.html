@@ -711,6 +711,98 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Locked field */
+.locked-field {
+  position: relative;
+}
+.locked-field input,
+.locked-field textarea {
+  opacity: 0.7;
+  pointer-events: none;
+}
+.locked-field.unlocked input,
+.locked-field.unlocked textarea {
+  opacity: 1;
+  pointer-events: all;
+}
+.lock-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-light);
+  cursor: pointer;
+}
+.lock-toggle.unlocked {
+  background: var(--warning);
+  color: #333;
+  border-color: var(--warning);
+}
+
+/* Assigned indicator */
+.assignee-btn .assigned-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid white;
+  flex-shrink: 0;
+}
+
+/* Custom status add */
+.add-status-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.add-status-row input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+.add-status-row input:focus { border-color: var(--primary); }
+.add-status-row button {
+  padding: 6px 12px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Modal task title display */
+.modal-task-header {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.modal-task-header .task-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-word;
+}
+.modal-task-header .task-desc-preview {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-top: 4px;
+  word-break: break-word;
+}
 </style>
 </head>
 <body>
@@ -775,12 +867,40 @@ body {
 
 <!-- Modal -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
     <h2 id="modalTitle">Task nou</h2>
-    <label>Titlu</label>
-    <input type="text" id="taskTitleInput" placeholder="Ce ai de facut?" autocomplete="off">
-    <label>Descriere (optional)</label>
-    <textarea id="taskDescInput" placeholder="Detalii..." rows="2"></textarea>
+
+    <!-- Edit mode: show title as header with lock -->
+    <div id="taskHeaderDisplay" style="display:none;">
+      <div class="modal-task-header">
+        <div class="task-name" id="taskHeaderName"></div>
+        <div class="task-desc-preview" id="taskHeaderDesc"></div>
+      </div>
+    </div>
+
+    <!-- Title field with lock -->
+    <div id="titleFieldWrap">
+      <div class="locked-field" id="titleLocked" style="position:relative;">
+        <label>Titlu <button class="lock-toggle" id="titleLockBtn" style="display:none;">Modifica</button></label>
+        <input type="text" id="taskTitleInput" placeholder="Ce ai de facut?" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Description field with lock -->
+    <div id="descFieldWrap">
+      <div class="locked-field" id="descLocked" style="position:relative;">
+        <label>Descriere <button class="lock-toggle" id="descLockBtn" style="display:none;">Modifica</button></label>
+        <textarea id="taskDescInput" placeholder="Detalii..." rows="2"></textarea>
+      </div>
+    </div>
+
+    <label>Status</label>
+    <div class="status-selector" id="statusSelect"></div>
+    <div class="add-status-row">
+      <input type="text" id="newStatusInput" placeholder="Status nou...">
+      <button id="addStatusBtn">+ Adauga</button>
+    </div>
+
     <label>Data</label>
     <input type="date" id="taskDateInput">
     <label>Ora (optional)</label>
@@ -790,14 +910,6 @@ body {
       <button class="priority-btn" data-priority="high">Urgent</button>
       <button class="priority-btn active-medium" data-priority="medium">Normal</button>
       <button class="priority-btn" data-priority="low">Scazut</button>
-    </div>
-    <label>Status</label>
-    <div class="status-selector" id="statusSelect">
-      <button class="status-option s-nou active" data-status="nou">Nou</button>
-      <button class="status-option s-in-lucru" data-status="in-lucru">In lucru</button>
-      <button class="status-option s-in-asteptare" data-status="in-asteptare">In asteptare</button>
-      <button class="status-option s-blocat" data-status="blocat">Blocat</button>
-      <button class="status-option s-finalizat" data-status="finalizat">Finalizat</button>
     </div>
     <label>Asignat la</label>
     <div class="assignee-select" id="assigneeSelect"></div>
@@ -824,13 +936,36 @@ let saving = false;
 
 const API_URL = '/api/data';
 
-const STATUSES = [
-  { key: 'nou', label: 'Nou', css: 'status-nou', headerBg: '#E8E8F0', headerColor: '#8E8EA0' },
-  { key: 'in-lucru', label: 'In lucru', css: 'status-in-lucru', headerBg: '#DBE4FF', headerColor: '#4263EB' },
-  { key: 'in-asteptare', label: 'In asteptare', css: 'status-in-asteptare', headerBg: '#FFF3BF', headerColor: '#E67700' },
-  { key: 'blocat', label: 'Blocat', css: 'status-blocat', headerBg: '#FFE0E0', headerColor: '#C92A2A' },
-  { key: 'finalizat', label: 'Finalizat', css: 'status-finalizat', headerBg: '#D3F9D8', headerColor: '#2B8A3E' },
+const DEFAULT_STATUSES = [
+  { key: 'nou', label: 'Nou', bg: '#E8E8F0', color: '#8E8EA0' },
+  { key: 'in-lucru', label: 'In lucru', bg: '#DBE4FF', color: '#4263EB' },
+  { key: 'in-asteptare', label: 'In asteptare', bg: '#FFF3BF', color: '#E67700' },
+  { key: 'blocat', label: 'Blocat', bg: '#FFE0E0', color: '#C92A2A' },
+  { key: 'finalizat', label: 'Finalizat', bg: '#D3F9D8', color: '#2B8A3E' },
 ];
+
+// Custom statuses from STATUSES + user-added
+let STATUSES = [...DEFAULT_STATUSES];
+let customStatuses = JSON.parse(localStorage.getItem('customStatuses') || '[]');
+
+function loadStatuses() {
+  STATUSES = [...DEFAULT_STATUSES, ...customStatuses];
+}
+loadStatuses();
+
+function addCustomStatus(label) {
+  const key = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (!key || STATUSES.some(s => s.key === key)) return false;
+  const colors = ['#E8D5FF:#7C3AED', '#D5F5E3:#1B7A3D', '#FEEBC8:#C05621', '#FED7D7:#9B2C2C', '#BEE3F8:#2B6CB0', '#FEFCBF:#975A16'];
+  const pick = colors[customStatuses.length % colors.length].split(':');
+  const status = { key, label, bg: pick[0], color: pick[1] };
+  customStatuses.push(status);
+  localStorage.setItem('customStatuses', JSON.stringify(customStatuses));
+  // Also save to server
+  fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customStatuses }) });
+  loadStatuses();
+  return true;
+}
 
 function getStatusInfo(key) {
   return STATUSES.find(s => s.key === key) || STATUSES[0];
@@ -853,6 +988,11 @@ async function loadData() {
     tasks = data.tasks || [];
     team = data.team || [];
     adminPin = data.adminPin || '1234';
+    if (data.customStatuses) {
+      customStatuses = data.customStatuses;
+      localStorage.setItem('customStatuses', JSON.stringify(customStatuses));
+      loadStatuses();
+    }
     dataLoaded = true;
   } catch (e) {
     console.error('Failed to load data:', e);
@@ -1075,7 +1215,7 @@ function assigneeBadgeHTML(name) {
 
 function statusBadgeHTML(statusKey) {
   const s = getStatusInfo(statusKey || 'nou');
-  return `<span class="status-badge ${s.css}">${s.label}</span>`;
+  return `<span class="status-badge" style="background:${s.bg};color:${s.color}">${escapeHTML(s.label)}</span>`;
 }
 
 function taskCardHTML(t, showDate = false) {
@@ -1150,7 +1290,7 @@ function renderBoard() {
   STATUSES.forEach(s => {
     const colTasks = visible.filter(t => (t.status || 'nou') === s.key);
     html += `<div class="board-col">
-      <div class="board-col-header" style="background:${s.headerBg};color:${s.headerColor}">
+      <div class="board-col-header" style="background:${s.bg};color:${s.color}">
         ${s.label}
         <span class="count">${colTasks.length}</span>
       </div>`;
@@ -1182,6 +1322,33 @@ function renderBoard() {
 // ---- Modal ----
 const overlay = document.getElementById('modalOverlay');
 
+function setFieldsLocked(locked) {
+  const titleLock = document.getElementById('titleLocked');
+  const descLock = document.getElementById('descLocked');
+  const titleBtn = document.getElementById('titleLockBtn');
+  const descBtn = document.getElementById('descLockBtn');
+  const headerDisplay = document.getElementById('taskHeaderDisplay');
+
+  if (locked) {
+    titleLock.classList.remove('unlocked');
+    descLock.classList.remove('unlocked');
+    titleBtn.style.display = 'inline-block';
+    descBtn.style.display = 'inline-block';
+    titleBtn.textContent = 'Modifica';
+    descBtn.textContent = 'Modifica';
+    titleBtn.classList.remove('unlocked');
+    descBtn.classList.remove('unlocked');
+    // Show header
+    headerDisplay.style.display = 'block';
+  } else {
+    titleLock.classList.add('unlocked');
+    descLock.classList.add('unlocked');
+    titleBtn.style.display = 'none';
+    descBtn.style.display = 'none';
+    headerDisplay.style.display = 'none';
+  }
+}
+
 function openModal() {
   editingTaskId = null;
   document.getElementById('modalTitle').textContent = 'Task nou';
@@ -1192,6 +1359,9 @@ function openModal() {
   setPriority('medium');
   setStatus('nou');
   setAssignee(currentUser || '');
+  setFieldsLocked(false);
+  renderStatusButtons();
+  renderAssigneeButtons();
   overlay.classList.add('active');
   setTimeout(() => document.getElementById('taskTitleInput').focus(), 300);
 }
@@ -1205,11 +1375,15 @@ function openEditModal(id) {
   document.getElementById('taskDescInput').value = t.desc || '';
   document.getElementById('taskDateInput').value = t.date;
   document.getElementById('taskTimeInput').value = t.time || '';
+  document.getElementById('taskHeaderName').textContent = t.title;
+  document.getElementById('taskHeaderDesc').textContent = t.desc || '(fara descriere)';
   setPriority(t.priority);
   setStatus(t.status || 'nou');
   setAssignee(t.assignee || '');
+  setFieldsLocked(true);
+  renderStatusButtons();
+  renderAssigneeButtons();
   overlay.classList.add('active');
-  setTimeout(() => document.getElementById('taskTitleInput').focus(), 300);
 }
 
 function closeModal() {
@@ -1251,7 +1425,22 @@ let currentStatus = 'nou';
 function setStatus(s) {
   currentStatus = s;
   document.querySelectorAll('#statusSelect .status-option').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.status === currentStatus);
+    const isActive = btn.dataset.status === currentStatus;
+    btn.classList.toggle('active', isActive);
+    const info = getStatusInfo(btn.dataset.status);
+    btn.style.background = isActive ? info.bg : '';
+    btn.style.color = isActive ? info.color : '';
+    btn.style.borderColor = isActive ? info.color : '';
+  });
+}
+
+function renderStatusButtons() {
+  const container = document.getElementById('statusSelect');
+  container.innerHTML = STATUSES.map(s =>
+    `<button class="status-option ${currentStatus === s.key ? 'active' : ''}" data-status="${escapeHTML(s.key)}" style="${currentStatus === s.key ? `background:${s.bg};color:${s.color};border-color:${s.color}` : ''}">${escapeHTML(s.label)}</button>`
+  ).join('');
+  container.querySelectorAll('.status-option').forEach(btn => {
+    btn.addEventListener('click', () => setStatus(btn.dataset.status));
   });
 }
 
@@ -1297,9 +1486,21 @@ function renderFilterChips() {
 
 function renderAssigneeButtons() {
   const container = document.getElementById('assigneeSelect');
-  container.innerHTML = getTEAM().map(m =>
-    `<button class="assignee-btn ${currentAssignee === m.name ? 'active' : ''}" data-assignee="${escapeHTML(m.name)}"><span class="avatar" style="background:${m.color}">${m.initials}</span>${escapeHTML(m.short)}</button>`
-  ).join('');
+  // Get the current task's assignee to show green dot
+  let taskAssignee = '';
+  if (editingTaskId) {
+    const t = tasks.find(t => t.id === editingTaskId);
+    if (t) taskAssignee = t.assignee || '';
+  }
+
+  container.innerHTML = getTEAM().map(m => {
+    const isSelected = currentAssignee === m.name;
+    const isAssigned = taskAssignee === m.name;
+    return `<button class="assignee-btn ${isSelected ? 'active' : ''}" data-assignee="${escapeHTML(m.name)}">
+      ${isAssigned ? '<span class="assigned-dot"></span>' : ''}
+      <span class="avatar" style="background:${m.color}">${m.initials}</span>${escapeHTML(m.short)}
+    </button>`;
+  }).join('');
 
   container.querySelectorAll('.assignee-btn').forEach(btn => {
     btn.addEventListener('click', () => setAssignee(btn.dataset.assignee));
@@ -1590,9 +1791,54 @@ document.querySelectorAll('.priority-btn').forEach(btn => {
   btn.addEventListener('click', () => setPriority(btn.dataset.priority));
 });
 
-// Status buttons
-document.querySelectorAll('#statusSelect .status-option').forEach(btn => {
-  btn.addEventListener('click', () => setStatus(btn.dataset.status));
+// Lock toggle buttons
+document.getElementById('titleLockBtn').addEventListener('click', function() {
+  const wrap = document.getElementById('titleLocked');
+  const isLocked = !wrap.classList.contains('unlocked');
+  if (isLocked) {
+    wrap.classList.add('unlocked');
+    this.textContent = 'Confirmat';
+    this.classList.add('unlocked');
+    document.getElementById('taskTitleInput').focus();
+  } else {
+    wrap.classList.remove('unlocked');
+    this.textContent = 'Modifica';
+    this.classList.remove('unlocked');
+    // Update header display
+    document.getElementById('taskHeaderName').textContent = document.getElementById('taskTitleInput').value;
+  }
+});
+document.getElementById('descLockBtn').addEventListener('click', function() {
+  const wrap = document.getElementById('descLocked');
+  const isLocked = !wrap.classList.contains('unlocked');
+  if (isLocked) {
+    wrap.classList.add('unlocked');
+    this.textContent = 'Confirmat';
+    this.classList.add('unlocked');
+    document.getElementById('taskDescInput').focus();
+  } else {
+    wrap.classList.remove('unlocked');
+    this.textContent = 'Modifica';
+    this.classList.remove('unlocked');
+    document.getElementById('taskHeaderDesc').textContent = document.getElementById('taskDescInput').value || '(fara descriere)';
+  }
+});
+
+// Add custom status button
+document.getElementById('addStatusBtn').addEventListener('click', () => {
+  const input = document.getElementById('newStatusInput');
+  const label = input.value.trim();
+  if (!label) return;
+  if (addCustomStatus(label)) {
+    input.value = '';
+    renderStatusButtons();
+    renderFilterChips();
+    renderBoard();
+  } else {
+    input.value = '';
+    input.placeholder = 'Exista deja!';
+    setTimeout(() => { input.placeholder = 'Status nou...'; }, 1500);
+  }
 });
 
 // Enter key in title input

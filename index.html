@@ -1299,7 +1299,7 @@ function getTEAM() {
 // ---- User filtering ----
 function getVisibleTasks() {
   if (currentUser) {
-    return tasks.filter(t => t.assignee === currentUser);
+    return tasks.filter(t => t.assignee === currentUser || t.createdBy === currentUser);
   }
   return tasks;
 }
@@ -1659,6 +1659,11 @@ function taskCardHTML(t, showDate = false) {
   const meta = [timeStr, dateStr].filter(Boolean).join(' &middot; ');
   const assigneeHTML = t.assignee ? assigneeBadgeHTML(t.assignee) : '';
   const isDone = t.status === 'finalizat' || t.done;
+  const views = t.views || 0;
+  const interactions = t.interactions || 0;
+  const viewedBy = t.viewedBy || [];
+  const viewedNames = viewedBy.map(v => v === 'Admin' ? 'Admin' : getShortName(v)).join(', ');
+  const createdBy = t.createdBy ? (t.createdBy === 'Admin' ? 'Admin' : getShortName(t.createdBy)) : '';
   return `
     <div class="task-card ${isDone ? 'done' : ''}" data-id="${t.id}">
       <div class="task-check ${isDone ? 'checked' : ''}" data-action="toggle" data-id="${t.id}"></div>
@@ -1669,6 +1674,12 @@ function taskCardHTML(t, showDate = false) {
           ${statusBadgeHTML(t.status)}
           ${meta ? `<span>${meta}</span>` : ''}
           ${assigneeHTML}
+        </div>
+        <div class="task-meta" style="margin-top:4px;">
+          ${createdBy ? `<span style="font-size:10px;">de ${createdBy}</span>` : ''}
+          <span style="font-size:10px;" title="Vazut de: ${viewedNames || 'nimeni'}">&#128065; ${views}</span>
+          <span style="font-size:10px;" title="Interactiuni">&#9881; ${interactions}</span>
+          ${viewedBy.length > 0 ? `<span style="font-size:10px;color:var(--success);" title="Vazut de: ${viewedNames}">&#9989; ${viewedNames}</span>` : '<span style="font-size:10px;color:var(--text-light);">nevazut</span>'}
         </div>
         ${t.desc ? `<div class="task-meta"><span>${escapeHTML(t.desc).substring(0,60)}</span></div>` : ''}
       </div>
@@ -1697,6 +1708,7 @@ function attachTaskEvents(container) {
 function toggleTask(id) {
   const t = tasks.find(t => t.id === id);
   if (!t) return;
+  t.interactions = (t.interactions || 0) + 1;
   // Cycle: nou -> in-lucru -> finalizat (or toggle back)
   const current = t.status || 'nou';
   if (current === 'finalizat') {
@@ -1820,6 +1832,17 @@ function openEditModal(id) {
   setFieldsLocked(true);
   renderStatusButtons();
   renderAssigneeButtons();
+
+  // Track view
+  const viewer = currentUser || 'Admin';
+  if (!t.viewedBy) t.viewedBy = [];
+  if (!t.viewedBy.includes(viewer)) {
+    t.viewedBy.push(viewer);
+  }
+  t.views = (t.views || 0) + 1;
+  t.interactions = (t.interactions || 0) + 1;
+  saveTasks();
+
   overlay.classList.add('active');
 }
 
@@ -1845,6 +1868,7 @@ function saveTask() {
     const t = tasks.find(t => t.id === editingTaskId);
     if (t) {
       const oldStatus = t.status;
+      t.interactions = (t.interactions || 0) + 1;
       Object.assign(t, data);
       if (oldStatus !== data.status) {
         const s = getStatusInfo(data.status);
@@ -1854,7 +1878,16 @@ function saveTask() {
       }
     }
   } else {
-    tasks.push({ id: genId(), done: false, ...data });
+    tasks.push({
+      id: genId(),
+      done: false,
+      createdBy: currentUser || 'Admin',
+      createdAt: new Date().toISOString(),
+      views: 0,
+      viewedBy: [],
+      interactions: 0,
+      ...data
+    });
     logActivity('&#10133;', '#D3F9D8', 'Task nou: ' + data.title + (data.assignee ? ' (asignat: ' + getShortName(data.assignee) + ')' : ''));
   }
 

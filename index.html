@@ -1140,7 +1140,7 @@ let adminUnlocked = false;
 let adminPin = '1234';
 let team = [];
 let dataLoaded = false;
-let saving = false;
+let savingNow = false;
 let calMode = 'month'; // day, week, month, year
 
 const API_URL = '/api/data';
@@ -1191,11 +1191,13 @@ const DAYS_RO = ['Lu','Ma','Mi','Jo','Vi','Sa','Du'];
 
 // ---- API functions ----
 async function loadData() {
+  if (savingNow) return; // Don't overwrite while saving
   try {
     const oldTasks = [...tasks];
     const oldTeam = [...team];
     const resp = await fetch(API_URL);
     const data = await resp.json();
+    if (savingNow) return; // Check again after fetch
     const newTasks = data.tasks || [];
     const newTeam = data.team || [];
 
@@ -1240,6 +1242,7 @@ async function loadData() {
 async function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
   lastTaskSnapshot = JSON.stringify(tasks);
+  savingNow = true;
   try {
     await fetch(API_URL, {
       method: 'POST',
@@ -1247,6 +1250,7 @@ async function saveTasks() {
       body: JSON.stringify({ tasks }),
     });
   } catch (e) { console.error('Save tasks failed:', e); }
+  savingNow = false;
 }
 
 async function saveTeam() {
@@ -1325,13 +1329,15 @@ let lastTaskSnapshot = '';
 let lastTeamSnapshot = '';
 let unreadCount = 0;
 
-function logActivity(icon, iconBg, text) {
+function logActivity(icon, iconBg, text, skipSave) {
   const now = new Date();
   const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
   activities.unshift({ icon, iconBg, text, time: timeStr, date: formatDate(now) });
   if (activities.length > 50) activities.pop();
-  // Save to server
-  fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activities }) });
+  // Only save to server if not from detectChanges (to avoid race conditions)
+  if (!skipSave) {
+    fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activities }) });
+  }
   unreadCount++;
   updateBellBadge();
   showToast(text);
@@ -1382,16 +1388,14 @@ function requestNotificationPermission() {
   }
 }
 
-// Detect changes from server polling
+// Detect changes from server polling (skipSave=true to avoid race conditions)
 function detectChanges(oldTasks, newTasks, oldTeam, newTeam) {
-  // New tasks
   const oldIds = new Set(oldTasks.map(t => t.id));
   newTasks.forEach(t => {
     if (!oldIds.has(t.id)) {
-      logActivity('&#10133;', '#DBE4FF', 'Task nou: ' + t.title + (t.assignee ? ' (asignat: ' + getShortName(t.assignee) + ')' : ''));
+      logActivity('&#10133;', '#DBE4FF', 'Task nou: ' + t.title + (t.assignee ? ' (asignat: ' + getShortName(t.assignee) + ')' : ''), true);
     }
   });
-  // Status changes
   const oldMap = {};
   oldTasks.forEach(t => { oldMap[t.id] = t; });
   newTasks.forEach(t => {
@@ -1399,28 +1403,26 @@ function detectChanges(oldTasks, newTasks, oldTeam, newTeam) {
     if (old) {
       if (old.status !== t.status) {
         const s = getStatusInfo(t.status);
-        logActivity('&#9881;', s.bg, t.title + ' -> ' + s.label);
+        logActivity('&#9881;', s.bg, t.title + ' -> ' + s.label, true);
       }
       if (old.assignee !== t.assignee && t.assignee) {
-        logActivity('&#128100;', '#E8D5FF', t.title + ' asignat lui ' + getShortName(t.assignee));
+        logActivity('&#128100;', '#E8D5FF', t.title + ' asignat lui ' + getShortName(t.assignee), true);
       }
     }
   });
-  // Deleted tasks
   const newIds = new Set(newTasks.map(t => t.id));
   oldTasks.forEach(t => {
     if (!newIds.has(t.id)) {
-      logActivity('&#10060;', '#FFE0E0', 'Task sters: ' + t.title);
+      logActivity('&#10060;', '#FFE0E0', 'Task sters: ' + t.title, true);
     }
   });
-  // New team members
   const oldTeamIds = new Set(oldTeam.map(m => m.id));
   newTeam.forEach(m => {
     if (!oldTeamIds.has(m.id) && m.status === 'pending') {
-      logActivity('&#128587;', '#FFF3BF', 'Cerere acces: ' + m.name);
+      logActivity('&#128587;', '#FFF3BF', 'Cerere acces: ' + m.name, true);
     }
     if (!oldTeamIds.has(m.id) && m.status === 'active') {
-      logActivity('&#9989;', '#D3F9D8', m.name + ' a intrat in echipa');
+      logActivity('&#9989;', '#D3F9D8', m.name + ' a intrat in echipa', true);
     }
   });
 }

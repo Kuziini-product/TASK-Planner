@@ -712,37 +712,81 @@ body {
   cursor: pointer;
 }
 
-/* Locked field */
-.locked-field {
-  position: relative;
+/* Edit modal section labels */
+.modal-section-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: 18px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.locked-field input,
-.locked-field textarea {
-  opacity: 0.7;
-  pointer-events: none;
-}
-.locked-field.unlocked input,
-.locked-field.unlocked textarea {
-  opacity: 1;
-  pointer-events: all;
-}
-.lock-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 4px 10px;
+.modal-section-label.red { color: var(--danger); }
+.modal-section-label .edit-toggle {
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   color: var(--text-light);
   cursor: pointer;
+  margin-left: auto;
 }
-.lock-toggle.unlocked {
-  background: var(--warning);
-  color: #333;
-  border-color: var(--warning);
+.modal-section-label .edit-toggle.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Disabled field */
+.field-disabled { opacity: 0.4; pointer-events: none; }
+
+/* File upload area */
+.file-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+.file-upload-area:active { transform: scale(0.98); }
+.file-upload-icon { font-size: 32px; }
+.file-upload-btn {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.file-list { margin-top: 8px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--card);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.file-item .remove-file {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
 }
 
 /* Assigned indicator */
@@ -1076,51 +1120,73 @@ body {
 <!-- Modal -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" style="max-height:90vh;overflow-y:auto;">
-    <h2 id="modalTitle">Task nou</h2>
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <h2 id="modalTitle" style="margin-bottom:4px;">Task nou</h2>
+      <button class="edit-toggle" id="titleEditBtn" style="display:none;">Modifica</button>
+    </div>
 
-    <!-- Edit mode: show title as header with lock -->
+    <!-- Task name display (edit mode) -->
     <div id="taskHeaderDisplay" style="display:none;">
       <div class="modal-task-header">
         <div class="task-name" id="taskHeaderName"></div>
-        <div class="task-desc-preview" id="taskHeaderDesc"></div>
       </div>
     </div>
 
-    <!-- Title field with lock -->
-    <div id="titleFieldWrap">
-      <div class="locked-field" id="titleLocked" style="position:relative;">
-        <label>Titlu <button class="lock-toggle" id="titleLockBtn" style="display:none;">Modifica</button></label>
-        <input type="text" id="taskTitleInput" placeholder="Ce ai de facut?" autocomplete="off">
-      </div>
+    <!-- Title & Description (hidden in edit mode unless unlocked) -->
+    <div id="titleDescFields">
+      <input type="text" id="taskTitleInput" placeholder="Ce ai de facut?" autocomplete="off" style="margin-bottom:8px;">
+      <textarea id="taskDescInput" placeholder="Detalii..." rows="2"></textarea>
     </div>
 
-    <!-- Description field with lock -->
-    <div id="descFieldWrap">
-      <div class="locked-field" id="descLocked" style="position:relative;">
-        <label>Descriere <button class="lock-toggle" id="descLockBtn" style="display:none;">Modifica</button></label>
-        <textarea id="taskDescInput" placeholder="Detalii..." rows="2"></textarea>
-      </div>
-    </div>
-
-    <label>Status</label>
+    <!-- Status -->
+    <div class="modal-section-label red">Schimba status</div>
     <div class="status-selector" id="statusSelect"></div>
     <div class="add-status-row">
       <input type="text" id="newStatusInput" placeholder="Status nou...">
       <button id="addStatusBtn">+ Adauga</button>
     </div>
 
-    <label>Data</label>
-    <input type="date" id="taskDateInput">
-    <label>Ora (optional)</label>
-    <input type="time" id="taskTimeInput">
-    <label>Prioritate</label>
+    <!-- Date -->
+    <div class="modal-section-label">
+      Schimba Data <span style="font-weight:400;font-size:12px;color:var(--text-light);">optional</span>
+      <button class="edit-toggle" id="dateToggle">Schimba</button>
+    </div>
+    <div id="dateFieldWrap" class="field-disabled">
+      <input type="date" id="taskDateInput">
+    </div>
+
+    <!-- Time -->
+    <div class="modal-section-label">
+      Schimba Ora
+      <button class="edit-toggle" id="timeToggle">Schimba</button>
+    </div>
+    <div id="timeFieldWrap" class="field-disabled">
+      <input type="time" id="taskTimeInput">
+    </div>
+
+    <!-- Priority -->
+    <label style="margin-top:16px;">Prioritate</label>
     <div class="priority-select">
       <button class="priority-btn" data-priority="high">Urgent</button>
       <button class="priority-btn active-medium" data-priority="medium">Normal</button>
       <button class="priority-btn" data-priority="low">Scazut</button>
     </div>
-    <label>Asignat la</label>
+
+    <!-- Assignee -->
+    <label style="margin-top:14px;">Asignat la</label>
     <div class="assignee-select" id="assigneeSelect"></div>
+
+    <!-- File upload -->
+    <div class="modal-section-label" style="margin-top:18px;">Fisiere</div>
+    <div class="file-upload-area" id="fileUploadArea">
+      <span class="file-upload-icon">&#128193;</span>
+      <span class="file-upload-btn">Adauga Fisiere</span>
+      <input type="file" id="fileInput" multiple style="display:none;">
+    </div>
+    <div class="file-list" id="fileList"></div>
+
+    <!-- Actions -->
     <div class="modal-actions">
       <button class="btn btn-secondary" id="cancelBtn">Anuleaza</button>
       <button class="btn btn-primary" id="saveBtn">Salveaza</button>
@@ -1807,35 +1873,62 @@ function renderBoard() {
 // ---- Modal ----
 const overlay = document.getElementById('modalOverlay');
 
-function setFieldsLocked(locked) {
-  const titleLock = document.getElementById('titleLocked');
-  const descLock = document.getElementById('descLocked');
-  const titleBtn = document.getElementById('titleLockBtn');
-  const descBtn = document.getElementById('descLockBtn');
-  const headerDisplay = document.getElementById('taskHeaderDisplay');
+let taskFiles = [];
 
-  if (locked) {
-    titleLock.classList.remove('unlocked');
-    descLock.classList.remove('unlocked');
-    titleBtn.style.display = 'inline-block';
-    descBtn.style.display = 'inline-block';
-    titleBtn.textContent = 'Modifica';
-    descBtn.textContent = 'Modifica';
-    titleBtn.classList.remove('unlocked');
-    descBtn.classList.remove('unlocked');
-    // Show header
+function setEditMode(isEdit) {
+  const titleDescFields = document.getElementById('titleDescFields');
+  const headerDisplay = document.getElementById('taskHeaderDisplay');
+  const titleEditBtn = document.getElementById('titleEditBtn');
+  const dateWrap = document.getElementById('dateFieldWrap');
+  const timeWrap = document.getElementById('timeFieldWrap');
+  const dateToggle = document.getElementById('dateToggle');
+  const timeToggle = document.getElementById('timeToggle');
+
+  if (isEdit) {
+    // Show task name as header, hide editable fields
     headerDisplay.style.display = 'block';
+    titleDescFields.style.display = 'none';
+    titleEditBtn.style.display = 'inline-block';
+    titleEditBtn.textContent = 'Modifica';
+    titleEditBtn.classList.remove('active');
+    // Lock date/time by default
+    dateWrap.classList.add('field-disabled');
+    timeWrap.classList.add('field-disabled');
+    dateToggle.textContent = 'Schimba';
+    dateToggle.classList.remove('active');
+    timeToggle.textContent = 'Schimba';
+    timeToggle.classList.remove('active');
   } else {
-    titleLock.classList.add('unlocked');
-    descLock.classList.add('unlocked');
-    titleBtn.style.display = 'none';
-    descBtn.style.display = 'none';
+    // New task mode - fields open, date/time enabled
     headerDisplay.style.display = 'none';
+    titleDescFields.style.display = 'block';
+    titleEditBtn.style.display = 'none';
+    dateWrap.classList.remove('field-disabled');
+    timeWrap.classList.remove('field-disabled');
+    dateToggle.textContent = 'Schimba';
+    dateToggle.classList.add('active');
+    timeToggle.textContent = 'Schimba';
+    timeToggle.classList.add('active');
   }
+}
+
+function renderFileList() {
+  const list = document.getElementById('fileList');
+  if (taskFiles.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = taskFiles.map((f, i) =>
+    `<div class="file-item"><span>&#128196; ${escapeHTML(f.name)}</span><button class="remove-file" data-idx="${i}">&times;</button></div>`
+  ).join('');
+  list.querySelectorAll('.remove-file').forEach(btn => {
+    btn.addEventListener('click', () => {
+      taskFiles.splice(parseInt(btn.dataset.idx), 1);
+      renderFileList();
+    });
+  });
 }
 
 function openModal() {
   editingTaskId = null;
+  taskFiles = [];
   document.getElementById('modalTitle').textContent = 'Task nou';
   document.getElementById('taskTitleInput').value = '';
   document.getElementById('taskDescInput').value = '';
@@ -1844,9 +1937,10 @@ function openModal() {
   setPriority('medium');
   setStatus('nou');
   setAssignee(currentUser || '');
-  setFieldsLocked(false);
+  setEditMode(false);
   renderStatusButtons();
   renderAssigneeButtons();
+  renderFileList();
   overlay.classList.add('active');
   setTimeout(() => document.getElementById('taskTitleInput').focus(), 300);
 }
@@ -1855,19 +1949,20 @@ function openEditModal(id) {
   const t = tasks.find(t => t.id === id);
   if (!t) return;
   editingTaskId = id;
+  taskFiles = t.files ? [...t.files] : [];
   document.getElementById('modalTitle').textContent = 'Editeaza task';
   document.getElementById('taskTitleInput').value = t.title;
   document.getElementById('taskDescInput').value = t.desc || '';
   document.getElementById('taskDateInput').value = t.date;
   document.getElementById('taskTimeInput').value = t.time || '';
   document.getElementById('taskHeaderName').textContent = t.title;
-  document.getElementById('taskHeaderDesc').textContent = t.desc || '(fara descriere)';
   setPriority(t.priority);
   setStatus(t.status || 'nou');
   setAssignee(t.assignee || '');
-  setFieldsLocked(true);
+  setEditMode(true);
   renderStatusButtons();
   renderAssigneeButtons();
+  renderFileList();
 
   // Track view
   const viewer = currentUser || 'Admin';
@@ -1898,6 +1993,7 @@ function saveTask() {
     priority: currentPriority,
     assignee: currentAssignee,
     status: currentStatus,
+    files: taskFiles,
   };
 
   if (editingTaskId) {
@@ -2349,37 +2445,51 @@ document.querySelectorAll('.priority-btn').forEach(btn => {
   btn.addEventListener('click', () => setPriority(btn.dataset.priority));
 });
 
-// Lock toggle buttons
-document.getElementById('titleLockBtn').addEventListener('click', function() {
-  const wrap = document.getElementById('titleLocked');
-  const isLocked = !wrap.classList.contains('unlocked');
-  if (isLocked) {
-    wrap.classList.add('unlocked');
-    this.textContent = 'Confirmat';
-    this.classList.add('unlocked');
+// Title edit toggle (edit mode)
+document.getElementById('titleEditBtn').addEventListener('click', function() {
+  const fields = document.getElementById('titleDescFields');
+  const isHidden = fields.style.display === 'none';
+  if (isHidden) {
+    fields.style.display = 'block';
+    this.textContent = 'Confirma';
+    this.classList.add('active');
     document.getElementById('taskTitleInput').focus();
   } else {
-    wrap.classList.remove('unlocked');
+    fields.style.display = 'none';
     this.textContent = 'Modifica';
-    this.classList.remove('unlocked');
-    // Update header display
+    this.classList.remove('active');
     document.getElementById('taskHeaderName').textContent = document.getElementById('taskTitleInput').value;
   }
 });
-document.getElementById('descLockBtn').addEventListener('click', function() {
-  const wrap = document.getElementById('descLocked');
-  const isLocked = !wrap.classList.contains('unlocked');
-  if (isLocked) {
-    wrap.classList.add('unlocked');
-    this.textContent = 'Confirmat';
-    this.classList.add('unlocked');
-    document.getElementById('taskDescInput').focus();
-  } else {
-    wrap.classList.remove('unlocked');
-    this.textContent = 'Modifica';
-    this.classList.remove('unlocked');
-    document.getElementById('taskHeaderDesc').textContent = document.getElementById('taskDescInput').value || '(fara descriere)';
-  }
+
+// Date toggle
+document.getElementById('dateToggle').addEventListener('click', function() {
+  const wrap = document.getElementById('dateFieldWrap');
+  const locked = wrap.classList.contains('field-disabled');
+  wrap.classList.toggle('field-disabled');
+  this.textContent = locked ? 'Blocat' : 'Schimba';
+  this.classList.toggle('active');
+});
+
+// Time toggle
+document.getElementById('timeToggle').addEventListener('click', function() {
+  const wrap = document.getElementById('timeFieldWrap');
+  const locked = wrap.classList.contains('field-disabled');
+  wrap.classList.toggle('field-disabled');
+  this.textContent = locked ? 'Blocat' : 'Schimba';
+  this.classList.toggle('active');
+});
+
+// File upload
+document.getElementById('fileUploadArea').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  Array.from(e.target.files).forEach(f => {
+    taskFiles.push({ name: f.name, size: f.size });
+  });
+  renderFileList();
+  e.target.value = '';
 });
 
 // Add custom status button

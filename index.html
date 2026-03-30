@@ -412,6 +412,100 @@ body {
 }
 /* avatar colors are now set dynamically via inline styles */
 
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.status-nou { background: #E8E8F0; color: #8E8EA0; }
+.status-in-lucru { background: #DBE4FF; color: #4263EB; }
+.status-in-asteptare { background: #FFF3BF; color: #E67700; }
+.status-finalizat { background: #D3F9D8; color: #2B8A3E; }
+.status-blocat { background: #FFE0E0; color: #C92A2A; }
+
+/* Status selector on task card */
+.status-selector {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.status-option {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.status-option:active { transform: scale(0.95); }
+.status-option.active { border-color: currentColor; }
+.status-option.s-nou { color: #8E8EA0; }
+.status-option.s-in-lucru { color: #4263EB; }
+.status-option.s-in-asteptare { color: #E67700; }
+.status-option.s-finalizat { color: #2B8A3E; }
+.status-option.s-blocat { color: #C92A2A; }
+.status-option.active.s-nou { background: #E8E8F0; }
+.status-option.active.s-in-lucru { background: #DBE4FF; }
+.status-option.active.s-in-asteptare { background: #FFF3BF; }
+.status-option.active.s-finalizat { background: #D3F9D8; }
+.status-option.active.s-blocat { background: #FFE0E0; }
+
+/* Dashboard board */
+.board {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 200px;
+}
+.board::-webkit-scrollbar { display: none; }
+.board-col {
+  min-width: 200px;
+  flex: 1;
+  background: var(--bg);
+  border-radius: 14px;
+  padding: 10px;
+}
+.board-col-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.board-col-header .count {
+  background: rgba(0,0,0,0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+.board-task {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  font-size: 13px;
+}
+.board-task .task-title { font-size: 13px; font-weight: 600; }
+.board-task .task-meta { font-size: 11px; margin-top: 4px; }
+
 .task-assignee {
   display: inline-flex;
   align-items: center;
@@ -633,6 +727,7 @@ body {
 <div class="tabs" id="tabsBar">
   <button class="tab active" data-view="calendar">Calendar</button>
   <button class="tab" data-view="tasks">Toate</button>
+  <button class="tab" data-view="board">Board</button>
   <button class="tab" data-view="admin" id="adminTab">Admin</button>
 </div>
 
@@ -665,6 +760,11 @@ body {
   </div>
 </div>
 
+<!-- Board View -->
+<div class="view" id="view-board">
+  <div id="boardContent"></div>
+</div>
+
 <!-- Admin View -->
 <div class="view" id="view-admin">
   <div id="adminContent"></div>
@@ -691,6 +791,14 @@ body {
       <button class="priority-btn active-medium" data-priority="medium">Normal</button>
       <button class="priority-btn" data-priority="low">Scazut</button>
     </div>
+    <label>Status</label>
+    <div class="status-selector" id="statusSelect">
+      <button class="status-option s-nou active" data-status="nou">Nou</button>
+      <button class="status-option s-in-lucru" data-status="in-lucru">In lucru</button>
+      <button class="status-option s-in-asteptare" data-status="in-asteptare">In asteptare</button>
+      <button class="status-option s-blocat" data-status="blocat">Blocat</button>
+      <button class="status-option s-finalizat" data-status="finalizat">Finalizat</button>
+    </div>
     <label>Asignat la</label>
     <div class="assignee-select" id="assigneeSelect"></div>
     <div class="modal-actions">
@@ -715,6 +823,18 @@ let dataLoaded = false;
 let saving = false;
 
 const API_URL = '/api/data';
+
+const STATUSES = [
+  { key: 'nou', label: 'Nou', css: 'status-nou', headerBg: '#E8E8F0', headerColor: '#8E8EA0' },
+  { key: 'in-lucru', label: 'In lucru', css: 'status-in-lucru', headerBg: '#DBE4FF', headerColor: '#4263EB' },
+  { key: 'in-asteptare', label: 'In asteptare', css: 'status-in-asteptare', headerBg: '#FFF3BF', headerColor: '#E67700' },
+  { key: 'blocat', label: 'Blocat', css: 'status-blocat', headerBg: '#FFE0E0', headerColor: '#C92A2A' },
+  { key: 'finalizat', label: 'Finalizat', css: 'status-finalizat', headerBg: '#D3F9D8', headerColor: '#2B8A3E' },
+];
+
+function getStatusInfo(key) {
+  return STATUSES.find(s => s.key === key) || STATUSES[0];
+}
 
 // Detect current user from URL param ?user=Name
 const urlParams = new URLSearchParams(location.search);
@@ -917,9 +1037,10 @@ function renderAllTasks() {
   const list = document.getElementById('allTasksList');
   let filtered = [...getVisibleTasks()];
 
-  if (currentFilter === 'pending') filtered = filtered.filter(t => !t.done);
-  else if (currentFilter === 'done') filtered = filtered.filter(t => t.done);
-  else if (currentFilter === 'high') filtered = filtered.filter(t => t.priority === 'high' && !t.done);
+  if (currentFilter === 'pending') filtered = filtered.filter(t => t.status !== 'finalizat' && !t.done);
+  else if (currentFilter === 'done') filtered = filtered.filter(t => t.status === 'finalizat' || t.done);
+  else if (currentFilter === 'high') filtered = filtered.filter(t => t.priority === 'high' && t.status !== 'finalizat');
+  else if (STATUSES.some(s => s.key === currentFilter)) filtered = filtered.filter(t => (t.status || 'nou') === currentFilter);
   else if (getTEAM().some(m => m.name === currentFilter)) filtered = filtered.filter(t => t.assignee === currentFilter);
 
   filtered.sort((a,b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || priorityWeight(a.priority) - priorityWeight(b.priority));
@@ -927,8 +1048,8 @@ function renderAllTasks() {
   // Stats
   const visible = getVisibleTasks();
   document.getElementById('statTotal').textContent = visible.length;
-  document.getElementById('statPending').textContent = visible.filter(t => !t.done).length;
-  document.getElementById('statDone').textContent = visible.filter(t => t.done).length;
+  document.getElementById('statPending').textContent = visible.filter(t => t.status !== 'finalizat' && !t.done).length;
+  document.getElementById('statDone').textContent = visible.filter(t => t.status === 'finalizat' || t.done).length;
 
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="icon">&#9989;</div><p>Niciun task</p></div>';
@@ -952,22 +1073,29 @@ function assigneeBadgeHTML(name) {
   return `<span class="task-assignee"><span class="avatar" style="background:${m.color}">${m.initials}</span>${m.short}</span>`;
 }
 
+function statusBadgeHTML(statusKey) {
+  const s = getStatusInfo(statusKey || 'nou');
+  return `<span class="status-badge ${s.css}">${s.label}</span>`;
+}
+
 function taskCardHTML(t, showDate = false) {
   const timeStr = t.time ? t.time : '';
   const dateStr = showDate ? formatDisplayDate(t.date) : '';
   const meta = [timeStr, dateStr].filter(Boolean).join(' &middot; ');
   const assigneeHTML = t.assignee ? assigneeBadgeHTML(t.assignee) : '';
+  const isDone = t.status === 'finalizat' || t.done;
   return `
-    <div class="task-card ${t.done ? 'done' : ''}" data-id="${t.id}">
-      <div class="task-check ${t.done ? 'checked' : ''}" data-action="toggle" data-id="${t.id}"></div>
+    <div class="task-card ${isDone ? 'done' : ''}" data-id="${t.id}">
+      <div class="task-check ${isDone ? 'checked' : ''}" data-action="toggle" data-id="${t.id}"></div>
       <div class="task-info" data-action="edit" data-id="${t.id}">
         <div class="task-title">${escapeHTML(t.title)}</div>
         <div class="task-meta">
           <span class="priority-dot ${t.priority}"></span>
+          ${statusBadgeHTML(t.status)}
           ${meta ? `<span>${meta}</span>` : ''}
           ${assigneeHTML}
-          ${t.desc ? `<span>${escapeHTML(t.desc).substring(0,40)}</span>` : ''}
         </div>
+        ${t.desc ? `<div class="task-meta"><span>${escapeHTML(t.desc).substring(0,60)}</span></div>` : ''}
       </div>
       <button class="task-delete" data-action="delete" data-id="${t.id}">&times;</button>
     </div>`;
@@ -993,13 +1121,62 @@ function attachTaskEvents(container) {
 // ---- Actions ----
 function toggleTask(id) {
   const t = tasks.find(t => t.id === id);
-  if (t) { t.done = !t.done; saveTasks(); renderAll(); }
+  if (!t) return;
+  // Cycle: nou -> in-lucru -> finalizat (or toggle back)
+  const current = t.status || 'nou';
+  if (current === 'finalizat') {
+    t.status = 'nou';
+    t.done = false;
+  } else {
+    t.status = 'finalizat';
+    t.done = true;
+  }
+  saveTasks();
+  renderAll();
 }
 
 function deleteTask(id) {
   tasks = tasks.filter(t => t.id !== id);
   saveTasks();
   renderAll();
+}
+
+// ---- Board View ----
+function renderBoard() {
+  const container = document.getElementById('boardContent');
+  const visible = getVisibleTasks();
+
+  let html = '<div class="board">';
+  STATUSES.forEach(s => {
+    const colTasks = visible.filter(t => (t.status || 'nou') === s.key);
+    html += `<div class="board-col">
+      <div class="board-col-header" style="background:${s.headerBg};color:${s.headerColor}">
+        ${s.label}
+        <span class="count">${colTasks.length}</span>
+      </div>`;
+    if (colTasks.length === 0) {
+      html += '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:12px;">Gol</div>';
+    }
+    colTasks.forEach(t => {
+      const assigneeHTML = t.assignee ? assigneeBadgeHTML(t.assignee) : '';
+      html += `<div class="board-task" data-action="edit" data-id="${t.id}">
+        <div class="task-title">${escapeHTML(t.title)}</div>
+        <div class="task-meta">
+          <span class="priority-dot ${t.priority}"></span>
+          ${t.date ? `<span>${formatDisplayDate(t.date)}</span>` : ''}
+          ${assigneeHTML}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Attach edit events
+  container.querySelectorAll('[data-action="edit"]').forEach(el => {
+    el.addEventListener('click', () => openEditModal(el.dataset.id));
+  });
 }
 
 // ---- Modal ----
@@ -1013,6 +1190,7 @@ function openModal() {
   document.getElementById('taskDateInput').value = selectedDate;
   document.getElementById('taskTimeInput').value = '';
   setPriority('medium');
+  setStatus('nou');
   setAssignee(currentUser || '');
   overlay.classList.add('active');
   setTimeout(() => document.getElementById('taskTitleInput').focus(), 300);
@@ -1028,6 +1206,7 @@ function openEditModal(id) {
   document.getElementById('taskDateInput').value = t.date;
   document.getElementById('taskTimeInput').value = t.time || '';
   setPriority(t.priority);
+  setStatus(t.status || 'nou');
   setAssignee(t.assignee || '');
   overlay.classList.add('active');
   setTimeout(() => document.getElementById('taskTitleInput').focus(), 300);
@@ -1048,6 +1227,7 @@ function saveTask() {
     time: document.getElementById('taskTimeInput').value,
     priority: currentPriority,
     assignee: currentAssignee,
+    status: currentStatus,
   };
 
   if (editingTaskId) {
@@ -1066,6 +1246,14 @@ function saveTask() {
 
 let currentPriority = 'medium';
 let currentAssignee = '';
+let currentStatus = 'nou';
+
+function setStatus(s) {
+  currentStatus = s;
+  document.querySelectorAll('#statusSelect .status-option').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === currentStatus);
+  });
+}
 
 function setPriority(p) {
   currentPriority = p;
@@ -1090,7 +1278,8 @@ function renderFilterChips() {
     { filter: 'done', label: 'Finalizate' },
     { filter: 'high', label: 'Urgente' },
   ];
-  getTEAM().forEach(m => chips.push({ filter: m.name, label: m.short }));
+  STATUSES.forEach(s => chips.push({ filter: s.key, label: s.label }));
+  if (isAdmin) getTEAM().forEach(m => chips.push({ filter: m.name, label: m.short }));
 
   row.innerHTML = chips.map(c =>
     `<button class="chip ${currentFilter === c.filter ? 'active' : ''}" data-filter="${escapeHTML(c.filter)}">${escapeHTML(c.label)}</button>`
@@ -1401,6 +1590,11 @@ document.querySelectorAll('.priority-btn').forEach(btn => {
   btn.addEventListener('click', () => setPriority(btn.dataset.priority));
 });
 
+// Status buttons
+document.querySelectorAll('#statusSelect .status-option').forEach(btn => {
+  btn.addEventListener('click', () => setStatus(btn.dataset.status));
+});
+
 // Enter key in title input
 document.getElementById('taskTitleInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveTask();
@@ -1412,6 +1606,7 @@ function renderAll() {
   renderDayTasks();
   renderFilterChips();
   renderAllTasks();
+  renderBoard();
   renderAssigneeButtons();
 }
 

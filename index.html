@@ -624,16 +624,16 @@ body {
 <div class="header">
   <div class="header-row">
     <div>
-      <h1>Task Manager</h1>
+      <h1 id="headerTitle">Task Manager</h1>
       <div class="date-display" id="headerDate"></div>
     </div>
   </div>
 </div>
 
-<div class="tabs">
+<div class="tabs" id="tabsBar">
   <button class="tab active" data-view="calendar">Calendar</button>
   <button class="tab" data-view="tasks">Toate</button>
-  <button class="tab" data-view="admin">Admin</button>
+  <button class="tab" data-view="admin" id="adminTab">Admin</button>
 </div>
 
 <!-- Calendar View -->
@@ -715,6 +715,11 @@ let dataLoaded = false;
 let saving = false;
 
 const API_URL = '/api/data';
+
+// Detect current user from URL param ?user=Name
+const urlParams = new URLSearchParams(location.search);
+const currentUser = urlParams.get('user') || '';
+const isAdmin = !currentUser; // no user param = admin view
 const AVATAR_COLORS = ['#FF6B6B','#6C63FF','#51CF66','#FFD43B','#FF922B','#CC5DE8','#20C997','#339AF0','#F06595','#845EF7'];
 
 const MONTHS_RO = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
@@ -805,6 +810,14 @@ function getTEAM() {
   }));
 }
 
+// ---- User filtering ----
+function getVisibleTasks() {
+  if (currentUser) {
+    return tasks.filter(t => t.assignee === currentUser);
+  }
+  return tasks;
+}
+
 // ---- Helpers ----
 function formatDate(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -842,7 +855,7 @@ function renderCalendar() {
   const today = formatDate(new Date());
 
   // Task dates for dots
-  const taskDates = new Set(tasks.filter(t => !t.done).map(t => t.date));
+  const taskDates = new Set(getVisibleTasks().filter(t => !t.done).map(t => t.date));
 
   for (let i = 0; i < startDay; i++) {
     const el = document.createElement('div');
@@ -888,7 +901,7 @@ function renderDayTasks() {
   const list = document.getElementById('dayTasksList');
   title.textContent = formatDisplayDate(selectedDate);
 
-  const dayTasks = tasks.filter(t => t.date === selectedDate)
+  const dayTasks = getVisibleTasks().filter(t => t.date === selectedDate)
     .sort((a,b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || priorityWeight(a.priority) - priorityWeight(b.priority) || (a.time || 'zz').localeCompare(b.time || 'zz'));
 
   if (dayTasks.length === 0) {
@@ -902,7 +915,7 @@ function renderDayTasks() {
 // ---- All Tasks ----
 function renderAllTasks() {
   const list = document.getElementById('allTasksList');
-  let filtered = [...tasks];
+  let filtered = [...getVisibleTasks()];
 
   if (currentFilter === 'pending') filtered = filtered.filter(t => !t.done);
   else if (currentFilter === 'done') filtered = filtered.filter(t => t.done);
@@ -912,9 +925,10 @@ function renderAllTasks() {
   filtered.sort((a,b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || priorityWeight(a.priority) - priorityWeight(b.priority));
 
   // Stats
-  document.getElementById('statTotal').textContent = tasks.length;
-  document.getElementById('statPending').textContent = tasks.filter(t => !t.done).length;
-  document.getElementById('statDone').textContent = tasks.filter(t => t.done).length;
+  const visible = getVisibleTasks();
+  document.getElementById('statTotal').textContent = visible.length;
+  document.getElementById('statPending').textContent = visible.filter(t => !t.done).length;
+  document.getElementById('statDone').textContent = visible.filter(t => t.done).length;
 
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="icon">&#9989;</div><p>Niciun task</p></div>';
@@ -999,7 +1013,7 @@ function openModal() {
   document.getElementById('taskDateInput').value = selectedDate;
   document.getElementById('taskTimeInput').value = '';
   setPriority('medium');
-  setAssignee('');
+  setAssignee(currentUser || '');
   overlay.classList.add('active');
   setTimeout(() => document.getElementById('taskTitleInput').focus(), 300);
 }
@@ -1168,12 +1182,27 @@ function renderAdmin() {
     });
   }
 
-  // Share link for join requests
-  html += '<h3>Link de acces</h3>';
+  // Personal links per user
+  const baseUrl = location.origin + location.pathname;
+  html += '<h3>Linkuri personale</h3>';
+  html += '<div class="add-member-form">';
+  html += '<p style="font-size:13px;color:var(--text-light);margin-bottom:8px;">Trimite fiecarui coleg linkul sau personal:</p>';
+  active.forEach((m, i) => {
+    const userLink = baseUrl + '?user=' + encodeURIComponent(m.name);
+    html += `<div class="share-link-box" style="${i > 0 ? 'margin-top:8px' : ''}">
+      <span style="font-weight:600;font-size:12px;min-width:70px;">${escapeHTML(getShortName(m.name))}</span>
+      <input type="text" class="user-link-input" readonly value="${userLink}">
+      <button class="copy-user-link-btn" data-link="${escapeHTML(userLink)}">Copiaza</button>
+    </div>`;
+  });
+  html += '</div>';
+
+  // Join request link
+  html += '<h3>Link cerere acces</h3>';
   html += `<div class="add-member-form">
-    <p style="font-size:13px;color:var(--text-light);margin-bottom:8px;">Trimite acest link colegilor pentru a solicita acces:</p>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:8px;">Pentru colegi noi care solicita acces:</p>
     <div class="share-link-box">
-      <input type="text" id="shareLinkInput" readonly value="${location.href.split('?')[0]}?join=1">
+      <input type="text" id="shareLinkInput" readonly value="${baseUrl}?join=1">
       <button id="copyLinkBtn">Copiaza</button>
     </div>
   </div>`;
@@ -1201,6 +1230,14 @@ function renderAdmin() {
     navigator.clipboard.writeText(input.value).then(() => {
       document.getElementById('copyLinkBtn').textContent = 'Copiat!';
       setTimeout(() => document.getElementById('copyLinkBtn').textContent = 'Copiaza', 2000);
+    });
+  });
+  container.querySelectorAll('.copy-user-link-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.dataset.link).then(() => {
+        btn.textContent = 'Copiat!';
+        setTimeout(() => btn.textContent = 'Copiaza', 2000);
+      });
     });
   });
   document.getElementById('changePinBtn').addEventListener('click', changePin);
@@ -1384,8 +1421,16 @@ document.getElementById('headerDate').textContent = formatDisplayDate(formatDate
 // Init - load data from server then render
 async function init() {
   await loadData();
+
+  // Personalize for user
+  if (currentUser) {
+    document.getElementById('headerTitle').textContent = getShortName(currentUser);
+    document.getElementById('adminTab').style.display = 'none';
+  }
+
   renderAll();
   checkJoinRequest();
+
   // Auto-refresh data every 30 seconds
   setInterval(async () => {
     await loadData();

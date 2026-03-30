@@ -996,6 +996,7 @@ body {
     <div>
       <h1 id="headerTitle">Task Manager</h1>
       <div class="date-display" id="headerDate"></div>
+      <div style="font-size:12px;opacity:0.8;margin-top:2px;" id="headerUser"></div>
     </div>
     <button class="notif-bell" id="notifBell">&#128276;<span class="badge" id="notifBadge" style="display:none">0</span></button>
   </div>
@@ -2366,7 +2367,10 @@ async function init() {
   // Personalize for user
   if (currentUser) {
     document.getElementById('headerTitle').textContent = getShortName(currentUser);
+    document.getElementById('headerUser').textContent = 'Logat ca: ' + currentUser;
     document.getElementById('adminTab').style.display = 'none';
+  } else {
+    document.getElementById('headerUser').textContent = 'Logat ca: Admin';
   }
 
   // Snapshot for change detection

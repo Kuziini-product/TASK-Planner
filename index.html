@@ -1238,8 +1238,7 @@ async function loadData() {
 
 async function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
-  if (saving) return;
-  saving = true;
+  lastTaskSnapshot = JSON.stringify(tasks);
   try {
     await fetch(API_URL, {
       method: 'POST',
@@ -1247,7 +1246,6 @@ async function saveTasks() {
       body: JSON.stringify({ tasks }),
     });
   } catch (e) { console.error('Save tasks failed:', e); }
-  saving = false;
 }
 
 async function saveTeam() {

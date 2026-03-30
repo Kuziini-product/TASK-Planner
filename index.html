@@ -702,34 +702,83 @@ body {
 
 <script>
 // ---- State ----
-let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+let tasks = [];
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let selectedDate = formatDate(new Date());
 let currentFilter = 'all';
 let editingTaskId = null;
 let adminUnlocked = false;
+let adminPin = '1234';
+let team = [];
+let dataLoaded = false;
+let saving = false;
 
-const ADMIN_PIN = '1234';
+const API_URL = '/api/data';
 const AVATAR_COLORS = ['#FF6B6B','#6C63FF','#51CF66','#FFD43B','#FF922B','#CC5DE8','#20C997','#339AF0','#F06595','#845EF7'];
 
 const MONTHS_RO = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 const DAYS_RO = ['Lu','Ma','Mi','Jo','Vi','Sa','Du'];
 
-const DEFAULT_TEAM = [
-  { id: 'rv1', name: 'Radu Vladascau', status: 'active' },
-  { id: 'mn1', name: 'Madalina Nistor', status: 'active' },
-  { id: 'en1', name: 'Ezgi Nalbant', status: 'active' },
-];
-
-function loadTeam() {
-  const saved = localStorage.getItem('team');
-  if (saved) return JSON.parse(saved);
-  localStorage.setItem('team', JSON.stringify(DEFAULT_TEAM));
-  return [...DEFAULT_TEAM];
+// ---- API functions ----
+async function loadData() {
+  try {
+    const resp = await fetch(API_URL);
+    const data = await resp.json();
+    tasks = data.tasks || [];
+    team = data.team || [];
+    adminPin = data.adminPin || '1234';
+    dataLoaded = true;
+  } catch (e) {
+    console.error('Failed to load data:', e);
+    // Fallback to localStorage
+    tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    team = JSON.parse(localStorage.getItem('team') || '[]');
+    if (team.length === 0) {
+      team = [
+        { id: 'rv1', name: 'Radu Vladascau', status: 'active' },
+        { id: 'mn1', name: 'Madalina Nistor', status: 'active' },
+        { id: 'en1', name: 'Ezgi Nalbant', status: 'active' },
+      ];
+    }
+  }
 }
-function saveTeam() { localStorage.setItem('team', JSON.stringify(team)); }
-let team = loadTeam();
+
+async function saveTasks() {
+  localStorage.setItem('tasks', JSON.stringify(tasks));
+  if (saving) return;
+  saving = true;
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasks }),
+    });
+  } catch (e) { console.error('Save tasks failed:', e); }
+  saving = false;
+}
+
+async function saveTeam() {
+  localStorage.setItem('team', JSON.stringify(team));
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team }),
+    });
+  } catch (e) { console.error('Save team failed:', e); }
+}
+
+async function savePin(pin) {
+  adminPin = pin;
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminPin: pin }),
+    });
+  } catch (e) { console.error('Save pin failed:', e); }
+}
 
 function getActiveTeam() { return team.filter(m => m.status === 'active'); }
 function getPendingTeam() { return team.filter(m => m.status === 'pending'); }
@@ -1169,7 +1218,7 @@ function renderAdmin() {
 }
 
 function getPin() {
-  return localStorage.getItem('adminPin') || ADMIN_PIN;
+  return adminPin || '1234';
 }
 
 function tryUnlockAdmin() {
@@ -1195,7 +1244,7 @@ function changePin() {
     setTimeout(() => { input.style.borderColor = ''; input.placeholder = 'PIN nou'; }, 1500);
     return;
   }
-  localStorage.setItem('adminPin', val);
+  savePin(val);
   input.value = '';
   input.placeholder = 'PIN schimbat!';
   setTimeout(() => { input.placeholder = 'PIN nou'; }, 1500);
@@ -1332,9 +1381,19 @@ function renderAll() {
 // Header date
 document.getElementById('headerDate').textContent = formatDisplayDate(formatDate(new Date()));
 
-// Init
-renderAll();
-checkJoinRequest();
+// Init - load data from server then render
+async function init() {
+  await loadData();
+  renderAll();
+  checkJoinRequest();
+  // Auto-refresh data every 30 seconds
+  setInterval(async () => {
+    await loadData();
+    renderAll();
+    if (adminUnlocked) renderAdmin();
+  }, 30000);
+}
+init();
 
 // ---- Service Worker Registration ----
 if ('serviceWorker' in navigator) {

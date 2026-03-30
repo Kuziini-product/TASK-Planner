@@ -755,6 +755,71 @@ body {
   flex-shrink: 0;
 }
 
+/* Calendar view modes */
+.cal-mode-row {
+  display: flex;
+  gap: 4px;
+  padding: 10px 12px 0;
+}
+.cal-mode-btn {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cal-mode-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Week view */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 8px 0;
+}
+.week-day-col {
+  text-align: center;
+  border-radius: 10px;
+  padding: 8px 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.week-day-col .day-label { font-size: 11px; color: var(--text-light); font-weight: 600; text-transform: uppercase; }
+.week-day-col .day-num { font-size: 18px; font-weight: 700; margin: 4px 0; }
+.week-day-col .day-tasks-count { font-size: 10px; color: var(--primary); font-weight: 600; }
+.week-day-col.today { background: var(--primary); color: white; border-radius: 12px; }
+.week-day-col.today .day-label { color: rgba(255,255,255,0.7); }
+.week-day-col.today .day-tasks-count { color: rgba(255,255,255,0.8); }
+.week-day-col.selected { outline: 2px solid var(--primary); outline-offset: -2px; }
+.week-day-col.today.selected { outline-color: white; }
+
+/* Year view */
+.year-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px 12px;
+}
+.year-month {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  transition: all 0.15s;
+}
+.year-month:active { transform: scale(0.97); }
+.year-month .month-name { font-size: 13px; font-weight: 700; }
+.year-month .month-count { font-size: 11px; color: var(--primary); font-weight: 600; margin-top: 2px; }
+.year-month.current { border: 2px solid var(--primary); }
+
 /* Custom status add */
 .add-status-row {
   display: flex;
@@ -825,13 +890,21 @@ body {
 
 <!-- Calendar View -->
 <div class="view active" id="view-calendar">
+  <div class="cal-mode-row">
+    <button class="cal-mode-btn" data-calmode="day">Zi</button>
+    <button class="cal-mode-btn" data-calmode="week">Saptamana</button>
+    <button class="cal-mode-btn active" data-calmode="month">Luna</button>
+    <button class="cal-mode-btn" data-calmode="year">An</button>
+  </div>
   <div class="calendar-container">
     <div class="calendar-nav">
       <button id="prevMonth">&larr;</button>
       <span class="month-year" id="monthYear"></span>
       <button id="nextMonth">&rarr;</button>
     </div>
-    <div class="calendar-grid" id="calendarGrid"></div>
+    <div id="calendarContent">
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
   </div>
   <div class="task-section" id="dayTasks">
     <div class="section-title" id="dayTasksTitle"></div>
@@ -933,6 +1006,7 @@ let adminPin = '1234';
 let team = [];
 let dataLoaded = false;
 let saving = false;
+let calMode = 'month'; // day, week, month, year
 
 const API_URL = '/api/data';
 
@@ -1094,81 +1168,165 @@ function genId() {
 }
 
 // ---- Calendar ----
-function renderCalendar() {
-  const grid = document.getElementById('calendarGrid');
-  grid.innerHTML = '';
-  document.getElementById('monthYear').textContent = MONTHS_RO[currentMonth] + ' ' + currentYear;
+function getWeekStart(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday start
+  d.setDate(d.getDate() + diff);
+  return d;
+}
 
-  DAYS_RO.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'day-name';
-    el.textContent = d;
-    grid.appendChild(el);
+function renderCalendar() {
+  const content = document.getElementById('calendarContent');
+  const navLabel = document.getElementById('monthYear');
+  const today = formatDate(new Date());
+  const taskDates = {};
+  getVisibleTasks().filter(t => t.status !== 'finalizat' && !t.done).forEach(t => {
+    taskDates[t.date] = (taskDates[t.date] || 0) + 1;
   });
 
-  const firstDay = new Date(currentYear, currentMonth, 1);
-  let startDay = firstDay.getDay() - 1;
-  if (startDay < 0) startDay = 6;
+  // Update mode buttons
+  document.querySelectorAll('.cal-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.calmode === calMode));
 
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const prevDays = new Date(currentYear, currentMonth, 0).getDate();
-  const today = formatDate(new Date());
-
-  // Task dates for dots
-  const taskDates = new Set(getVisibleTasks().filter(t => !t.done).map(t => t.date));
-
-  for (let i = 0; i < startDay; i++) {
-    const el = document.createElement('div');
-    el.className = 'day other-month';
-    el.textContent = prevDays - startDay + 1 + i;
-    grid.appendChild(el);
+  if (calMode === 'day') {
+    navLabel.textContent = formatDisplayDate(selectedDate);
+    content.innerHTML = ''; // Day mode just shows task list below
   }
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const el = document.createElement('div');
-    const dateStr = currentYear + '-' + String(currentMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    el.className = 'day';
-    if (dateStr === today) el.classList.add('today');
-    if (dateStr === selectedDate) el.classList.add('selected');
-    el.textContent = d;
+  else if (calMode === 'week') {
+    const ws = getWeekStart(selectedDate);
+    const we = new Date(ws);
+    we.setDate(we.getDate() + 6);
+    navLabel.textContent = ws.getDate() + ' - ' + we.getDate() + ' ' + MONTHS_RO[we.getMonth()] + ' ' + we.getFullYear();
 
-    if (taskDates.has(dateStr)) {
-      const dot = document.createElement('div');
-      dot.className = 'dot';
-      el.appendChild(dot);
+    let html = '<div class="week-grid">';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(ws);
+      d.setDate(d.getDate() + i);
+      const ds = formatDate(d);
+      const count = taskDates[ds] || 0;
+      const isToday = ds === today;
+      const isSel = ds === selectedDate;
+      html += `<div class="week-day-col ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''}" data-date="${ds}">
+        <div class="day-label">${DAYS_RO[i]}</div>
+        <div class="day-num">${d.getDate()}</div>
+        <div class="day-tasks-count">${count > 0 ? count + ' task' : ''}</div>
+      </div>`;
+    }
+    html += '</div>';
+    content.innerHTML = html;
+    content.querySelectorAll('.week-day-col').forEach(el => {
+      el.addEventListener('click', () => { selectedDate = el.dataset.date; renderCalendar(); renderDayTasks(); });
+    });
+  }
+
+  else if (calMode === 'month') {
+    navLabel.textContent = MONTHS_RO[currentMonth] + ' ' + currentYear;
+    const grid = document.createElement('div');
+    grid.className = 'calendar-grid';
+
+    DAYS_RO.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'day-name';
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    let startDay = firstDay.getDay() - 1;
+    if (startDay < 0) startDay = 6;
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const prevDays = new Date(currentYear, currentMonth, 0).getDate();
+
+    for (let i = 0; i < startDay; i++) {
+      const el = document.createElement('div');
+      el.className = 'day other-month';
+      el.textContent = prevDays - startDay + 1 + i;
+      grid.appendChild(el);
     }
 
-    el.addEventListener('click', () => {
-      selectedDate = dateStr;
-      renderCalendar();
-      renderDayTasks();
-    });
-    grid.appendChild(el);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const el = document.createElement('div');
+      const dateStr = currentYear + '-' + String(currentMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      el.className = 'day';
+      if (dateStr === today) el.classList.add('today');
+      if (dateStr === selectedDate) el.classList.add('selected');
+      el.textContent = d;
+      if (taskDates[dateStr]) {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        el.appendChild(dot);
+      }
+      el.addEventListener('click', () => { selectedDate = dateStr; renderCalendar(); renderDayTasks(); });
+      grid.appendChild(el);
+    }
+
+    const totalCells = startDay + daysInMonth;
+    const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let i = 1; i <= remaining; i++) {
+      const el = document.createElement('div');
+      el.className = 'day other-month';
+      el.textContent = i;
+      grid.appendChild(el);
+    }
+    content.innerHTML = '';
+    content.appendChild(grid);
   }
 
-  const totalCells = startDay + daysInMonth;
-  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for (let i = 1; i <= remaining; i++) {
-    const el = document.createElement('div');
-    el.className = 'day other-month';
-    el.textContent = i;
-    grid.appendChild(el);
+  else if (calMode === 'year') {
+    navLabel.textContent = currentYear.toString();
+    let html = '<div class="year-grid">';
+    const nowMonth = new Date().getMonth();
+    const nowYear = new Date().getFullYear();
+    for (let m = 0; m < 12; m++) {
+      const prefix = currentYear + '-' + String(m+1).padStart(2,'0');
+      const count = Object.keys(taskDates).filter(d => d.startsWith(prefix)).reduce((s, d) => s + taskDates[d], 0);
+      const isCurrent = m === nowMonth && currentYear === nowYear;
+      html += `<div class="year-month ${isCurrent ? 'current' : ''}" data-month="${m}">
+        <div class="month-name">${MONTHS_RO[m].substring(0,3)}</div>
+        <div class="month-count">${count > 0 ? count + ' task-uri' : '-'}</div>
+      </div>`;
+    }
+    html += '</div>';
+    content.innerHTML = html;
+    content.querySelectorAll('.year-month').forEach(el => {
+      el.addEventListener('click', () => {
+        currentMonth = parseInt(el.dataset.month);
+        calMode = 'month';
+        renderCalendar();
+        renderDayTasks();
+      });
+    });
   }
 }
 
 function renderDayTasks() {
   const title = document.getElementById('dayTasksTitle');
   const list = document.getElementById('dayTasksList');
-  title.textContent = formatDisplayDate(selectedDate);
 
-  const dayTasks = getVisibleTasks().filter(t => t.date === selectedDate)
-    .sort((a,b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || priorityWeight(a.priority) - priorityWeight(b.priority) || (a.time || 'zz').localeCompare(b.time || 'zz'));
+  let dayTasks;
+  if (calMode === 'day') {
+    title.textContent = formatDisplayDate(selectedDate);
+    dayTasks = getVisibleTasks().filter(t => t.date === selectedDate);
+  } else if (calMode === 'week') {
+    title.textContent = formatDisplayDate(selectedDate);
+    dayTasks = getVisibleTasks().filter(t => t.date === selectedDate);
+  } else if (calMode === 'month') {
+    title.textContent = formatDisplayDate(selectedDate);
+    dayTasks = getVisibleTasks().filter(t => t.date === selectedDate);
+  } else {
+    // year mode - show all tasks for the year
+    title.textContent = 'Taskuri ' + currentYear;
+    dayTasks = getVisibleTasks().filter(t => t.date && t.date.startsWith(currentYear + '-'));
+  }
+
+  dayTasks.sort((a,b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || priorityWeight(a.priority) - priorityWeight(b.priority) || (a.time || 'zz').localeCompare(b.time || 'zz'));
 
   if (dayTasks.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="icon">&#128467;</div><p>Niciun task pentru aceasta zi</p></div>';
+    list.innerHTML = '<div class="empty-state"><div class="icon">&#128467;</div><p>Niciun task</p></div>';
     return;
   }
-  list.innerHTML = dayTasks.map(t => taskCardHTML(t)).join('');
+  list.innerHTML = dayTasks.map(t => taskCardHTML(t, calMode === 'year')).join('');
   attachTaskEvents(list);
 }
 
@@ -1764,14 +1922,51 @@ document.getElementById('saveBtn').addEventListener('click', saveTask);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 
 document.getElementById('prevMonth').addEventListener('click', () => {
-  currentMonth--;
-  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-  renderCalendar();
+  if (calMode === 'day') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    selectedDate = formatDate(d);
+    currentMonth = d.getMonth(); currentYear = d.getFullYear();
+  } else if (calMode === 'week') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() - 7);
+    selectedDate = formatDate(d);
+    currentMonth = d.getMonth(); currentYear = d.getFullYear();
+  } else if (calMode === 'month') {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  } else {
+    currentYear--;
+  }
+  renderCalendar(); renderDayTasks();
 });
 document.getElementById('nextMonth').addEventListener('click', () => {
-  currentMonth++;
-  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-  renderCalendar();
+  if (calMode === 'day') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    selectedDate = formatDate(d);
+    currentMonth = d.getMonth(); currentYear = d.getFullYear();
+  } else if (calMode === 'week') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + 7);
+    selectedDate = formatDate(d);
+    currentMonth = d.getMonth(); currentYear = d.getFullYear();
+  } else if (calMode === 'month') {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  } else {
+    currentYear++;
+  }
+  renderCalendar(); renderDayTasks();
+});
+
+// Calendar mode buttons
+document.querySelectorAll('.cal-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    calMode = btn.dataset.calmode;
+    renderCalendar();
+    renderDayTasks();
+  });
 });
 
 // Tabs

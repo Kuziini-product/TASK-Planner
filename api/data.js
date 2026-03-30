@@ -10,17 +10,12 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // Read from Edge Config
+      // Read from Edge Config - URL has format: https://edge-config.vercel.com/ecfg_xxx?token=yyy
       const ecUrl = process.env.EDGE_CONFIG;
-      const resp = await fetch(`${ecUrl}/items`);
-      const items = await resp.json();
-      // items is an array of {key, value} or an object
-      let data = {};
-      if (Array.isArray(items)) {
-        items.forEach(item => { data[item.key] = item.value; });
-      } else {
-        data = items;
-      }
+      const url = new URL(ecUrl);
+      url.pathname = url.pathname + '/items';
+      const resp = await fetch(url.toString());
+      const data = await resp.json();
       return res.status(200).json({
         tasks: data.tasks || [],
         team: data.team || [],

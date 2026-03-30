@@ -788,6 +788,79 @@ body {
   cursor: pointer;
   font-size: 14px;
 }
+.file-item .file-name-link {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.file-item .file-name-link:active { opacity: 0.7; }
+
+/* File viewer overlay */
+.file-viewer {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  z-index: 600;
+  display: none;
+  flex-direction: column;
+}
+.file-viewer.active { display: flex; }
+.file-viewer-header {
+  background: var(--primary);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 15px;
+}
+.file-viewer-header .back-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.file-viewer-body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.file-viewer-body img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+}
+.file-viewer-body .file-no-preview {
+  text-align: center;
+  color: var(--text-light);
+}
+.file-viewer-body .file-no-preview .icon { font-size: 64px; margin-bottom: 12px; }
+.file-viewer-body .file-no-preview p { font-size: 14px; }
+.file-viewer-body iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+}
+
+/* Back button in header */
+.header-back {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 8px 0 0;
+  display: none;
+}
+.header-back:active { opacity: 0.7; }
 
 /* Assigned indicator */
 .assignee-btn .assigned-dot {
@@ -1037,6 +1110,7 @@ body {
 
 <div class="header">
   <div class="header-row">
+    <button class="header-back" id="headerBack">&#8592;</button>
     <div>
       <h1 id="headerTitle">Task Manager</h1>
       <div class="date-display" id="headerDate"></div>
@@ -1044,6 +1118,15 @@ body {
     </div>
     <button class="notif-bell" id="notifBell">&#128276;<span class="badge" id="notifBadge" style="display:none">0</span></button>
   </div>
+</div>
+
+<!-- File Viewer -->
+<div class="file-viewer" id="fileViewer">
+  <div class="file-viewer-header">
+    <button class="back-btn" id="fileViewerBack">&#8592;</button>
+    <span id="fileViewerName">Fisier</span>
+  </div>
+  <div class="file-viewer-body" id="fileViewerBody"></div>
 </div>
 
 <!-- Toast -->
@@ -1916,14 +1999,57 @@ function renderFileList() {
   const list = document.getElementById('fileList');
   if (taskFiles.length === 0) { list.innerHTML = ''; return; }
   list.innerHTML = taskFiles.map((f, i) =>
-    `<div class="file-item"><span>&#128196; ${escapeHTML(f.name)}</span><button class="remove-file" data-idx="${i}">&times;</button></div>`
+    `<div class="file-item">
+      <span class="file-name-link" data-idx="${i}">&#128196; ${escapeHTML(f.name)}</span>
+      <button class="remove-file" data-idx="${i}">&times;</button>
+    </div>`
   ).join('');
   list.querySelectorAll('.remove-file').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       taskFiles.splice(parseInt(btn.dataset.idx), 1);
       renderFileList();
     });
   });
+  list.querySelectorAll('.file-name-link').forEach(el => {
+    el.addEventListener('click', () => openFileViewer(taskFiles[parseInt(el.dataset.idx)]));
+  });
+}
+
+function openFileViewer(file) {
+  const viewer = document.getElementById('fileViewer');
+  const body = document.getElementById('fileViewerBody');
+  document.getElementById('fileViewerName').textContent = file.name;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const imgExts = ['jpg','jpeg','png','gif','webp','svg','bmp'];
+  const pdfExts = ['pdf'];
+
+  if (file.dataUrl) {
+    if (imgExts.includes(ext)) {
+      body.innerHTML = `<img src="${file.dataUrl}" alt="${escapeHTML(file.name)}">`;
+    } else if (pdfExts.includes(ext)) {
+      body.innerHTML = `<iframe src="${file.dataUrl}"></iframe>`;
+    } else {
+      body.innerHTML = `<div class="file-no-preview">
+        <div class="icon">&#128196;</div>
+        <p>${escapeHTML(file.name)}</p>
+        <a href="${file.dataUrl}" download="${escapeHTML(file.name)}" style="display:inline-block;margin-top:12px;padding:10px 20px;background:var(--primary);color:white;border-radius:10px;text-decoration:none;font-weight:600;">Descarca</a>
+      </div>`;
+    }
+  } else {
+    body.innerHTML = `<div class="file-no-preview">
+      <div class="icon">&#128196;</div>
+      <p>${escapeHTML(file.name)}</p>
+      <p style="margin-top:8px;font-size:12px;">Fisierul nu are previzualizare</p>
+    </div>`;
+  }
+
+  viewer.classList.add('active');
+}
+
+function closeFileViewer() {
+  document.getElementById('fileViewer').classList.remove('active');
 }
 
 function openModal() {
@@ -2428,15 +2554,12 @@ document.querySelectorAll('.cal-mode-btn').forEach(btn => {
   });
 });
 
-// Tabs
+// Tabs with navigation history
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('view-' + tab.dataset.view).classList.add('active');
-    if (tab.dataset.view === 'admin') renderAdmin();
-    renderAll();
+    const view = tab.dataset.view;
+    navHistory.push(view);
+    switchToView(view);
   });
 });
 
@@ -2480,17 +2603,47 @@ document.getElementById('timeToggle').addEventListener('click', function() {
   this.classList.toggle('active');
 });
 
-// File upload
+// File upload - read as base64
 document.getElementById('fileUploadArea').addEventListener('click', () => {
   document.getElementById('fileInput').click();
 });
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(f => {
-    taskFiles.push({ name: f.name, size: f.size });
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      taskFiles.push({ name: f.name, size: f.size, dataUrl: ev.target.result });
+      renderFileList();
+    };
+    reader.readAsDataURL(f);
   });
-  renderFileList();
   e.target.value = '';
 });
+
+// File viewer back
+document.getElementById('fileViewerBack').addEventListener('click', closeFileViewer);
+
+// Header back button
+let navHistory = ['calendar'];
+document.getElementById('headerBack').addEventListener('click', () => {
+  if (navHistory.length > 1) {
+    navHistory.pop();
+    const prev = navHistory[navHistory.length - 1];
+    switchToView(prev);
+  }
+});
+
+function switchToView(viewName) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === viewName));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + viewName));
+  updateBackButton();
+  if (viewName === 'admin') renderAdmin();
+  renderAll();
+}
+
+function updateBackButton() {
+  const backBtn = document.getElementById('headerBack');
+  backBtn.style.display = navHistory.length > 1 ? 'block' : 'none';
+}
 
 // Add custom status button
 document.getElementById('addStatusBtn').addEventListener('click', () => {

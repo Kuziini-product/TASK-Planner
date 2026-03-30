@@ -1646,7 +1646,7 @@ function getAssigneeInfo(name) {
 function assigneeBadgeHTML(name) {
   const m = getAssigneeInfo(name);
   if (!m) return `<span class="task-assignee" style="opacity:0.5">${escapeHTML(getShortName(name))}</span>`;
-  return `<span class="task-assignee"><span class="avatar" style="background:${m.color}">${m.initials}</span>${m.short}</span>`;
+  return `<span class="task-assignee"><span style="width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0;"></span><span class="avatar" style="background:${m.color}">${m.initials}</span>${m.short}</span>`;
 }
 
 function statusBadgeHTML(statusKey) {

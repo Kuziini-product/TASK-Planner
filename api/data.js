@@ -20,7 +20,8 @@ export default async function handler(req, res) {
         tasks: data.tasks || [],
         team: data.team || [],
         adminPin: data.adminPin || '1234',
-        customStatuses: data.customStatuses || []
+        customStatuses: data.customStatuses || [],
+        activities: data.activities || []
       });
     }
 
@@ -39,6 +40,9 @@ export default async function handler(req, res) {
       }
       if (body.customStatuses !== undefined) {
         items.push({ operation: 'upsert', key: 'customStatuses', value: body.customStatuses });
+      }
+      if (body.activities !== undefined) {
+        items.push({ operation: 'upsert', key: 'activities', value: body.activities });
       }
 
       if (items.length === 0) {

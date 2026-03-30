@@ -849,6 +849,125 @@ body {
   cursor: pointer;
 }
 
+/* Notification bell */
+.notif-bell {
+  position: relative;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.notif-bell .badge {
+  position: absolute;
+  top: 0; right: 2px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* Activity log */
+.activity-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 400;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 70px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.activity-overlay.active { opacity: 1; pointer-events: all; }
+
+.activity-panel {
+  background: var(--card);
+  width: 100%;
+  max-width: 420px;
+  max-height: 70vh;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  overflow: hidden;
+  transform: translateY(-20px);
+  transition: transform 0.25s;
+}
+.activity-overlay.active .activity-panel { transform: translateY(0); }
+
+.activity-header {
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.activity-header button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-light);
+  cursor: pointer;
+}
+
+.activity-list {
+  overflow-y: auto;
+  max-height: calc(70vh - 50px);
+  padding: 8px 0;
+}
+.activity-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.activity-text { font-size: 13px; color: var(--text); flex: 1; }
+.activity-text .time { color: var(--text-light); font-size: 11px; display: block; margin-top: 2px; }
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--text);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 500;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
 /* Modal task title display */
 .modal-task-header {
   background: var(--bg);
@@ -878,6 +997,21 @@ body {
       <h1 id="headerTitle">Task Manager</h1>
       <div class="date-display" id="headerDate"></div>
     </div>
+    <button class="notif-bell" id="notifBell">&#128276;<span class="badge" id="notifBadge" style="display:none">0</span></button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Activity Panel -->
+<div class="activity-overlay" id="activityOverlay">
+  <div class="activity-panel">
+    <div class="activity-header">
+      Activitate
+      <button id="closeActivity">&times;</button>
+    </div>
+    <div class="activity-list" id="activityList"></div>
   </div>
 </div>
 
@@ -1057,11 +1191,30 @@ const DAYS_RO = ['Lu','Ma','Mi','Jo','Vi','Sa','Du'];
 // ---- API functions ----
 async function loadData() {
   try {
+    const oldTasks = [...tasks];
+    const oldTeam = [...team];
     const resp = await fetch(API_URL);
     const data = await resp.json();
-    tasks = data.tasks || [];
-    team = data.team || [];
+    const newTasks = data.tasks || [];
+    const newTeam = data.team || [];
+
+    // Detect changes from other users (only after first load)
+    if (dataLoaded) {
+      const newSnap = JSON.stringify(newTasks);
+      const teamSnap = JSON.stringify(newTeam);
+      if (newSnap !== lastTaskSnapshot || teamSnap !== lastTeamSnapshot) {
+        detectChanges(oldTasks, newTasks, oldTeam, newTeam);
+      }
+    }
+
+    tasks = newTasks;
+    team = newTeam;
+    lastTaskSnapshot = JSON.stringify(tasks);
+    lastTeamSnapshot = JSON.stringify(team);
     adminPin = data.adminPin || '1234';
+    if (data.activities && data.activities.length > 0) {
+      activities = data.activities;
+    }
     if (data.customStatuses) {
       customStatuses = data.customStatuses;
       localStorage.setItem('customStatuses', JSON.stringify(customStatuses));
@@ -1165,6 +1318,112 @@ function saveTasks() {
 }
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+// ---- Activity & Notifications ----
+let activities = [];
+let lastTaskSnapshot = '';
+let lastTeamSnapshot = '';
+let unreadCount = 0;
+
+function logActivity(icon, iconBg, text) {
+  const now = new Date();
+  const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  activities.unshift({ icon, iconBg, text, time: timeStr, date: formatDate(now) });
+  if (activities.length > 50) activities.pop();
+  // Save to server
+  fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activities }) });
+  unreadCount++;
+  updateBellBadge();
+  showToast(text);
+  playNotificationSound();
+  sendBrowserNotification(text);
+}
+
+function showToast(text) {
+  const toast = document.getElementById('toast');
+  toast.textContent = text;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function updateBellBadge() {
+  const badge = document.getElementById('notifBadge');
+  if (unreadCount > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderActivityPanel() {
+  const list = document.getElementById('activityList');
+  if (activities.length === 0) {
+    list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-light);font-size:13px;">Nicio activitate</div>';
+    return;
+  }
+  list.innerHTML = activities.map(a =>
+    `<div class="activity-item">
+      <div class="activity-icon" style="background:${a.iconBg}">${a.icon}</div>
+      <div class="activity-text">${escapeHTML(a.text)}<span class="time">${a.time} - ${a.date}</span></div>
+    </div>`
+  ).join('');
+}
+
+function sendBrowserNotification(text) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('Task Manager', { body: text, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">&#128203;</text></svg>' });
+  }
+}
+
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// Detect changes from server polling
+function detectChanges(oldTasks, newTasks, oldTeam, newTeam) {
+  // New tasks
+  const oldIds = new Set(oldTasks.map(t => t.id));
+  newTasks.forEach(t => {
+    if (!oldIds.has(t.id)) {
+      logActivity('&#10133;', '#DBE4FF', 'Task nou: ' + t.title + (t.assignee ? ' (asignat: ' + getShortName(t.assignee) + ')' : ''));
+    }
+  });
+  // Status changes
+  const oldMap = {};
+  oldTasks.forEach(t => { oldMap[t.id] = t; });
+  newTasks.forEach(t => {
+    const old = oldMap[t.id];
+    if (old) {
+      if (old.status !== t.status) {
+        const s = getStatusInfo(t.status);
+        logActivity('&#9881;', s.bg, t.title + ' -> ' + s.label);
+      }
+      if (old.assignee !== t.assignee && t.assignee) {
+        logActivity('&#128100;', '#E8D5FF', t.title + ' asignat lui ' + getShortName(t.assignee));
+      }
+    }
+  });
+  // Deleted tasks
+  const newIds = new Set(newTasks.map(t => t.id));
+  oldTasks.forEach(t => {
+    if (!newIds.has(t.id)) {
+      logActivity('&#10060;', '#FFE0E0', 'Task sters: ' + t.title);
+    }
+  });
+  // New team members
+  const oldTeamIds = new Set(oldTeam.map(m => m.id));
+  newTeam.forEach(m => {
+    if (!oldTeamIds.has(m.id) && m.status === 'pending') {
+      logActivity('&#128587;', '#FFF3BF', 'Cerere acces: ' + m.name);
+    }
+    if (!oldTeamIds.has(m.id) && m.status === 'active') {
+      logActivity('&#9989;', '#D3F9D8', m.name + ' a intrat in echipa');
+    }
+  });
 }
 
 function playNotificationSound() {
@@ -1453,6 +1712,8 @@ function toggleTask(id) {
 }
 
 function deleteTask(id) {
+  const t = tasks.find(t => t.id === id);
+  if (t) logActivity('&#10060;', '#FFE0E0', 'Sters: ' + t.title);
   tasks = tasks.filter(t => t.id !== id);
   saveTasks();
   renderAll();
@@ -1583,10 +1844,19 @@ function saveTask() {
 
   if (editingTaskId) {
     const t = tasks.find(t => t.id === editingTaskId);
-    if (t) Object.assign(t, data);
+    if (t) {
+      const oldStatus = t.status;
+      Object.assign(t, data);
+      if (oldStatus !== data.status) {
+        const s = getStatusInfo(data.status);
+        logActivity('&#9881;', s.bg, data.title + ' -> ' + s.label);
+      } else {
+        logActivity('&#9998;', '#DBE4FF', 'Editat: ' + data.title);
+      }
+    }
   } else {
     tasks.push({ id: genId(), done: false, ...data });
-    playNotificationSound();
+    logActivity('&#10133;', '#D3F9D8', 'Task nou: ' + data.title + (data.assignee ? ' (asignat: ' + getShortName(data.assignee) + ')' : ''));
   }
 
   saveTasks();
@@ -2074,9 +2344,26 @@ function renderAll() {
 // Header date
 document.getElementById('headerDate').textContent = formatDisplayDate(formatDate(new Date()));
 
+// Bell & Activity panel
+document.getElementById('notifBell').addEventListener('click', () => {
+  unreadCount = 0;
+  updateBellBadge();
+  renderActivityPanel();
+  document.getElementById('activityOverlay').classList.add('active');
+});
+document.getElementById('closeActivity').addEventListener('click', () => {
+  document.getElementById('activityOverlay').classList.remove('active');
+});
+document.getElementById('activityOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('activityOverlay')) {
+    document.getElementById('activityOverlay').classList.remove('active');
+  }
+});
+
 // Init - load data from server then render
 async function init() {
   await loadData();
+  requestNotificationPermission();
 
   // Personalize for user
   if (currentUser) {
@@ -2084,15 +2371,19 @@ async function init() {
     document.getElementById('adminTab').style.display = 'none';
   }
 
+  // Snapshot for change detection
+  lastTaskSnapshot = JSON.stringify(tasks);
+  lastTeamSnapshot = JSON.stringify(team);
+
   renderAll();
   checkJoinRequest();
 
-  // Auto-refresh data every 30 seconds
+  // Auto-refresh data every 15 seconds
   setInterval(async () => {
     await loadData();
     renderAll();
     if (adminUnlocked) renderAdmin();
-  }, 30000);
+  }, 15000);
 }
 init();
 

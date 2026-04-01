@@ -81,6 +81,12 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
               snap: true,
               title: Row(
                 children: [
+                  Image.asset(
+                    'assets/images/kuziini_logo.png',
+                    height: 32,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     'Kuziini',
                     style: theme.textTheme.titleLarge?.copyWith(

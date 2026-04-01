@@ -25,7 +25,14 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notifications', style: theme.textTheme.titleLarge),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/kuziini_logo.png', height: 28, color: theme.colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Text('Notifications', style: theme.textTheme.titleLarge),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () {

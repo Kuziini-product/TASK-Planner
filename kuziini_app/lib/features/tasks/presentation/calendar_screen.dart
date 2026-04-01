@@ -190,47 +190,10 @@ class _WeekView extends ConsumerWidget {
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
-        // Day headers
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: days.map((day) {
-              final isToday = AppDateUtils.isToday(day);
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => ref.read(_calendarSelectedDayProvider.notifier).state = day,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isToday ? primaryColor : null,
-                      borderRadius: BorderRadius.circular(10),
-                      border: isToday ? null : Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1],
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${day.day}',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        // Timeline grid with task bars
+        // 7 day cards in a row - same style as month grid but taller
         Expanded(
           child: tasksAsync.when(
             data: (tasks) {
-              // Group tasks by day of week
               final tasksByDay = <int, List<TaskModel>>{};
               for (final task in tasks) {
                 if (task.dueDate != null) {
@@ -243,62 +206,130 @@ class _WeekView extends ConsumerWidget {
                 }
               }
 
-              // Find max task rows across all days
-              int maxRows = 0;
-              for (final dayTasks in tasksByDay.values) {
-                final scheduled = dayTasks.where((t) => t.startTime != null).length;
-                final unscheduled = dayTasks.where((t) => t.startTime == null).length;
-                final rows = scheduled + unscheduled;
-                if (rows > maxRows) maxRows = rows;
-              }
-              if (maxRows == 0) {
-                return Center(child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)));
-              }
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: List.generate(7, (dayIdx) {
+                    final day = days[dayIdx];
+                    final isToday = AppDateUtils.isToday(day);
+                    final dayTasks = tasksByDay[dayIdx] ?? [];
+                    final sorted = dayTasks.where((t) => t.startTime != null).toList()
+                      ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
+                    final noTime = dayTasks.where((t) => t.startTime == null).toList();
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(7, (dayIdx) {
-                      final dayTasks = tasksByDay[dayIdx] ?? [];
-                      final scheduled = dayTasks.where((t) => t.startTime != null).toList()
-                        ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
-                      final unscheduled = dayTasks.where((t) => t.startTime == null).toList();
-                      final allTasks = [...scheduled, ...unscheduled];
-
-                      return Expanded(
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => ref.read(_calendarSelectedDayProvider.notifier).state = day,
                         child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
                           decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(color: theme.dividerColor.withValues(alpha: 0.08), width: 0.5),
+                            color: isToday ? primaryColor.withValues(alpha: 0.06) : null,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isToday ? primaryColor.withValues(alpha: 0.4) : theme.dividerColor.withValues(alpha: 0.15),
+                              width: isToday ? 1.5 : 0.5,
                             ),
                           ),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final colWidth = constraints.maxWidth;
-                              return Column(
-                                children: allTasks.map((task) {
-                                  return GestureDetector(
-                                    onTap: () => context.push('/task/${task.id}'),
-                                    child: Tooltip(
-                                      message: '${task.title}${task.startTime != null ? '\n${AppDateUtils.formatTime(task.startTime!)}' : ''}',
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 2),
-                                        child: _WeekTaskBar(task: task, colWidth: colWidth),
-                                      ),
+                          child: Column(
+                            children: [
+                              // Day header
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isToday ? primaryColor : null,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1],
+                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant),
                                     ),
-                                  );
-                                }).toList(),
-                              );
-                            },
+                                    Text(
+                                      '${day.day}',
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Task bars area
+                              Expanded(
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final cellWidth = constraints.maxWidth;
+                                    final cellHeight = constraints.maxHeight;
+                                    if (sorted.isEmpty && noTime.isEmpty) return const SizedBox();
+
+                                    final bars = <Widget>[];
+                                    int row = 0;
+                                    final barHeight = 4.0;
+                                    final barSpacing = 6.0;
+
+                                    for (final task in sorted.take(8)) {
+                                      final startMin = _minutesSinceStartStatic(task.startTime!);
+                                      final endMin = task.endTime != null
+                                          ? _minutesSinceStartStatic(task.endTime!)
+                                          : startMin + 60;
+
+                                      final leftPx = (startMin / _totalMinutes * cellWidth).clamp(1.0, cellWidth - 3);
+                                      final widthPx = ((endMin - startMin) / _totalMinutes * cellWidth).clamp(3.0, cellWidth - leftPx - 1);
+                                      final topPx = (row * barSpacing + 4).clamp(0.0, cellHeight - barHeight);
+
+                                      bars.add(Positioned(
+                                        left: leftPx,
+                                        top: topPx,
+                                        child: GestureDetector(
+                                          onTap: () => context.push('/task/${task.id}'),
+                                          child: Tooltip(
+                                            message: task.title,
+                                            child: Container(
+                                              width: widthPx,
+                                              height: barHeight,
+                                              decoration: BoxDecoration(
+                                                color: _priorityColorStatic(context, task.priority),
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ));
+                                      row++;
+                                    }
+
+                                    for (int i = 0; i < noTime.length && i < 3; i++) {
+                                      final topPx = (row * barSpacing + 4).clamp(0.0, cellHeight - barHeight);
+                                      bars.add(Positioned(
+                                        left: 2,
+                                        top: topPx,
+                                        child: GestureDetector(
+                                          onTap: () => context.push('/task/${noTime[i].id}'),
+                                          child: Tooltip(
+                                            message: noTime[i].title,
+                                            child: Container(
+                                              width: cellWidth * 0.35,
+                                              height: barHeight,
+                                              decoration: BoxDecoration(
+                                                color: _priorityColorStatic(context, noTime[i].priority).withValues(alpha: 0.4),
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ));
+                                      row++;
+                                    }
+
+                                    return Stack(clipBehavior: Clip.hardEdge, children: bars);
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    }),
-                  ),
+                      ),
+                    );
+                  }),
                 ),
               );
             },
@@ -311,76 +342,19 @@ class _WeekView extends ConsumerWidget {
   }
 }
 
-class _WeekTaskBar extends StatelessWidget {
-  const _WeekTaskBar({required this.task, required this.colWidth});
+double _minutesSinceStartStatic(DateTime time) {
+  final local = time.toLocal();
+  final mins = (local.hour - _dayStartHour) * 60 + local.minute;
+  return mins.clamp(0, _totalMinutes).toDouble();
+}
 
-  final TaskModel task;
-  final double colWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _taskColor(context, task.priority);
-
-    if (task.startTime == null) {
-      // Unscheduled: small centered bar
-      return Container(
-        width: colWidth * 0.35,
-        height: 6,
-        margin: const EdgeInsets.only(left: 2),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(3),
-        ),
-      );
-    }
-
-    // Scheduled: position proportional to time within column
-    final startMin = _minutesSinceStart(task.startTime!);
-    final endMin = task.endTime != null ? _minutesSinceStart(task.endTime!) : startMin + 60;
-
-    final leftFraction = (startMin / _totalMinutes).clamp(0.0, 0.95);
-    final widthFraction = ((endMin - startMin) / _totalMinutes).clamp(0.05, 1.0 - leftFraction);
-
-    final left = leftFraction * colWidth;
-    final width = (widthFraction * colWidth).clamp(4.0, colWidth - left);
-
-    return ClipRect(
-      child: SizedBox(
-        height: 8,
-        width: colWidth,
-        child: Stack(
-          children: [
-            Positioned(
-              left: left,
-              child: Container(
-                width: width,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  double _minutesSinceStart(DateTime time) {
-    final local = time.toLocal();
-    final mins = (local.hour - _dayStartHour) * 60 + local.minute;
-    return mins.clamp(0, _totalMinutes).toDouble();
-  }
-
-  Color _taskColor(BuildContext context, TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.urgent: return AppColors.priorityUrgent;
-      case TaskPriority.high: return AppColors.priorityHigh;
-      case TaskPriority.medium: return AppColors.priorityMedium;
-      case TaskPriority.low: return AppColors.priorityLow;
-      case TaskPriority.none: return Theme.of(context).colorScheme.primary;
-    }
+Color _priorityColorStatic(BuildContext context, TaskPriority priority) {
+  switch (priority) {
+    case TaskPriority.urgent: return AppColors.priorityUrgent;
+    case TaskPriority.high: return AppColors.priorityHigh;
+    case TaskPriority.medium: return AppColors.priorityMedium;
+    case TaskPriority.low: return AppColors.priorityLow;
+    case TaskPriority.none: return Theme.of(context).colorScheme.primary;
   }
 }
 

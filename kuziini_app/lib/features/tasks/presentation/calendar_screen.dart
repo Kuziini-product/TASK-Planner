@@ -677,33 +677,32 @@ class _CalendarGrid extends StatelessWidget {
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final cellWidth = constraints.maxWidth;
-                        if (tasks.isEmpty) return const SizedBox();
+                        final cellHeight = constraints.maxHeight;
+                        if (tasks.isEmpty || cellWidth <= 0) return const SizedBox();
 
-                        // Sort tasks by start time
                         final sorted = tasks.where((t) => t.startTime != null).toList()
                           ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
-
-                        // Also include tasks without start time
                         final noTime = tasks.where((t) => t.startTime == null).toList();
 
                         final bars = <Widget>[];
+                        int row = 0;
 
-                        // Position bars for scheduled tasks
-                        for (final task in sorted) {
+                        for (final task in sorted.take(5)) {
                           final startMin = _minutesSinceStart(task.startTime!);
                           final endMin = task.endTime != null
                               ? _minutesSinceStart(task.endTime!)
-                              : startMin + 60; // default 1h
+                              : startMin + 60;
 
-                          final left = (startMin / _totalMinutes * cellWidth).clamp(0.0, cellWidth);
-                          final width = ((endMin - startMin) / _totalMinutes * cellWidth).clamp(2.0, cellWidth - left);
+                          final leftPx = (startMin / _totalMinutes * cellWidth).clamp(0.0, cellWidth - 2);
+                          final widthPx = ((endMin - startMin) / _totalMinutes * cellWidth).clamp(2.0, cellWidth - leftPx);
+                          final topPx = (row * 4.0).clamp(0.0, cellHeight - 3);
 
                           bars.add(
                             Positioned(
-                              left: left,
-                              top: bars.length * 4.0, // stack vertically
+                              left: leftPx,
+                              top: topPx,
                               child: Container(
-                                width: width,
+                                width: widthPx,
                                 height: 3,
                                 decoration: BoxDecoration(
                                   color: _priorityColor(context, task.priority),
@@ -712,9 +711,9 @@ class _CalendarGrid extends StatelessWidget {
                               ),
                             ),
                           );
+                          row++;
                         }
 
-                        // Small dots for unscheduled tasks
                         for (int i = 0; i < noTime.length && i < 3; i++) {
                           bars.add(
                             Positioned(
@@ -731,7 +730,7 @@ class _CalendarGrid extends StatelessWidget {
                           );
                         }
 
-                        return Stack(clipBehavior: Clip.none, children: bars);
+                        return Stack(clipBehavior: Clip.hardEdge, children: bars);
                       },
                     ),
                   ),
@@ -743,16 +742,18 @@ class _CalendarGrid extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: AppSpacing.paddingHorizontalLg,
-      child: GridView.count(
-        crossAxisCount: 7,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 0.85,
-        children: cells,
+    return Expanded(
+      child: Padding(
+        padding: AppSpacing.paddingHorizontalLg,
+        child: GridView.count(
+          crossAxisCount: 7,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 0.8,
+          children: cells,
+        ),
       ),
-    ).animate().fadeIn(duration: 300.ms);
+    );
   }
 
   /// Minutes from 8:00 start

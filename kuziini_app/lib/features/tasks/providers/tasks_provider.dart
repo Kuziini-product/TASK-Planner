@@ -59,10 +59,14 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
   Future<List<TaskModel>> _fetchFiltered(DateTime date, TaskFilterType filter, String? teamUserId) async {
     final userId = SupabaseService.instance.currentUserId;
 
-    // If viewing a specific team member's tasks
+    // If viewing team tasks
     if (teamUserId != null) {
       final tasks = await _repo.fetchTasksByDate(date);
-      // Filter by tasks created by or assigned to the team member
+      if (teamUserId == 'all') {
+        // Show all team tasks (no filter)
+        return tasks;
+      }
+      // Filter by specific team member
       return tasks.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId).toList();
     }
 

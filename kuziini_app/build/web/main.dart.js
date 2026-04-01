@@ -32632,7 +32632,7 @@ _.w=g
 _.x=h},
 boZ(a){return B.b.Ri(B.Ai,new A.aFR(a),new A.aFS())},
 boY(a){return B.b.Ri(B.z0,new A.aFD(a),new A.aFE())},
-b9M(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,a0,a1,a2,a3,a4,a5){return new A.bN(p,a4,m,a3,a0,j,b,c,n,a2,o,r,f,e,g,d,q,a1,s,i,a5,h)},
+b9M(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,a0,a1,a2,a3,a4,a5){return new A.bN(p,a4,m,a3,a0,j,b,c,n,a2,o,r,f,e,g,d,a1,s,i,a5,h)},
 wh(b3){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2=null,a3="due_date",a4="start_time",a5="end_time",a6="created_at",a7="updated_at",a8="completed_at",a9=A.aK(b3.i(0,"id")),b0=A.aK(b3.i(0,"title")),b1=A.bd(b3.i(0,"description")),b2=A.bd(b3.i(0,"status"))
 b2=A.boZ(b2==null?"todo":b2)
 s=A.bd(b3.i(0,"priority"))
@@ -32672,7 +32672,7 @@ this.a=b
 this.b=c},
 aFD:function aFD(a){this.a=a},
 aFE:function aFE(){},
-bN:function bN(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,a0,a1,a2){var _=this
+bN:function bN(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,a0,a1){var _=this
 _.a=a
 _.b=b
 _.c=c
@@ -32689,12 +32689,11 @@ _.ay=m
 _.ch=n
 _.CW=o
 _.cx=p
-_.cy=q
-_.db=r
-_.dx=s
-_.dy=a0
-_.fr=a1
-_.fx=a2},
+_.db=q
+_.dx=r
+_.dy=s
+_.fr=a0
+_.fx=a1},
 aFC:function aFC(){},
 oT:function oT(a){this.a=a},
 aFI:function aFI(){},
@@ -116883,19 +116882,17 @@ $S:724}
 A.bN.prototype={
 gwQ(){var s=this.Q
 return s!=null&&s.u1(new A.b2(Date.now(),0,!1))&&this.d!==B.cq},
-eZ(){var s,r,q,p,o,n=this,m=null,l=n.c
-if(l==null)l=""
-s=n.Q
-s=s!=null?""+A.aJ(s)+"-"+B.c.e2(B.e.j(A.aO(s)),2,"0")+"-"+B.c.e2(B.e.j(A.bw(s)),2,"0"):m
-r=n.as
-r=r==null?m:r.TF().i9()
-q=n.at
-q=q==null?m:q.TF().i9()
-p=n.ax
-p=p.length!==0?p:m
-o=A.a2(["title",n.b,"description",l,"status",n.d.b,"priority",n.e.b,"created_by",n.f,"due_date",s,"start_time",r,"end_time",q,"is_recurring",n.cy,"recurring_pattern",n.db,"parent_task_id",n.dx,"labels",p],t.N,t.z)
-o.fJ(0,new A.aFC())
-return o}}
+eZ(){var s,r,q,p,o=this,n=o.c
+if(n==null)n=""
+s=o.Q
+s=s!=null?""+A.aJ(s)+"-"+B.c.e2(B.e.j(A.aO(s)),2,"0")+"-"+B.c.e2(B.e.j(A.bw(s)),2,"0"):null
+r=o.as
+r=r==null?null:r.TF().i9()
+q=o.at
+q=q==null?null:q.TF().i9()
+p=A.a2(["title",o.b,"description",n,"status",o.d.b,"priority",o.e.b,"created_by",o.f,"due_date",s,"start_time",r,"end_time",q,"recurrence_rule",o.db,"parent_task_id",o.dx],t.N,t.z)
+p.fJ(0,new A.aFC())
+return p}}
 A.aFC.prototype={
 $2(a,b){return b==null},
 $S:725}

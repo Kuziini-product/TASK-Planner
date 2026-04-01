@@ -159,10 +159,8 @@ class TaskModel {
           : null,
       'start_time': startTime?.toUtc().toIso8601String(),
       'end_time': endTime?.toUtc().toIso8601String(),
-      'is_recurring': isRecurring,
-      'recurring_pattern': recurringPattern,
+      'recurrence_rule': recurringPattern,
       'parent_task_id': parentTaskId,
-      'labels': labels.isNotEmpty ? labels : null,
     };
     json.removeWhere((key, value) => value == null);
     return json;

@@ -10,6 +10,8 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/router/app_router.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -151,6 +153,41 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Read our terms of service',
             onTap: () {
               launchUrl(Uri.parse('https://kuziini.app/terms'));
+            },
+          ),
+
+          // Admin section (visible only to admins)
+          Builder(
+            builder: (context) {
+              final profile = ref.watch(currentUserProfileProvider);
+              final isAdmin = profile.valueOrNull?.isAdmin ?? false;
+              if (!isAdmin) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppSpacing.vGapXl,
+                  _SectionHeader(title: 'Administration'),
+                  AppSpacing.vGapSm,
+                  _SettingsTile(
+                    icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.regular),
+                    title: 'Admin Dashboard',
+                    subtitle: 'Overview and statistics',
+                    onTap: () => context.push(AppRoutes.adminDashboard),
+                  ),
+                  _SettingsTile(
+                    icon: PhosphorIcons.userCheck(PhosphorIconsStyle.regular),
+                    title: 'User Approvals',
+                    subtitle: 'Approve or reject pending users',
+                    onTap: () => context.push(AppRoutes.userApproval),
+                  ),
+                  _SettingsTile(
+                    icon: PhosphorIcons.envelopeSimple(PhosphorIconsStyle.regular),
+                    title: 'Invitations',
+                    subtitle: 'Send and manage invitations',
+                    onTap: () => context.push(AppRoutes.invitations),
+                  ),
+                ],
+              );
             },
           ),
 

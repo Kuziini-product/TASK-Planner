@@ -180,42 +180,7 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push(AppRoutes.settings),
                 ),
 
-                if (profile.isAdmin) ...[
-                  _ProfileMenuItem(
-                    icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.regular),
-                    label: 'Admin Dashboard',
-                    onTap: () => context.push(AppRoutes.adminDashboard),
-                  ),
-                  _ProfileMenuItem(
-                    icon: PhosphorIcons.userCheck(PhosphorIconsStyle.regular),
-                    label: 'User Approvals',
-                    onTap: () => context.push(AppRoutes.userApproval),
-                  ),
-                  _ProfileMenuItem(
-                    icon: PhosphorIcons.envelopeSimple(PhosphorIconsStyle.regular),
-                    label: 'Invitations',
-                    onTap: () => context.push(AppRoutes.invitations),
-                  ),
-                ],
-
-                AppSpacing.vGapXl,
-
-                _ProfileMenuItem(
-                  icon: PhosphorIcons.signOut(PhosphorIconsStyle.regular),
-                  label: 'Sign Out',
-                  color: AppColors.error,
-                  onTap: () async {
-                    final confirmed = await context.showConfirmDialog(
-                      title: 'Sign Out',
-                      message: 'Are you sure you want to sign out?',
-                      confirmLabel: 'Sign Out',
-                      isDestructive: true,
-                    );
-                    if (confirmed == true) {
-                      ref.read(authStateProvider.notifier).signOut();
-                    }
-                  },
-                ),
+                // Admin & Sign Out are in Settings
 
                 const SizedBox(height: 40),
               ],

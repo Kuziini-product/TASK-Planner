@@ -309,13 +309,15 @@ class TaskRepository {
   // ── Comments ──
 
   Future<List<TaskComment>> fetchComments(String taskId) async {
-    final response = await _supabase.select(
-      AppConstants.tableTaskComments,
-      filters: {'task_id': taskId},
-      orderBy: 'created_at',
-      ascending: true,
-    );
-    return response.map((json) => TaskComment.fromJson(json)).toList();
+    final response = await _supabase.client
+        .from(AppConstants.tableTaskComments)
+        .select('*, profiles!task_comments_user_id_fkey(full_name, avatar_url)')
+        .eq('task_id', taskId)
+        .order('created_at', ascending: true);
+
+    return (response as List)
+        .map((json) => TaskComment.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
 
   Future<TaskComment> addComment({

@@ -22,13 +22,23 @@ class TaskComment {
   final bool isEdited;
 
   factory TaskComment.fromJson(Map<String, dynamic> json) {
+    // Parse user info from nested profiles join or flat fields
+    String? userName = json['user_name'] as String?;
+    String? userAvatarUrl = json['user_avatar_url'] as String?;
+
+    final profiles = json['profiles'];
+    if (profiles is Map<String, dynamic>) {
+      userName ??= profiles['full_name'] as String?;
+      userAvatarUrl ??= profiles['avatar_url'] as String?;
+    }
+
     return TaskComment(
       id: json['id'] as String,
       taskId: json['task_id'] as String,
       userId: json['user_id'] as String,
       content: json['content'] as String,
-      userName: json['user_name'] as String?,
-      userAvatarUrl: json['user_avatar_url'] as String?,
+      userName: userName,
+      userAvatarUrl: userAvatarUrl,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,

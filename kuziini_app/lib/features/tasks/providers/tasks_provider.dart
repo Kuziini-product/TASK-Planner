@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
 import '../data/models/task_model.dart';
 import '../data/models/task_comment.dart';
+import '../data/models/task_attachment.dart';
 import '../data/models/checklist_item.dart';
 import '../data/task_repository.dart';
 
@@ -123,6 +124,14 @@ final taskChecklistProvider =
     FutureProvider.family<List<ChecklistItem>, String>((ref, taskId) async {
   final repo = ref.watch(taskRepositoryProvider);
   return repo.fetchChecklist(taskId);
+});
+
+// ── Task Attachments ──
+
+final taskAttachmentsProvider =
+    FutureProvider.family<List<TaskAttachment>, String>((ref, taskId) async {
+  final repo = ref.watch(taskRepositoryProvider);
+  return repo.fetchAttachments(taskId);
 });
 
 // ── Task Assignees ──

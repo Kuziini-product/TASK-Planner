@@ -5,7 +5,6 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
@@ -14,9 +13,10 @@ import '../../../core/widgets/kuziini_text_field.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_view.dart';
 import '../data/models/task_model.dart';
-import '../data/models/task_comment.dart';
 import '../data/models/checklist_item.dart';
 import '../providers/tasks_provider.dart';
+import 'widgets/attachment_section.dart';
+import 'widgets/comment_section.dart';
 import 'widgets/priority_badge.dart';
 import 'widgets/status_chip.dart';
 import 'widgets/user_picker.dart';
@@ -31,40 +31,12 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
-  final _commentController = TextEditingController();
   final _checklistController = TextEditingController();
-  bool _isSubmittingComment = false;
 
   @override
   void dispose() {
-    _commentController.dispose();
     _checklistController.dispose();
     super.dispose();
-  }
-
-  Future<void> _addComment() async {
-    final content = _commentController.text.trim();
-    if (content.isEmpty) return;
-
-    setState(() => _isSubmittingComment = true);
-
-    try {
-      final repo = ref.read(taskRepositoryProvider);
-      final userId = SupabaseService.instance.currentUserId!;
-      await repo.addComment(
-        taskId: widget.taskId,
-        userId: userId,
-        content: content,
-      );
-      _commentController.clear();
-      ref.invalidate(taskCommentsProvider(widget.taskId));
-    } catch (e) {
-      if (mounted) {
-        context.showSnackBar('Failed to add comment', isError: true);
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmittingComment = false);
-    }
   }
 
   Future<void> _addChecklistItem() async {
@@ -100,7 +72,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final taskAsync = ref.watch(taskDetailProvider(widget.taskId));
-    final commentsAsync = ref.watch(taskCommentsProvider(widget.taskId));
     final checklistAsync = ref.watch(taskChecklistProvider(widget.taskId));
 
     return Scaffold(
@@ -178,7 +149,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       ),
       body: taskAsync.when(
         data: (task) => _buildContent(
-            context, task, commentsAsync, checklistAsync),
+            context, task, checklistAsync),
         loading: () => const LoadingIndicator(message: 'Loading task...'),
         error: (error, _) => ErrorView(
           message: error.toString(),
@@ -225,7 +196,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Widget _buildContent(
     BuildContext context,
     TaskModel task,
-    AsyncValue<List<TaskComment>> commentsAsync,
     AsyncValue<List<ChecklistItem>> checklistAsync,
   ) {
     final theme = Theme.of(context);
@@ -499,60 +469,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           const Divider(),
           AppSpacing.vGapLg,
 
-          // Comments
-          Row(
-            children: [
-              Icon(PhosphorIcons.chatCircle(PhosphorIconsStyle.regular),
-                  size: 20),
-              AppSpacing.hGapSm,
-              Text('Comments', style: theme.textTheme.titleSmall),
-            ],
-          ),
-          AppSpacing.vGapMd,
+          // Attachments
+          AttachmentSection(taskId: widget.taskId),
 
-          commentsAsync.when(
-            data: (comments) => Column(
-              children: [
-                ...comments.map((comment) => _CommentTile(comment: comment)),
-                // Add comment field
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: KuziiniTextField(
-                        controller: _commentController,
-                        hint: 'Write a comment...',
-                        maxLines: 3,
-                        minLines: 1,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _addComment(),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                      ),
-                    ),
-                    AppSpacing.hGapSm,
-                    IconButton(
-                      onPressed: _isSubmittingComment ? null : _addComment,
-                      icon: _isSubmittingComment
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              PhosphorIcons.paperPlaneRight(
-                                  PhosphorIconsStyle.fill),
-                              color: AppColors.primary,
-                            ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            loading: () => const LoadingIndicator(size: 24),
-            error: (_, __) =>
-                const Text('Failed to load comments'),
-          ),
+          AppSpacing.vGapXl,
+          const Divider(),
+          AppSpacing.vGapLg,
+
+          // Comments (chat-style)
+          CommentSection(taskId: widget.taskId),
 
           AppSpacing.vGapXxl,
 
@@ -680,74 +605,3 @@ class _ChecklistItemTile extends StatelessWidget {
   }
 }
 
-class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment});
-
-  final TaskComment comment;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor:
-                theme.colorScheme.primary.withValues(alpha: 0.1),
-            child: Text(
-              (comment.userName ?? 'U')[0].toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-          AppSpacing.hGapSm,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      comment.userName ?? 'Unknown',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    AppSpacing.hGapSm,
-                    if (comment.createdAt != null)
-                      Text(
-                        AppDateUtils.formatTimeAgo(comment.createdAt!),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    if (comment.isEdited)
-                      Text(
-                        ' (edited)',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                  ],
-                ),
-                AppSpacing.vGapXs,
-                Text(
-                  comment.content,
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

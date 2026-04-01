@@ -172,7 +172,6 @@ class _WeekView extends ConsumerWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final now = DateTime.now();
-    // Start of current week (Monday)
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
 
@@ -191,9 +190,9 @@ class _WeekView extends ConsumerWidget {
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
-        // Week grid
+        // Day headers
         Padding(
-          padding: AppSpacing.paddingHorizontalLg,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             children: days.map((day) {
               final isToday = AppDateUtils.isToday(day);
@@ -201,8 +200,8 @@ class _WeekView extends ConsumerWidget {
                 child: GestureDetector(
                   onTap: () => ref.read(_calendarSelectedDayProvider.notifier).state = day,
                   child: Container(
-                    margin: const EdgeInsets.all(2),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
                       color: isToday ? primaryColor : null,
                       borderRadius: BorderRadius.circular(10),
@@ -214,7 +213,7 @@ class _WeekView extends ConsumerWidget {
                           ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1],
                           style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           '${day.day}',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null),
@@ -227,18 +226,77 @@ class _WeekView extends ConsumerWidget {
             }).toList(),
           ),
         ),
-        const Divider(),
-        // Tasks for the week
+        // Timeline grid with task bars
         Expanded(
           child: tasksAsync.when(
             data: (tasks) {
-              if (tasks.isEmpty) {
+              // Group tasks by day of week
+              final tasksByDay = <int, List<TaskModel>>{};
+              for (final task in tasks) {
+                if (task.dueDate != null) {
+                  for (int i = 0; i < 7; i++) {
+                    if (AppDateUtils.isSameDay(task.dueDate!, days[i])) {
+                      tasksByDay.putIfAbsent(i, () => []).add(task);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              // Find max task rows across all days
+              int maxRows = 0;
+              for (final dayTasks in tasksByDay.values) {
+                final scheduled = dayTasks.where((t) => t.startTime != null).length;
+                final unscheduled = dayTasks.where((t) => t.startTime == null).length;
+                final rows = scheduled + unscheduled;
+                if (rows > maxRows) maxRows = rows;
+              }
+              if (maxRows == 0) {
                 return Center(child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)));
               }
-              return ListView.builder(
-                padding: AppSpacing.paddingHorizontalLg,
-                itemCount: tasks.length,
-                itemBuilder: (context, index) => TaskCard(task: tasks[index], showDate: true, animationIndex: index),
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(7, (dayIdx) {
+                      final dayTasks = tasksByDay[dayIdx] ?? [];
+                      final scheduled = dayTasks.where((t) => t.startTime != null).toList()
+                        ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
+                      final unscheduled = dayTasks.where((t) => t.startTime == null).toList();
+                      final allTasks = [...scheduled, ...unscheduled];
+
+                      return Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+                            ),
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final colWidth = constraints.maxWidth;
+                              return Column(
+                                children: allTasks.map((task) {
+                                  return GestureDetector(
+                                    onTap: () => context.push('/task/${task.id}'),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: _WeekTaskBar(task: task, colWidth: colWidth),
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
               );
             },
             loading: () => const LoadingIndicator(size: 24),
@@ -247,6 +305,79 @@ class _WeekView extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+class _WeekTaskBar extends StatelessWidget {
+  const _WeekTaskBar({required this.task, required this.colWidth});
+
+  final TaskModel task;
+  final double colWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _taskColor(context, task.priority);
+
+    if (task.startTime == null) {
+      // Unscheduled: small centered bar
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: colWidth * 0.4,
+          height: 5,
+          margin: const EdgeInsets.only(left: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(2.5),
+          ),
+        ),
+      );
+    }
+
+    // Scheduled: position proportional to time
+    final startMin = _minutesSinceStart(task.startTime!);
+    final endMin = task.endTime != null ? _minutesSinceStart(task.endTime!) : startMin + 60;
+
+    final leftFraction = (startMin / _totalMinutes).clamp(0.0, 1.0);
+    final widthFraction = ((endMin - startMin) / _totalMinutes).clamp(0.05, 1.0 - leftFraction);
+
+    final left = leftFraction * colWidth;
+    final width = widthFraction * colWidth;
+
+    return SizedBox(
+      height: 7,
+      child: Stack(
+        children: [
+          Positioned(
+            left: left.clamp(0, colWidth - 4),
+            child: Container(
+              width: width.clamp(4, colWidth),
+              height: 5,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _minutesSinceStart(DateTime time) {
+    final local = time.toLocal();
+    final mins = (local.hour - _dayStartHour) * 60 + local.minute;
+    return mins.clamp(0, _totalMinutes).toDouble();
+  }
+
+  Color _taskColor(BuildContext context, TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.urgent: return AppColors.priorityUrgent;
+      case TaskPriority.high: return AppColors.priorityHigh;
+      case TaskPriority.medium: return AppColors.priorityMedium;
+      case TaskPriority.low: return AppColors.priorityLow;
+      case TaskPriority.none: return Theme.of(context).colorScheme.primary;
+    }
   }
 }
 

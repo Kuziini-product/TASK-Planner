@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
@@ -608,17 +609,7 @@ class _CommentBubble extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          comment.content,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isCurrentUser
-                                ? Colors.white
-                                : (isDark
-                                    ? AppColors.textPrimaryDark
-                                    : AppColors.textPrimaryLight),
-                            height: 1.35,
-                          ),
-                        ),
+                        _buildContent(context, comment.content, isCurrentUser, isDark, theme),
                       ],
                     ),
                   ),
@@ -669,6 +660,101 @@ class _CommentBubble extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildContent(BuildContext context, String content, bool isCurrentUser, bool isDark, ThemeData theme) {
+    final textColor = isCurrentUser
+        ? Colors.white
+        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
+    final linkColor = isCurrentUser
+        ? Colors.white.withValues(alpha: 0.9)
+        : AppColors.primary;
+
+    // Check if it's a location message
+    final isLocation = content.startsWith('\u{1F4CD}');
+
+    // Find URLs in content
+    final urlRegex = RegExp(r'https?://[^\s]+');
+    final matches = urlRegex.allMatches(content).toList();
+
+    if (isLocation) {
+      // Location message - make entire thing tappable
+      String? url;
+      final urlMatch = urlRegex.firstMatch(content);
+      if (urlMatch != null) {
+        url = urlMatch.group(0);
+      } else {
+        // No link - create Google Maps search from address
+        final address = content.replaceFirst('\u{1F4CD}', '').trim();
+        url = 'https://www.google.com/maps/search/${Uri.encodeComponent(address)}';
+      }
+
+      return GestureDetector(
+        onTap: () {
+          if (url != null) {
+            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.location_on, size: 16, color: isCurrentUser ? Colors.white : AppColors.error),
+                const SizedBox(width: 4),
+                Text('Location', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              content.replaceFirst('\u{1F4CD} ', '').replaceAll(urlRegex, '').trim(),
+              style: theme.textTheme.bodyMedium?.copyWith(color: textColor, height: 1.35),
+            ),
+            if (urlMatch != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.open_in_new, size: 12, color: linkColor),
+                  const SizedBox(width: 4),
+                  Text('Open in Maps', style: TextStyle(fontSize: 12, color: linkColor, fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline, decorationColor: linkColor)),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // Regular message - make links tappable
+    if (matches.isEmpty) {
+      return Text(content, style: theme.textTheme.bodyMedium?.copyWith(color: textColor, height: 1.35));
+    }
+
+    // Build rich text with tappable links
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: content.substring(lastEnd, match.start), style: TextStyle(color: textColor, height: 1.35)));
+      }
+      final url = match.group(0)!;
+      spans.add(WidgetSpan(
+        child: GestureDetector(
+          onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+          child: Text(url, style: TextStyle(color: linkColor, decoration: TextDecoration.underline,
+            decorationColor: linkColor, height: 1.35, fontSize: 14)),
+        ),
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < content.length) {
+      spans.add(TextSpan(text: content.substring(lastEnd), style: TextStyle(color: textColor, height: 1.35)));
+    }
+
+    return RichText(text: TextSpan(children: spans));
   }
 
   String _getInitials(String? name) {

@@ -141,6 +141,177 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     return completer.future;
   }
 
+  Future<void> _showLocationPicker() async {
+    final nameCtrl = TextEditingController(text: _locationNameController.text);
+    final addressCtrl = TextEditingController(text: _locationAddressController.text);
+    final linkCtrl = TextEditingController(text: _locationLinkController.text);
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20, right: 20, top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(width: 40, height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text('Set Location', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Quick default
+                  InkWell(
+                    onTap: () {
+                      nameCtrl.text = 'Kuziini';
+                      addressCtrl.text = 'Bulevardul Unirii Nr 63';
+                      linkCtrl.text = '';
+                      setSheetState(() {});
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.store, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Kuziini', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                Text('Bulevardul Unirii Nr 63', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: AppColors.primary, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Custom fields
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Location name',
+                      prefixIcon: const Icon(Icons.place_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true, isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: addressCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Address',
+                      prefixIcon: const Icon(Icons.map_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true, isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: linkCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Google Maps link (optional)',
+                      prefixIcon: const Icon(Icons.link),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true, isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Quick actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            try {
+                              final coords = await _jsGeolocation();
+                              if (coords != null) {
+                                nameCtrl.text = 'My Location';
+                                addressCtrl.text = '${coords['lat']!.toStringAsFixed(5)}, ${coords['lng']!.toStringAsFixed(5)}';
+                                linkCtrl.text = 'https://www.google.com/maps?q=${coords['lat']},${coords['lng']}';
+                                setSheetState(() {});
+                              }
+                            } catch (_) {}
+                          },
+                          icon: const Icon(Icons.my_location, size: 16),
+                          label: const Text('My Location', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Confirm button
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Confirm Location'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _locationNameController.text = nameCtrl.text;
+        _locationAddressController.text = addressCtrl.text;
+        _locationLinkController.text = linkCtrl.text;
+        _useDefaultLocation = false;
+      });
+    }
+
+    nameCtrl.dispose();
+    addressCtrl.dispose();
+    linkCtrl.dispose();
+  }
+
   void _addChecklistItem() {
     final text = _checklistController.text.trim();
     if (text.isEmpty) return;
@@ -402,57 +573,22 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               // Location section
               Text('Location', style: theme.textTheme.labelLarge),
               AppSpacing.vGapSm,
-              Row(
-                children: [
-                  Checkbox(
-                    value: _useDefaultLocation,
-                    onChanged: (v) => setState(() => _useDefaultLocation = v ?? true),
-                    activeColor: AppColors.primary,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _useDefaultLocation = !_useDefaultLocation),
-                      child: Text(
-                        'Use default location (Kuziini, Bulevardul Unirii Nr 63)',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ),
-                ],
+              _LocationTile(
+                locationName: _locationNameController.text,
+                locationAddress: _locationAddressController.text,
+                locationLink: _locationLinkController.text,
+                onTap: () => _showLocationPicker(),
+                onClear: () {
+                  setState(() {
+                    _locationNameController.text = '';
+                    _locationAddressController.text = '';
+                    _locationLinkController.text = '';
+                    _locationLat = null;
+                    _locationLng = null;
+                    _useDefaultLocation = false;
+                  });
+                },
               ),
-              if (!_useDefaultLocation) ...[
-                AppSpacing.vGapSm,
-                KuziiniTextField(
-                  controller: _locationNameController,
-                  hint: 'Location name',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-                AppSpacing.vGapSm,
-                KuziiniTextField(
-                  controller: _locationAddressController,
-                  hint: 'Address',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-                AppSpacing.vGapSm,
-                KuziiniTextField(
-                  controller: _locationLinkController,
-                  hint: 'Google Maps link (optional)',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-                AppSpacing.vGapSm,
-                OutlinedButton.icon(
-                  onPressed: _getMyLocation,
-                  icon: Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 16),
-                  label: const Text('My Location'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ],
 
               AppSpacing.vGapMd,
 
@@ -607,6 +743,86 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               const SizedBox(height: 40),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationTile extends StatelessWidget {
+  const _LocationTile({
+    required this.locationName,
+    required this.locationAddress,
+    required this.locationLink,
+    required this.onTap,
+    this.onClear,
+  });
+
+  final String locationName;
+  final String locationAddress;
+  final String locationLink;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  bool get _hasLocation => locationName.isNotEmpty || locationAddress.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _hasLocation
+              ? AppColors.primary.withValues(alpha: 0.06)
+              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _hasLocation
+                ? AppColors.primary.withValues(alpha: 0.2)
+                : theme.dividerColor.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.location_on,
+              color: _hasLocation ? AppColors.primary : theme.colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _hasLocation
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (locationName.isNotEmpty)
+                          Text(locationName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
+                            color: AppColors.primary)),
+                        if (locationAddress.isNotEmpty)
+                          Text(locationAddress, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        if (locationLink.isNotEmpty)
+                          Text(locationLink, style: TextStyle(fontSize: 11, color: Colors.blue,
+                            decoration: TextDecoration.underline),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    )
+                  : Text('Tap to set location',
+                      style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14)),
+            ),
+            if (_hasLocation && onClear != null)
+              IconButton(
+                onPressed: onClear,
+                icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: EdgeInsets.zero,
+              )
+            else
+              Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
+          ],
         ),
       ),
     );

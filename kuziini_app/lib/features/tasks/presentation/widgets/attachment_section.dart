@@ -469,30 +469,133 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
   Future<void> _openAttachment(TaskAttachment attachment) async {
     if (attachment.isImage) {
       _showImageViewer(attachment);
+    } else if (attachment.fileName.toLowerCase().endsWith('.csv') ||
+               attachment.fileName.toLowerCase().endsWith('.txt')) {
+      _showCsvViewer(attachment);
     } else {
-      // Open document via signed URL
+      final url = Uri.parse(_getFileUrl(attachment.filePath));
       try {
-        final uri = Uri.parse(_getFileUrl(attachment.filePath));
-        final storagePath = uri.pathSegments
-            .skipWhile((s) => s != 'object')
-            .skip(2) // skip 'object' and 'public'/'sign'
-            .join('/');
-
-        // For public URLs, just launch directly
-        final url = Uri.parse(_getFileUrl(attachment.filePath));
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-        } else {
-          if (mounted) {
-            context.showSnackBar('Could not open file', isError: true);
-          }
-        }
+        await launchUrl(url, mode: LaunchMode.externalApplication);
       } catch (e) {
         if (mounted) {
           context.showSnackBar('Could not open file', isError: true);
         }
       }
     }
+  }
+
+  Future<void> _showCsvViewer(TaskAttachment attachment) async {
+    final url = _getFileUrl(attachment.filePath);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(attachment.fileName, style: const TextStyle(fontSize: 14)),
+            leading: IconButton(
+              onPressed: () => Navigator.pop(ctx),
+              icon: const Icon(Icons.close),
+            ),
+            actions: [
+              IconButton(
+                onPressed: () => _downloadFile(attachment),
+                icon: const Icon(Icons.download),
+                tooltip: 'Download',
+              ),
+            ],
+          ),
+          body: FutureBuilder<String>(
+            future: _fetchFileContent(url),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || !snapshot.hasData) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text('Failed to load file', style: TextStyle(color: Colors.grey[600])),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () => _downloadFile(attachment),
+                        icon: const Icon(Icons.download, size: 18),
+                        label: const Text('Download instead'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final content = snapshot.data!;
+              final lines = content.split('\n').where((l) => l.trim().isNotEmpty).toList();
+              if (lines.isEmpty) {
+                return const Center(child: Text('Empty file'));
+              }
+
+              // Parse CSV
+              final separator = content.contains(';') ? ';' : ',';
+              final rows = lines.map((line) => line.split(separator).map((cell) => cell.trim()).toList()).toList();
+              final headers = rows.isNotEmpty ? rows.first : <String>[];
+              final dataRows = rows.length > 1 ? rows.sublist(1) : <List<String>>[];
+              final maxCols = rows.fold<int>(0, (max, row) => row.length > max ? row.length : max);
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(
+                      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    ),
+                    border: TableBorder.all(
+                      color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                    columns: List.generate(
+                      maxCols,
+                      (i) => DataColumn(
+                        label: Text(
+                          i < headers.length ? headers[i] : 'Col ${i + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                    rows: dataRows.take(200).map((row) {
+                      return DataRow(
+                        cells: List.generate(
+                          maxCols,
+                          (i) => DataCell(
+                            Text(
+                              i < row.length ? row[i] : '',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<String> _fetchFileContent(String url) async {
+    // Use dart:js_util to fetch file content via JS fetch API
+    final response = await js_util.promiseToFuture(
+      js_util.callMethod(js_util.globalThis, 'fetch', [url]),
+    );
+    final text = await js_util.promiseToFuture<String>(
+      js_util.callMethod(response, 'text', []),
+    );
+    return text;
   }
 
   void _downloadFile(TaskAttachment attachment) {

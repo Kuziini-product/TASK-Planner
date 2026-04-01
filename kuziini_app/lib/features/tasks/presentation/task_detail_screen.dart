@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
@@ -121,14 +122,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     DateTime? newDate = task.dueDate;
     DateTime? newEndDate = task.endDate;
     TimeOfDay? newStartTime = task.startTime != null ? TimeOfDay.fromDateTime(task.startTime!.toLocal()) : null;
+    final reasonController = TextEditingController();
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,6 +140,22 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 const SizedBox(height: 16),
                 Text('Relocate Task', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
+                // Reason (mandatory)
+                TextField(
+                  controller: reasonController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Reason for relocation *',
+                    hintText: 'Why is this task being moved?',
+                    prefixIcon: Icon(PhosphorIcons.notepad(PhosphorIconsStyle.regular)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                  ),
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) => setSheetState(() {}),
+                ),
+                const SizedBox(height: 12),
                 // Date
                 ListTile(
                   leading: Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular)),
@@ -173,7 +192,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
+                    onPressed: reasonController.text.trim().isEmpty ? null : () => Navigator.pop(ctx, true),
                     child: const Text('Relocate'),
                   ),
                 ),
@@ -187,6 +206,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     if (confirmed == true && mounted) {
       try {
         final repo = ref.read(taskRepositoryProvider);
+        final userId = SupabaseService.instance.currentUserId!;
+        final profile = ref.read(currentUserProfileProvider).valueOrNull;
+        final userName = profile?.displayName ?? 'Unknown';
+        final reason = reasonController.text.trim();
+
         final dateOnly = newDate != null ? '${newDate!.year}-${newDate!.month.toString().padLeft(2, '0')}-${newDate!.day.toString().padLeft(2, '0')}' : null;
         final endDateOnly = newEndDate != null ? '${newEndDate!.year}-${newEndDate!.month.toString().padLeft(2, '0')}-${newEndDate!.day.toString().padLeft(2, '0')}' : null;
 
@@ -201,7 +225,17 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         }
 
         await repo.updateTask(widget.taskId, updateData);
+
+        // Add relocation comment
+        final oldDateStr = task.dueDate != null ? '${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}' : 'none';
+        final newDateDisplay = newDate != null ? '${newDate!.day}/${newDate!.month}/${newDate!.year}' : 'none';
+        final comment = '\u{1F4CD} Relocated by $userName\n'
+            'From: $oldDateStr \u{2192} To: $newDateDisplay\n'
+            'Reason: $reason';
+        await repo.addComment(taskId: widget.taskId, userId: userId, content: comment);
+
         ref.invalidate(taskDetailProvider(widget.taskId));
+        ref.invalidate(taskCommentsProvider(widget.taskId));
         ref.invalidate(dailyTasksProvider);
         if (mounted) context.showSnackBar('Task relocated');
       } catch (e) {

@@ -6,8 +6,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/widgets/kuziini_card.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/task_model.dart';
 import '../../providers/tasks_provider.dart';
 import 'status_chip.dart';
@@ -285,21 +288,40 @@ class TaskCard extends ConsumerWidget {
     final theme = Theme.of(context);
     DateTime? newDate = task.dueDate;
     DateTime? newEndDate = task.endDate;
+    final reasonController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
                 Text('Relocate Task', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                // Reason (mandatory)
+                TextField(
+                  controller: reasonController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Reason for relocation *',
+                    hintText: 'Why is this task being moved?',
+                    prefixIcon: Icon(PhosphorIcons.notepad(PhosphorIconsStyle.regular)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                  ),
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) => setSheetState(() {}),
+                ),
                 const SizedBox(height: 12),
+                // Date
                 ListTile(
                   leading: Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular)),
                   title: Text(newDate != null ? '${newDate!.day}/${newDate!.month}/${newDate!.year}' : 'Select date'),
@@ -309,6 +331,7 @@ class TaskCard extends ConsumerWidget {
                   },
                   dense: true,
                 ),
+                // End date
                 ListTile(
                   leading: Icon(PhosphorIcons.calendarDots(PhosphorIconsStyle.regular)),
                   title: Text(newEndDate != null ? 'End: ${newEndDate!.day}/${newEndDate!.month}/${newEndDate!.year}' : 'Add end date'),
@@ -323,14 +346,34 @@ class TaskCard extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () async {
+                    onPressed: reasonController.text.trim().isEmpty ? null : () async {
+                      final reason = reasonController.text.trim();
                       Navigator.pop(ctx);
                       try {
                         final repo = ref.read(taskRepositoryProvider);
+                        final userId = SupabaseService.instance.currentUserId!;
+                        final profile = ref.read(currentUserProfileProvider).valueOrNull;
+                        final userName = profile?.displayName ?? 'Unknown';
+
                         final dateStr = newDate != null ? '${newDate!.year}-${newDate!.month.toString().padLeft(2, '0')}-${newDate!.day.toString().padLeft(2, '0')}' : null;
                         final endDateStr = newEndDate != null ? '${newEndDate!.year}-${newEndDate!.month.toString().padLeft(2, '0')}-${newEndDate!.day.toString().padLeft(2, '0')}' : null;
+
+                        // Update task dates
                         await repo.updateTask(task.id, {'due_date': dateStr, 'end_date': endDateStr});
+
+                        // Add relocation comment
+                        final oldDateStr = task.dueDate != null ? '${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}' : 'none';
+                        final newDateDisplay = newDate != null ? '${newDate!.day}/${newDate!.month}/${newDate!.year}' : 'none';
+                        final comment = '\u{1F4CD} Relocated by $userName\n'
+                            'From: $oldDateStr → To: $newDateDisplay\n'
+                            'Reason: $reason';
+
+                        await repo.addComment(taskId: task.id, userId: userId, content: comment);
+
                         ref.invalidate(dailyTasksProvider);
+                        if (context.mounted) {
+                          context.showSnackBar('Task relocated');
+                        }
                       } catch (_) {}
                     },
                     child: const Text('Relocate'),

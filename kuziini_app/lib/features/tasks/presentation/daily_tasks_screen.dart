@@ -238,7 +238,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
           ],
         ),
       ),
-      floatingActionButton: const QuickAddFab(),
+      // FAB removed – use bottom nav (+) button instead
     );
   }
 

@@ -53,6 +53,9 @@ dependencies:
   # Haptic
   vibration: ^2.0.0
 
+  # Speech Recognition
+  speech_to_text: ^6.6.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

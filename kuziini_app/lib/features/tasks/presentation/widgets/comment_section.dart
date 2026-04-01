@@ -8,6 +8,7 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../../core/widgets/voice_input_button.dart';
 import '../../data/models/task_comment.dart';
 import '../../providers/tasks_provider.dart';
 
@@ -327,6 +328,18 @@ class _CommentSectionState extends ConsumerState<CommentSection> {
                     ),
                   ),
                 ),
+              ),
+              AppSpacing.hGapSm,
+              VoiceInputButton(
+                mini: true,
+                size: 32,
+                hintText: 'Say your comment...',
+                onResult: (text) {
+                  final current = _controller.text;
+                  _controller.text =
+                      current.isEmpty ? text : '$current $text';
+                  setState(() {});
+                },
               ),
               AppSpacing.hGapSm,
               _SendButton(

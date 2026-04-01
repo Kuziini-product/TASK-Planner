@@ -9,6 +9,7 @@ import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
 import '../../../core/widgets/kuziini_button.dart';
 import '../../../core/widgets/kuziini_text_field.dart';
+import '../../../core/widgets/voice_input_button.dart';
 import '../data/models/task_model.dart';
 import '../providers/tasks_provider.dart';
 import 'widgets/user_picker.dart';
@@ -210,37 +211,73 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title
-              KuziiniTextField(
-                controller: _titleController,
-                hint: 'Task title',
-                autofocus: true,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  return null;
-                },
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
-                fillColor: Colors.transparent,
-                borderRadius: 0,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: KuziiniTextField(
+                      controller: _titleController,
+                      hint: 'Task title',
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a title';
+                        }
+                        return null;
+                      },
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+                      fillColor: Colors.transparent,
+                      borderRadius: 0,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: VoiceInputButton(
+                      mini: true,
+                      hintText: 'Say the task title...',
+                      onResult: (text) {
+                        _titleController.text = text;
+                      },
+                    ),
+                  ),
+                ],
               ),
 
               AppSpacing.vGapMd,
 
               // Description
-              KuziiniTextField(
-                controller: _descriptionController,
-                hint: 'Add description...',
-                maxLines: 4,
-                minLines: 2,
-                textCapitalization: TextCapitalization.sentences,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                fillColor: Colors.transparent,
-                borderRadius: 0,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: KuziiniTextField(
+                      controller: _descriptionController,
+                      hint: 'Add description...',
+                      maxLines: 4,
+                      minLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                      fillColor: Colors.transparent,
+                      borderRadius: 0,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: VoiceInputButton(
+                      mini: true,
+                      hintText: 'Say the task description...',
+                      onResult: (text) {
+                        final current = _descriptionController.text;
+                        _descriptionController.text =
+                            current.isEmpty ? text : '$current $text';
+                      },
+                    ),
+                  ),
+                ],
               ),
 
               AppSpacing.vGapXl,

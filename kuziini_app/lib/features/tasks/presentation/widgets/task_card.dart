@@ -8,7 +8,6 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/kuziini_card.dart';
 import '../../data/models/task_model.dart';
-import 'priority_badge.dart';
 import 'status_chip.dart';
 
 class TaskCard extends StatelessWidget {
@@ -54,7 +53,7 @@ class TaskCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: status icon, title, priority
+          // Top row: status icon, title, time/date on right
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -75,6 +74,8 @@ class TaskCard extends StatelessWidget {
                 child: Text(
                   task.title,
                   style: theme.textTheme.titleSmall?.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                     decoration:
                         task.isCompleted ? TextDecoration.lineThrough : null,
                     color: task.isCompleted
@@ -85,11 +86,40 @@ class TaskCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (task.priority != TaskPriority.none)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: PriorityBadge(priority: task.priority),
-                ),
+              // Time and date on the right
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (task.startTime != null)
+                    Text(
+                      task.endTime != null
+                          ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                          : AppDateUtils.formatTime(task.startTime!),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: task.isOverdue
+                            ? AppColors.error
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                  if (task.dueDate != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        AppDateUtils.getRelativeDateLabel(task.dueDate!),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: task.isOverdue
+                              ? AppColors.error
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
 
@@ -137,146 +167,83 @@ class TaskCard extends StatelessWidget {
             ),
           ],
 
-          // Bottom row: metadata
-          AppSpacing.vGapSm,
-          Padding(
-            padding: const EdgeInsets.only(left: 30),
-            child: Row(
-              children: [
-                // Time
-                if (task.startTime != null) ...[
-                  Icon(
-                    PhosphorIcons.clock(PhosphorIconsStyle.regular),
-                    size: 13,
-                    color: task.isOverdue
-                        ? AppColors.error
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    task.endTime != null
-                        ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                        : AppDateUtils.formatTime(task.startTime!),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: task.isOverdue
-                          ? AppColors.error
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  AppSpacing.hGapMd,
-                ],
-
-                // Due date
-                if (showDate && task.dueDate != null) ...[
-                  Icon(
-                    PhosphorIcons.calendar(PhosphorIconsStyle.regular),
-                    size: 13,
-                    color: task.isOverdue
-                        ? AppColors.error
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    AppDateUtils.getRelativeDateLabel(task.dueDate!),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: task.isOverdue
-                          ? AppColors.error
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  AppSpacing.hGapMd,
-                ],
-
-                // Checklist
-                if (task.hasChecklist) ...[
-                  Icon(
-                    PhosphorIcons.checkSquare(PhosphorIconsStyle.regular),
-                    size: 13,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${task.checklistCompleted}/${task.checklistTotal}',
-                    style: theme.textTheme.labelSmall?.copyWith(
+          // Bottom row: metadata (checklist, comments, attachments, assignee)
+          if (task.hasChecklist || task.hasComments || task.hasAttachments || task.isAssigned) ...[
+            AppSpacing.vGapSm,
+            Padding(
+              padding: const EdgeInsets.only(left: 30),
+              child: Row(
+                children: [
+                  // Checklist
+                  if (task.hasChecklist) ...[
+                    Icon(
+                      PhosphorIcons.checkSquare(PhosphorIconsStyle.regular),
+                      size: 13,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ),
-                  AppSpacing.hGapMd,
-                ],
-
-                // Comments
-                if (task.hasComments) ...[
-                  Icon(
-                    PhosphorIcons.chatCircle(PhosphorIconsStyle.regular),
-                    size: 13,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${task.commentCount}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  AppSpacing.hGapMd,
-                ],
-
-                // Attachments
-                if (task.hasAttachments) ...[
-                  Icon(
-                    PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
-                    size: 13,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${task.attachmentCount}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-
-                const Spacer(),
-
-                // Assignee avatar
-                if (task.isAssigned)
-                  CircleAvatar(
-                    radius: 10,
-                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    child: Text(
-                      (task.assigneeName ?? 'U')[0].toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.primary,
+                    const SizedBox(width: 3),
+                    Text(
+                      '${task.checklistCompleted}/${task.checklistTotal}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ),
+                    AppSpacing.hGapMd,
+                  ],
 
-                // Overdue indicator
-                if (task.isOverdue)
-                  Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.errorLight,
-                      borderRadius: AppSpacing.borderRadiusFull,
+                  // Comments
+                  if (task.hasComments) ...[
+                    Icon(
+                      PhosphorIcons.chatCircle(PhosphorIconsStyle.regular),
+                      size: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    child: Text(
-                      'OVERDUE',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.error,
-                        letterSpacing: 0.5,
+                    const SizedBox(width: 3),
+                    Text(
+                      '${task.commentCount}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ),
-              ],
+                    AppSpacing.hGapMd,
+                  ],
+
+                  // Attachments
+                  if (task.hasAttachments) ...[
+                    Icon(
+                      PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
+                      size: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${task.attachmentCount}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+
+                  const Spacer(),
+
+                  // Assignee avatar
+                  if (task.isAssigned)
+                    CircleAvatar(
+                      radius: 10,
+                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      child: Text(
+                        (task.assigneeName ?? 'U')[0].toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     )

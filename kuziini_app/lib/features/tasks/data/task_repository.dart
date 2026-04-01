@@ -60,9 +60,11 @@ class TaskRepository {
         .order(orderBy ?? 'created_at', ascending: ascending)
         .range(offset, offset + limit - 1);
 
-    return (response as List)
+    final tasks = (response as List)
         .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
         .toList();
+
+    return _enrichTasksWithAssignees(tasks);
   }
 
   Future<List<TaskModel>> fetchTasksByDate(DateTime date) async {
@@ -74,9 +76,11 @@ class TaskRepository {
         .eq('due_date', dateStr)
         .order('start_time', ascending: true);
 
-    return (response as List)
+    final tasks = (response as List)
         .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
         .toList();
+
+    return _enrichTasksWithAssignees(tasks);
   }
 
   Future<List<TaskModel>> fetchTodaysTasks() async {
@@ -124,7 +128,11 @@ class TaskRepository {
       AppConstants.tableTasks,
       filters: {'id': id},
     );
-    return TaskModel.fromJson(response);
+    var task = TaskModel.fromJson(response);
+
+    // Enrich with assignee info
+    final enriched = await _enrichTasksWithAssignees([task]);
+    return enriched.first;
   }
 
   Future<TaskModel> createTask(TaskModel task) async {
@@ -163,6 +171,107 @@ class TaskRepository {
       'user_id': assigneeId,
       'assigned_by': userId,
     });
+  }
+
+  /// Fetches tasks assigned to a specific user via the task_assignees table.
+  Future<List<TaskModel>> fetchTasksAssignedTo(String userId, {DateTime? date}) async {
+    // Step 1: Get task IDs from task_assignees
+    final assigneeRows = await _supabase.client
+        .from('task_assignees')
+        .select('task_id')
+        .eq('user_id', userId);
+
+    final taskIds = (assigneeRows as List)
+        .map((row) => row['task_id'] as String)
+        .toList();
+
+    if (taskIds.isEmpty) return [];
+
+    // Step 2: Fetch those tasks
+    var query = _supabase.client
+        .from(AppConstants.tableTasks)
+        .select('*')
+        .inFilter('id', taskIds);
+
+    if (date != null) {
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      query = query.eq('due_date', dateStr);
+    }
+
+    final response = await query.order('created_at', ascending: false);
+
+    final tasks = (response as List)
+        .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
+        .toList();
+
+    // Step 3: Enrich with assignee info
+    return _enrichTasksWithAssignees(tasks);
+  }
+
+  /// Fetches assignee info for a single task from task_assignees joined with profiles.
+  Future<List<Map<String, dynamic>>> fetchTaskAssignees(String taskId) async {
+    final response = await _supabase.client
+        .from('task_assignees')
+        .select('*, profiles:user_id(id, full_name, email, avatar_url)')
+        .eq('task_id', taskId);
+
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  /// Reassign a task: delete old assignments and insert a new one.
+  Future<void> reassignTask(String taskId, String newAssigneeId) async {
+    final userId = _supabase.currentUserId;
+
+    // Delete existing assignments for this task
+    await _supabase.client
+        .from('task_assignees')
+        .delete()
+        .eq('task_id', taskId);
+
+    // Insert new assignment
+    await _supabase.client.from('task_assignees').insert({
+      'task_id': taskId,
+      'user_id': newAssigneeId,
+      'assigned_by': userId,
+    });
+  }
+
+  /// Enrich a list of tasks with assignee information from task_assignees + profiles.
+  Future<List<TaskModel>> _enrichTasksWithAssignees(List<TaskModel> tasks) async {
+    if (tasks.isEmpty) return tasks;
+
+    final taskIds = tasks.map((t) => t.id).toList();
+
+    final assigneeRows = await _supabase.client
+        .from('task_assignees')
+        .select('task_id, profiles:user_id(id, full_name, avatar_url)')
+        .inFilter('task_id', taskIds);
+
+    // Build a map: taskId -> first assignee info
+    final assigneeMap = <String, Map<String, dynamic>>{};
+    for (final row in (assigneeRows as List)) {
+      final taskId = row['task_id'] as String;
+      if (!assigneeMap.containsKey(taskId)) {
+        final profile = row['profiles'] as Map<String, dynamic>?;
+        if (profile != null) {
+          assigneeMap[taskId] = profile;
+        }
+      }
+    }
+
+    // Enrich tasks
+    return tasks.map((task) {
+      final assignee = assigneeMap[task.id];
+      if (assignee != null) {
+        return task.copyWith(
+          assigneeId: assignee['id'] as String?,
+          assigneeName: assignee['full_name'] as String?,
+          assigneeAvatarUrl: assignee['avatar_url'] as String?,
+        );
+      }
+      return task;
+    }).toList();
   }
 
   // ── Real-time ──

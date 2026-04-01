@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/services/supabase_service.dart';
 import '../data/models/task_model.dart';
 import '../data/models/task_comment.dart';
 import '../data/models/checklist_item.dart';
@@ -34,6 +35,7 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
   Future<List<TaskModel>> build() async {
     _repo = ref.read(taskRepositoryProvider);
     final date = ref.watch(selectedDateProvider);
+    final filter = ref.watch(taskFilterProvider);
 
     // Set up real-time subscription
     _subscription?.unsubscribe();
@@ -49,12 +51,30 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       }
     });
 
-    return _repo.fetchTasksByDate(date);
+    return _fetchFiltered(date, filter);
+  }
+
+  Future<List<TaskModel>> _fetchFiltered(DateTime date, TaskFilterType filter) async {
+    final userId = SupabaseService.instance.currentUserId;
+
+    switch (filter) {
+      case TaskFilterType.assignedToMe:
+        if (userId == null) return [];
+        return _repo.fetchTasksAssignedTo(userId, date: date);
+      case TaskFilterType.myTasks:
+        if (userId == null) return [];
+        return _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
+      case TaskFilterType.overdue:
+        return _repo.fetchOverdueTasks();
+      case TaskFilterType.all:
+        return _repo.fetchTasksByDate(date);
+    }
   }
 
   Future<void> _refreshTasks() async {
     final date = ref.read(selectedDateProvider);
-    state = await AsyncValue.guard(() => _repo.fetchTasksByDate(date));
+    final filter = ref.read(taskFilterProvider);
+    state = await AsyncValue.guard(() => _fetchFiltered(date, filter));
   }
 
   Future<void> refresh() async {
@@ -66,7 +86,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     state = await AsyncValue.guard(() async {
       await _repo.updateTaskStatus(taskId, TaskStatus.done);
       final date = ref.read(selectedDateProvider);
-      return _repo.fetchTasksByDate(date);
+      final filter = ref.read(taskFilterProvider);
+      return _fetchFiltered(date, filter);
     });
   }
 
@@ -74,7 +95,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     state = await AsyncValue.guard(() async {
       await _repo.updateTaskStatus(taskId, status);
       final date = ref.read(selectedDateProvider);
-      return _repo.fetchTasksByDate(date);
+      final filter = ref.read(taskFilterProvider);
+      return _fetchFiltered(date, filter);
     });
   }
 }
@@ -101,6 +123,14 @@ final taskChecklistProvider =
     FutureProvider.family<List<ChecklistItem>, String>((ref, taskId) async {
   final repo = ref.watch(taskRepositoryProvider);
   return repo.fetchChecklist(taskId);
+});
+
+// ── Task Assignees ──
+
+final taskAssigneesProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, taskId) async {
+  final repo = ref.watch(taskRepositoryProvider);
+  return repo.fetchTaskAssignees(taskId);
 });
 
 // ── Overdue Tasks ──

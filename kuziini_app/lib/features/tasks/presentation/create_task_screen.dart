@@ -11,6 +11,7 @@ import '../../../core/widgets/kuziini_button.dart';
 import '../../../core/widgets/kuziini_text_field.dart';
 import '../data/models/task_model.dart';
 import '../providers/tasks_provider.dart';
+import 'widgets/user_picker.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
   const CreateTaskScreen({super.key});
@@ -31,6 +32,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   TimeOfDay? _endTime;
   final List<String> _checklistItems = [];
   final List<String> _labels = [];
+  String? _assigneeId;
+  String? _assigneeName;
   bool _isSubmitting = false;
 
   @override
@@ -138,6 +141,15 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
       final repo = ref.read(taskRepositoryProvider);
       final createdTask = await repo.createTask(task);
+
+      // Assign task if an assignee was selected
+      if (_assigneeId != null) {
+        await SupabaseService.instance.client.from('task_assignees').insert({
+          'task_id': createdTask.id,
+          'user_id': _assigneeId,
+          'assigned_by': userId,
+        });
+      }
 
       // Add checklist items using the server-assigned task ID
       for (int i = 0; i < _checklistItems.length; i++) {
@@ -316,6 +328,32 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     ),
                   );
                 }).toList(),
+              ),
+
+              AppSpacing.vGapXl,
+
+              // Assign to
+              Text('Assign to', style: theme.textTheme.labelLarge),
+              AppSpacing.vGapSm,
+              _OptionTile(
+                icon: PhosphorIcons.userCircle(PhosphorIconsStyle.regular),
+                label: _assigneeName ?? 'Tap to assign',
+                isActive: _assigneeId != null,
+                onTap: () async {
+                  final result = await showUserPicker(context);
+                  if (result != null) {
+                    setState(() {
+                      _assigneeId = result.userId;
+                      _assigneeName = result.userName;
+                    });
+                  }
+                },
+                onClear: _assigneeId != null
+                    ? () => setState(() {
+                          _assigneeId = null;
+                          _assigneeName = null;
+                        })
+                    : null,
               ),
 
               AppSpacing.vGapXl,

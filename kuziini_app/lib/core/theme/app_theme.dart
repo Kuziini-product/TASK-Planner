@@ -6,16 +6,21 @@ import '../constants/app_spacing.dart';
 
 abstract final class AppTheme {
   // ── Light Theme ──
-  static ThemeData lightTheme(Color seedColor) {
+  static ThemeData lightTheme(Color seedColor, {Color? backgroundColor}) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: Brightness.light,
     );
 
+    final bgColor = backgroundColor ?? AppColors.scaffoldLight;
+    final cardColor = backgroundColor != null
+        ? Color.lerp(backgroundColor, Colors.white, 0.5)!
+        : AppColors.cardLight;
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.scaffoldLight,
+      scaffoldBackgroundColor: bgColor,
       textTheme: _buildTextTheme(AppColors.textPrimaryLight, AppColors.textSecondaryLight),
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -32,7 +37,7 @@ abstract final class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: AppColors.cardLight,
+        color: cardColor,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: AppSpacing.borderRadiusMd,
@@ -176,16 +181,18 @@ abstract final class AppTheme {
   }
 
   // ── Dark Theme ──
-  static ThemeData darkTheme(Color seedColor) {
+  static ThemeData darkTheme(Color seedColor, {Color? backgroundColor}) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: Brightness.dark,
     );
 
+    final bgColor = backgroundColor ?? AppColors.scaffoldDark;
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.scaffoldDark,
+      scaffoldBackgroundColor: bgColor,
       textTheme: _buildTextTheme(AppColors.textPrimaryDark, AppColors.textSecondaryDark),
       appBarTheme: AppBarTheme(
         elevation: 0,

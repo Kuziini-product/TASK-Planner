@@ -89,3 +89,41 @@ class PrimaryColorNotifier extends StateNotifier<Color> {
     await prefs.setInt('${AppConstants.prefAccentColor}_b', color.blue.toInt());
   }
 }
+
+// ── Background Color Provider ──
+const _bgKey = 'custom_bg';
+
+final backgroundColorProvider =
+    StateNotifierProvider<BackgroundColorNotifier, Color?>(
+  (ref) => BackgroundColorNotifier(),
+);
+
+class BackgroundColorNotifier extends StateNotifier<Color?> {
+  BackgroundColorNotifier() : super(null) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final r = prefs.getInt('${_bgKey}_r');
+    final g = prefs.getInt('${_bgKey}_g');
+    final b = prefs.getInt('${_bgKey}_b');
+    if (r != null && g != null && b != null) {
+      state = Color.fromARGB(255, r, g, b);
+    }
+  }
+
+  Future<void> setColor(Color? color) async {
+    state = color;
+    final prefs = await SharedPreferences.getInstance();
+    if (color == null) {
+      await prefs.remove('${_bgKey}_r');
+      await prefs.remove('${_bgKey}_g');
+      await prefs.remove('${_bgKey}_b');
+    } else {
+      await prefs.setInt('${_bgKey}_r', color.red.toInt());
+      await prefs.setInt('${_bgKey}_g', color.green.toInt());
+      await prefs.setInt('${_bgKey}_b', color.blue.toInt());
+    }
+  }
+}

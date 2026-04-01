@@ -494,7 +494,7 @@ class _AccentColorPickerState extends State<_AccentColorPicker> {
 
 // ── Theme Picker Dialog ──
 
-class _ThemePickerDialog extends StatefulWidget {
+class _ThemePickerDialog extends ConsumerStatefulWidget {
   const _ThemePickerDialog({
     required this.currentThemeMode,
     required this.currentColor,
@@ -508,10 +508,10 @@ class _ThemePickerDialog extends StatefulWidget {
   final ValueChanged<Color> onColorChanged;
 
   @override
-  State<_ThemePickerDialog> createState() => _ThemePickerDialogState();
+  ConsumerState<_ThemePickerDialog> createState() => _ThemePickerDialogState();
 }
 
-class _ThemePickerDialogState extends State<_ThemePickerDialog> {
+class _ThemePickerDialogState extends ConsumerState<_ThemePickerDialog> {
   late ThemeMode _selectedMode;
   late Color _selectedColor;
   bool _isCustom = false;
@@ -702,7 +702,19 @@ class _ThemePickerDialogState extends State<_ThemePickerDialog> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // Background color
+              Text('Background', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              _BackgroundColorRow(
+                onColorChanged: (color) {
+                  ref.read(backgroundColorProvider.notifier).setColor(color);
+                },
+                currentBg: ref.watch(backgroundColorProvider),
+              ),
+
+              const SizedBox(height: 16),
 
               // Apply button
               SizedBox(
@@ -722,4 +734,80 @@ class _ThemePickerDialogState extends State<_ThemePickerDialog> {
       ),
     );
   }
+}
+
+class _BackgroundColorRow extends StatelessWidget {
+  const _BackgroundColorRow({required this.onColorChanged, this.currentBg});
+
+  final ValueChanged<Color?> onColorChanged;
+  final Color? currentBg;
+
+  static const _bgColors = [
+    _BgOption('Default', null, Icons.format_color_reset),
+    _BgOption('White', Color(0xFFFFFFFF), null),
+    _BgOption('Snow', Color(0xFFFAFAFA), null),
+    _BgOption('Cream', Color(0xFFFFFDD0), null),
+    _BgOption('Mint', Color(0xFFF0FFF0), null),
+    _BgOption('Ice', Color(0xFFF0F8FF), null),
+    _BgOption('Lavender', Color(0xFFF5F0FF), null),
+    _BgOption('Blush', Color(0xFFFFF0F5), null),
+    _BgOption('Smoke', Color(0xFFF5F5F5), null),
+    _BgOption('Sand', Color(0xFFFAF0E6), null),
+    _BgOption('Charcoal', Color(0xFF1A1A2E), null),
+    _BgOption('Navy', Color(0xFF0F0E17), null),
+    _BgOption('Forest', Color(0xFF0A1F0A), null),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _bgColors.map((bg) {
+        final isSelected = (bg.color == null && currentBg == null) ||
+            (bg.color != null && currentBg != null &&
+                bg.color!.red == currentBg!.red &&
+                bg.color!.green == currentBg!.green &&
+                bg.color!.blue == currentBg!.blue);
+
+        return GestureDetector(
+          onTap: () => onColorChanged(bg.color),
+          child: Column(
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: bg.color ?? theme.scaffoldBackgroundColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? theme.colorScheme.primary : Colors.black12,
+                    width: isSelected ? 2.5 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.3), blurRadius: 4)]
+                      : null,
+                ),
+                child: bg.icon != null
+                    ? Icon(bg.icon, size: 14, color: isSelected ? theme.colorScheme.primary : Colors.grey)
+                    : (isSelected ? Icon(Icons.check, size: 14, color: _isLight(bg.color!) ? Colors.black : Colors.white) : null),
+              ),
+              const SizedBox(height: 2),
+              Text(bg.name, style: TextStyle(fontSize: 7, color: isSelected ? theme.colorScheme.primary : Colors.grey)),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  bool _isLight(Color c) => (c.red * 0.299 + c.green * 0.587 + c.blue * 0.114) > 186;
+}
+
+class _BgOption {
+  final String name;
+  final Color? color;
+  final IconData? icon;
+  const _BgOption(this.name, this.color, this.icon);
 }

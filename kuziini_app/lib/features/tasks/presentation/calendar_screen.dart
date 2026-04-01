@@ -170,7 +170,6 @@ class _WeekView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
@@ -182,7 +181,6 @@ class _WeekView extends ConsumerWidget {
 
     return Column(
       children: [
-        // Week header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
@@ -190,147 +188,153 @@ class _WeekView extends ConsumerWidget {
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
-        // 7 day cards in a row - same style as month grid but taller
+        // Day selector row
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: days.map((day) {
+              final isToday = AppDateUtils.isToday(day);
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => ref.read(_calendarSelectedDayProvider.notifier).state = day,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isToday ? theme.colorScheme.primary : null,
+                      borderRadius: BorderRadius.circular(8),
+                      border: isToday ? null : Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1],
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant)),
+                        Text('${day.day}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Hour slot cards - only show hours that have tasks
         Expanded(
           child: tasksAsync.when(
             data: (tasks) {
-              final tasksByDay = <int, List<TaskModel>>{};
+              // Group all week tasks by hour
+              final slotMap = <String, List<TaskModel>>{};
               for (final task in tasks) {
-                if (task.dueDate != null) {
-                  for (int i = 0; i < 7; i++) {
-                    if (AppDateUtils.isSameDay(task.dueDate!, days[i])) {
-                      tasksByDay.putIfAbsent(i, () => []).add(task);
-                      break;
-                    }
-                  }
-                }
+                if (task.startTime == null || task.dueDate == null) continue;
+                final h = task.startTime!.toLocal().hour;
+                final dayLabel = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1];
+                final key = '$dayLabel ${h.toString().padLeft(2, '0')}:00';
+                slotMap.putIfAbsent(key, () => []).add(task);
               }
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: List.generate(7, (dayIdx) {
-                    final day = days[dayIdx];
-                    final isToday = AppDateUtils.isToday(day);
-                    final dayTasks = tasksByDay[dayIdx] ?? [];
-                    final sorted = dayTasks.where((t) => t.startTime != null).toList()
-                      ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
-                    final noTime = dayTasks.where((t) => t.startTime == null).toList();
+              // Also group unscheduled
+              for (final task in tasks) {
+                if (task.startTime != null || task.dueDate == null) continue;
+                final dayLabel = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1];
+                final key = '$dayLabel Unscheduled';
+                slotMap.putIfAbsent(key, () => []).add(task);
+              }
 
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => ref.read(_calendarSelectedDayProvider.notifier).state = day,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            color: isToday ? primaryColor.withValues(alpha: 0.06) : null,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isToday ? primaryColor.withValues(alpha: 0.4) : theme.dividerColor.withValues(alpha: 0.15),
-                              width: isToday ? 1.5 : 0.5,
+              if (slotMap.isEmpty) {
+                return Center(child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)));
+              }
+
+              // Sort keys by day then hour
+              final sortedKeys = slotMap.keys.toList()..sort();
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: sortedKeys.length,
+                itemBuilder: (context, index) {
+                  final key = sortedKeys[index];
+                  final slotTasks = slotMap[key]!;
+                  final color = _priorityColorStatic(context, slotTasks.first.priority);
+                  final taskCount = slotTasks.length;
+
+                  return GestureDetector(
+                    onTap: () {
+                      if (taskCount == 1) {
+                        context.push('/task/${slotTasks.first.id}');
+                      } else {
+                        // Show expanded list
+                        showModalBottomSheet(
+                          context: context,
+                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                          builder: (ctx) => SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(key, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                                ),
+                                const SizedBox(height: 8),
+                                ...slotTasks.map((t) => ListTile(
+                                  leading: Container(width: 4, height: 32, decoration: BoxDecoration(color: _priorityColorStatic(context, t.priority), borderRadius: BorderRadius.circular(2))),
+                                  title: Text(t.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  subtitle: t.startTime != null ? Text(
+                                    t.endTime != null
+                                        ? '${AppDateUtils.formatTime(t.startTime!)} - ${AppDateUtils.formatTime(t.endTime!)}'
+                                        : AppDateUtils.formatTime(t.startTime!),
+                                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                                  ) : null,
+                                  onTap: () { Navigator.pop(ctx); context.push('/task/${t.id}'); },
+                                  dense: true,
+                                )),
+                                const SizedBox(height: 16),
+                              ],
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              // Day header
-                              Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isToday ? primaryColor : null,
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1],
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant),
-                                    ),
-                                    Text(
-                                      '${day.day}',
-                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Task bars area
-                              Expanded(
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    final cellWidth = constraints.maxWidth;
-                                    final cellHeight = constraints.maxHeight;
-                                    if (sorted.isEmpty && noTime.isEmpty) return const SizedBox();
-
-                                    final bars = <Widget>[];
-                                    int row = 0;
-                                    final barHeight = 4.0;
-                                    final barSpacing = 6.0;
-
-                                    for (final task in sorted.take(8)) {
-                                      final startMin = _minutesSinceStartStatic(task.startTime!);
-                                      final endMin = task.endTime != null
-                                          ? _minutesSinceStartStatic(task.endTime!)
-                                          : startMin + 60;
-
-                                      final leftPx = (startMin / _totalMinutes * cellWidth).clamp(1.0, cellWidth - 3);
-                                      final widthPx = ((endMin - startMin) / _totalMinutes * cellWidth).clamp(3.0, cellWidth - leftPx - 1);
-                                      final topPx = (row * barSpacing + 4).clamp(0.0, cellHeight - barHeight);
-
-                                      bars.add(Positioned(
-                                        left: leftPx,
-                                        top: topPx,
-                                        child: GestureDetector(
-                                          onTap: () => context.push('/task/${task.id}'),
-                                          child: Tooltip(
-                                            message: task.title,
-                                            child: Container(
-                                              width: widthPx,
-                                              height: barHeight,
-                                              decoration: BoxDecoration(
-                                                color: _priorityColorStatic(context, task.priority),
-                                                borderRadius: BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ));
-                                      row++;
-                                    }
-
-                                    for (int i = 0; i < noTime.length && i < 3; i++) {
-                                      final topPx = (row * barSpacing + 4).clamp(0.0, cellHeight - barHeight);
-                                      bars.add(Positioned(
-                                        left: 2,
-                                        top: topPx,
-                                        child: GestureDetector(
-                                          onTap: () => context.push('/task/${noTime[i].id}'),
-                                          child: Tooltip(
-                                            message: noTime[i].title,
-                                            child: Container(
-                                              width: cellWidth * 0.35,
-                                              height: barHeight,
-                                              decoration: BoxDecoration(
-                                                color: _priorityColorStatic(context, noTime[i].priority).withValues(alpha: 0.4),
-                                                borderRadius: BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ));
-                                      row++;
-                                    }
-
-                                    return Stack(clipBehavior: Clip.hardEdge, children: bars);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: color.withValues(alpha: 0.2)),
                       ),
-                    );
-                  }),
-                ),
+                      child: Row(
+                        children: [
+                          Container(width: 4, height: 24, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(key, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  taskCount == 1 ? slotTasks.first.title : '$taskCount tasks',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (taskCount > 1)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                              child: Text('$taskCount', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                            ),
+                          const SizedBox(width: 4),
+                          Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.regular), size: 14, color: theme.colorScheme.onSurfaceVariant),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
             loading: () => const LoadingIndicator(size: 24),
@@ -340,12 +344,6 @@ class _WeekView extends ConsumerWidget {
       ],
     );
   }
-}
-
-double _minutesSinceStartStatic(DateTime time) {
-  final local = time.toLocal();
-  final mins = (local.hour - _dayStartHour) * 60 + local.minute;
-  return mins.clamp(0, _totalMinutes).toDouble();
 }
 
 Color _priorityColorStatic(BuildContext context, TaskPriority priority) {

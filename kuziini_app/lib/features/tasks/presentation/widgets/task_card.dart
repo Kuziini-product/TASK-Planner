@@ -10,6 +10,7 @@ import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/widgets/kuziini_card.dart';
+import '../../../../core/widgets/voice_input_button.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/task_model.dart';
 import '../../providers/tasks_provider.dart';
@@ -306,19 +307,37 @@ class TaskCard extends ConsumerWidget {
                 Text('Relocate Task', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
                 // Reason (mandatory)
-                TextField(
-                  controller: reasonController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: 'Reason for relocation *',
-                    hintText: 'Why is this task being moved?',
-                    prefixIcon: Icon(PhosphorIcons.notepad(PhosphorIconsStyle.regular)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                  ),
-                  maxLines: 2,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (_) => setSheetState(() {}),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: reasonController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: 'Reason for relocation *',
+                          hintText: 'Why is this task being moved?',
+                          prefixIcon: Icon(PhosphorIcons.notepad(PhosphorIconsStyle.regular)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                        ),
+                        maxLines: 2,
+                        textCapitalization: TextCapitalization.sentences,
+                        onChanged: (_) => setSheetState(() {}),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 4),
+                      child: VoiceInputButton(
+                        mini: true,
+                        hintText: 'Say the reason...',
+                        onResult: (text) {
+                          reasonController.text = reasonController.text.isEmpty ? text : '${reasonController.text} $text';
+                          setSheetState(() {});
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 // Date

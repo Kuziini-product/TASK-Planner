@@ -12,6 +12,7 @@ import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
 import '../../../core/widgets/kuziini_button.dart';
 import '../../../core/widgets/kuziini_text_field.dart';
+import '../../../core/widgets/voice_input_button.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -140,20 +141,38 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 const SizedBox(height: 16),
                 Text('Relocate Task', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
-                // Reason (mandatory)
-                TextField(
-                  controller: reasonController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: 'Reason for relocation *',
-                    hintText: 'Why is this task being moved?',
-                    prefixIcon: Icon(PhosphorIcons.notepad(PhosphorIconsStyle.regular)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                  ),
-                  maxLines: 2,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (_) => setSheetState(() {}),
+                // Reason (mandatory) + voice
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: reasonController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: 'Reason for relocation *',
+                          hintText: 'Why is this task being moved?',
+                          prefixIcon: Icon(PhosphorIcons.notepad(PhosphorIconsStyle.regular)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                        ),
+                        maxLines: 2,
+                        textCapitalization: TextCapitalization.sentences,
+                        onChanged: (_) => setSheetState(() {}),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 4),
+                      child: VoiceInputButton(
+                        mini: true,
+                        hintText: 'Say the reason...',
+                        onResult: (text) {
+                          reasonController.text = reasonController.text.isEmpty ? text : '${reasonController.text} $text';
+                          setSheetState(() {});
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 // Date

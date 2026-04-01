@@ -263,7 +263,7 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-class _AccentColorPicker extends StatelessWidget {
+class _AccentColorPicker extends StatefulWidget {
   const _AccentColorPicker({
     required this.currentColor,
     required this.onColorSelected,
@@ -273,62 +273,201 @@ class _AccentColorPicker extends StatelessWidget {
   final ValueChanged<Color> onColorSelected;
 
   @override
+  State<_AccentColorPicker> createState() => _AccentColorPickerState();
+}
+
+class _AccentColorPickerState extends State<_AccentColorPicker> {
+  int _selectedBaseIndex = 0;
+  double _intensity = 0.5; // 0=light, 0.5=normal, 1=dark
+
+  @override
+  void initState() {
+    super.initState();
+    // Find closest base color
+    _selectedBaseIndex = _findClosestColor(widget.currentColor);
+  }
+
+  int _findClosestColor(Color color) {
+    int closest = 0;
+    double minDist = double.infinity;
+    for (int i = 0; i < accentColorOptions.length; i++) {
+      final c = accentColorOptions[i].color;
+      final dist = ((c.red - color.red) * (c.red - color.red) +
+              (c.green - color.green) * (c.green - color.green) +
+              (c.blue - color.blue) * (c.blue - color.blue))
+          .toDouble();
+      if (dist < minDist) {
+        minDist = dist;
+        closest = i;
+      }
+    }
+    return closest;
+  }
+
+  Color _adjustIntensity(Color base, double intensity) {
+    // intensity: 0 = very light, 0.5 = normal, 1 = very dark
+    if (intensity <= 0.5) {
+      // Lighten: mix with white
+      final t = 1.0 - (intensity * 2); // 0->1 (white), 0.5->0 (normal)
+      return Color.fromARGB(
+        255,
+        (base.red + (255 - base.red) * t).round().clamp(0, 255),
+        (base.green + (255 - base.green) * t).round().clamp(0, 255),
+        (base.blue + (255 - base.blue) * t).round().clamp(0, 255),
+      );
+    } else {
+      // Darken: mix with black
+      final t = (intensity - 0.5) * 2; // 0.5->0 (normal), 1->1 (black)
+      return Color.fromARGB(
+        255,
+        (base.red * (1 - t)).round().clamp(0, 255),
+        (base.green * (1 - t)).round().clamp(0, 255),
+        (base.blue * (1 - t)).round().clamp(0, 255),
+      );
+    }
+  }
+
+  void _selectColor(int index) {
+    setState(() => _selectedBaseIndex = index);
+    final adjusted = _adjustIntensity(accentColorOptions[index].color, _intensity);
+    widget.onColorSelected(adjusted);
+  }
+
+  void _updateIntensity(double value) {
+    setState(() => _intensity = value);
+    final adjusted = _adjustIntensity(accentColorOptions[_selectedBaseIndex].color, value);
+    widget.onColorSelected(adjusted);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final currentAdjusted = _adjustIntensity(
+      accentColorOptions[_selectedBaseIndex].color, _intensity,
+    );
 
-    return SizedBox(
-      height: 60,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: accentColorOptions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final option = accentColorOptions[index];
-          final isSelected = option.color.value == currentColor.value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Color circles
+        SizedBox(
+          height: 56,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: accentColorOptions.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final option = accentColorOptions[index];
+              final isSelected = index == _selectedBaseIndex;
+              final displayColor = _adjustIntensity(option.color, _intensity);
 
-          return GestureDetector(
-            onTap: () => onColorSelected(option.color),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: option.color,
-                shape: BoxShape.circle,
-                border: isSelected
-                    ? Border.all(
-                        color: isDark ? Colors.white : Colors.black87,
-                        width: 2.5,
-                      )
-                    : Border.all(
-                        color: isDark
-                            ? Colors.white12
-                            : Colors.black.withValues(alpha: 0.08),
-                        width: 1,
+              return GestureDetector(
+                onTap: () => _selectColor(index),
+                child: Column(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: displayColor,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(
+                                color: isDark ? Colors.white : Colors.black87,
+                                width: 2.5,
+                              )
+                            : Border.all(
+                                color: isDark ? Colors.white12 : Colors.black12,
+                                width: 1,
+                              ),
+                        boxShadow: isSelected
+                            ? [BoxShadow(color: displayColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))]
+                            : null,
                       ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: option.color.withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
+                      child: isSelected
+                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                          : null,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      option.name,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                        color: isSelected ? currentAdjusted : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Intensity label
+        Row(
+          children: [
+            Text('Intensity', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Container(
+              width: 24, height: 24,
+              decoration: BoxDecoration(
+                color: currentAdjusted,
+                shape: BoxShape.circle,
+                border: Border.all(color: isDark ? Colors.white24 : Colors.black12),
               ),
-              child: isSelected
-                  ? const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    )
-                  : null,
             ),
-          );
-        },
-      ),
+          ],
+        ),
+        const SizedBox(height: 4),
+
+        // Intensity slider
+        Row(
+          children: [
+            Icon(Icons.wb_sunny, size: 16, color: theme.colorScheme.onSurfaceVariant),
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: currentAdjusted,
+                  thumbColor: currentAdjusted,
+                  inactiveTrackColor: currentAdjusted.withValues(alpha: 0.2),
+                  overlayColor: currentAdjusted.withValues(alpha: 0.1),
+                  trackHeight: 6,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                ),
+                child: Slider(
+                  value: _intensity,
+                  min: 0.0,
+                  max: 1.0,
+                  onChanged: _updateIntensity,
+                ),
+              ),
+            ),
+            Icon(Icons.dark_mode, size: 16, color: theme.colorScheme.onSurfaceVariant),
+          ],
+        ),
+
+        // Preview bar
+        const SizedBox(height: 8),
+        Container(
+          height: 8,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            gradient: LinearGradient(
+              colors: List.generate(11, (i) {
+                return _adjustIntensity(
+                  accentColorOptions[_selectedBaseIndex].color,
+                  i / 10.0,
+                );
+              }),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

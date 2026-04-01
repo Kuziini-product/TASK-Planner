@@ -70,21 +70,19 @@ class PrimaryColorNotifier extends StateNotifier<Color> {
 
   Future<void> _loadColor() async {
     final prefs = await SharedPreferences.getInstance();
-    final hex = prefs.getString(AppConstants.prefAccentColor);
-    if (hex != null) {
-      final value = int.tryParse(hex, radix: 16);
-      if (value != null) {
-        state = Color(value);
-      }
+    final r = prefs.getInt('${AppConstants.prefAccentColor}_r');
+    final g = prefs.getInt('${AppConstants.prefAccentColor}_g');
+    final b = prefs.getInt('${AppConstants.prefAccentColor}_b');
+    if (r != null && g != null && b != null) {
+      state = Color.fromARGB(255, r, g, b);
     }
   }
 
   Future<void> setColor(Color color) async {
     state = color;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      AppConstants.prefAccentColor,
-      color.value.toRadixString(16).padLeft(8, '0'),
-    );
+    await prefs.setInt('${AppConstants.prefAccentColor}_r', color.red.toInt());
+    await prefs.setInt('${AppConstants.prefAccentColor}_g', color.green.toInt());
+    await prefs.setInt('${AppConstants.prefAccentColor}_b', color.blue.toInt());
   }
 }

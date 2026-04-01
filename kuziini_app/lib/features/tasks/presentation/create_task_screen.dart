@@ -424,6 +424,30 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     });
   }
 
+  Future<void> _deleteTask() async {
+    if (!_isEditMode) return;
+    final confirmed = await context.showConfirmDialog(
+      title: 'Delete Task',
+      message: 'Are you sure you want to delete this task? This cannot be undone.',
+      confirmLabel: 'Delete',
+      isDestructive: true,
+    );
+    if (confirmed == true && mounted) {
+      try {
+        final repo = ref.read(taskRepositoryProvider);
+        await repo.deleteTask(widget.existingTask!.id);
+        ref.invalidate(dailyTasksProvider);
+        if (mounted) {
+          Navigator.of(context).pop();
+          Navigator.of(context).pop();
+          context.showSnackBar('Task deleted');
+        }
+      } catch (e) {
+        if (mounted) context.showSnackBar('Failed to delete task', isError: true);
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -570,6 +594,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         showBackButton: true,
         title: _isEditMode ? 'Edit Task' : 'New Task',
         actions: [
+          if (_isEditMode)
+            IconButton(
+              onPressed: () => _deleteTask(),
+              icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.regular), color: AppColors.error),
+              tooltip: 'Delete task',
+            ),
           TextButton(
             onPressed: _isSubmitting ? null : _submit,
             child: _isSubmitting

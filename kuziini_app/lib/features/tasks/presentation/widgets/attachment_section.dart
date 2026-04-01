@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:js_util' as js_util;
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -179,34 +181,110 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
   }
 
   Future<void> _shareLocation() async {
-    final controller = TextEditingController();
+    final addressController = TextEditingController();
+    final linkController = TextEditingController();
+
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Share Location'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter address or location name',
-            prefixIcon: Icon(Icons.location_on_outlined),
-            border: OutlineInputBorder(),
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.location_on, color: AppColors.primary, size: 24),
+              const SizedBox(width: 8),
+              const Text('Share Location'),
+            ],
           ),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (val) => Navigator.of(ctx).pop(val.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Address field
+              TextField(
+                controller: addressController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Location name or address',
+                  prefixIcon: const Icon(Icons.place_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 12),
+              // Link field
+              TextField(
+                controller: linkController,
+                decoration: InputDecoration(
+                  hintText: 'Google Maps link (optional)',
+                  prefixIcon: const Icon(Icons.link),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) {
+                  final address = addressController.text.trim();
+                  final link = linkController.text.trim();
+                  if (address.isNotEmpty || link.isNotEmpty) {
+                    Navigator.of(ctx).pop(_formatLocation(address, link));
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              // Quick actions
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        // Open Google Maps to get link
+                        launchUrl(Uri.parse('https://www.google.com/maps'), mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.map_outlined, size: 16),
+                      label: const Text('Open Maps', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        // Use browser geolocation
+                        _getCurrentLocation(ctx, addressController, linkController);
+                      },
+                      icon: const Icon(Icons.my_location, size: 16),
+                      label: const Text('My Location', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Share'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                final address = addressController.text.trim();
+                final link = linkController.text.trim();
+                if (address.isNotEmpty || link.isNotEmpty) {
+                  Navigator.of(ctx).pop(_formatLocation(address, link));
+                }
+              },
+              icon: const Icon(Icons.send, size: 16),
+              label: const Text('Share'),
+            ),
+          ],
+        );
+      },
     );
 
     if (result == null || result.isEmpty) return;
@@ -218,7 +296,7 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
       await repo.addComment(
         taskId: widget.taskId,
         userId: userId,
-        content: '\u{1F4CD} $result',
+        content: result,
       );
       ref.invalidate(taskCommentsProvider(widget.taskId));
       if (mounted) {
@@ -229,6 +307,68 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
         context.showSnackBar('Failed to share location', isError: true);
       }
     }
+  }
+
+  String _formatLocation(String address, String link) {
+    final buffer = StringBuffer('\u{1F4CD} ');
+    if (address.isNotEmpty) buffer.write(address);
+    if (link.isNotEmpty) {
+      if (address.isNotEmpty) buffer.write('\n');
+      buffer.write(link);
+    }
+    return buffer.toString();
+  }
+
+  void _getCurrentLocation(BuildContext dialogContext, TextEditingController addressCtrl, TextEditingController linkCtrl) {
+    try {
+      // Use dart:js_util for web geolocation
+      _getWebGeolocation().then((coords) {
+        if (coords != null) {
+          final lat = coords['lat']!;
+          final lng = coords['lng']!;
+          addressCtrl.text = 'My Location ($lat, $lng)';
+          linkCtrl.text = 'https://www.google.com/maps?q=$lat,$lng';
+        }
+      }).catchError((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not get location. Allow location access in browser.')),
+          );
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<Map<String, double>?> _getWebGeolocation() async {
+    try {
+      // ignore: avoid_dynamic_calls
+      final dynamic js = await _jsGeolocation();
+      if (js != null) return js;
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, double>?> _jsGeolocation() async {
+    // Use dart:js_util to call navigator.geolocation.getCurrentPosition
+    final completer = Completer<Map<String, double>?>();
+    try {
+      final nav = js_util.getProperty(js_util.globalThis, 'navigator');
+      final geo = js_util.getProperty(nav, 'geolocation');
+      js_util.callMethod(geo, 'getCurrentPosition', [
+        js_util.allowInterop((pos) {
+          final coords = js_util.getProperty(pos, 'coords');
+          final lat = js_util.getProperty<num>(coords, 'latitude').toDouble();
+          final lng = js_util.getProperty<num>(coords, 'longitude').toDouble();
+          completer.complete({'lat': lat, 'lng': lng});
+        }),
+        js_util.allowInterop((err) {
+          completer.complete(null);
+        }),
+      ]);
+    } catch (_) {
+      completer.complete(null);
+    }
+    return completer.future;
   }
 
   void _showAddOptions() {

@@ -716,6 +716,100 @@ class _ThemePickerDialogState extends ConsumerState<_ThemePickerDialog> {
 
               const SizedBox(height: 16),
 
+              // Button color
+              Text('Button Color', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              _BackgroundColorRow(
+                onColorChanged: (color) {
+                  ref.read(buttonColorProvider.notifier).setColor(color);
+                },
+                currentBg: ref.watch(buttonColorProvider),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Border width
+              Text('Button Border', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text('0', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: _selectedColor,
+                        thumbColor: _selectedColor,
+                        inactiveTrackColor: _selectedColor.withValues(alpha: 0.2),
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                      ),
+                      child: Slider(
+                        value: ref.watch(buttonBorderWidthProvider),
+                        min: 0, max: 3,
+                        divisions: 6,
+                        label: ref.watch(buttonBorderWidthProvider).toStringAsFixed(1),
+                        onChanged: (v) {
+                          ref.read(buttonBorderWidthProvider.notifier).setWidth(v);
+                        },
+                      ),
+                    ),
+                  ),
+                  Text('3', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+
+              // Border color
+              if (ref.watch(buttonBorderWidthProvider) > 0) ...[
+                const SizedBox(height: 8),
+                Text('Border Color', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _miniColorCircle(null, 'Default', ref.watch(buttonBorderColorProvider) == null, theme, () {
+                      ref.read(buttonBorderColorProvider.notifier).setColor(null);
+                    }),
+                    ...accentColorOptions.map((o) {
+                      final isSelected = ref.watch(buttonBorderColorProvider) != null &&
+                          o.color.red == ref.watch(buttonBorderColorProvider)!.red &&
+                          o.color.green == ref.watch(buttonBorderColorProvider)!.green &&
+                          o.color.blue == ref.watch(buttonBorderColorProvider)!.blue;
+                      return _miniColorCircle(o.color, o.name, isSelected, theme, () {
+                        ref.read(buttonBorderColorProvider.notifier).setColor(o.color);
+                      });
+                    }),
+                    _miniColorCircle(Colors.black, 'Black',
+                      ref.watch(buttonBorderColorProvider)?.red == 0 && ref.watch(buttonBorderColorProvider)?.green == 0 && ref.watch(buttonBorderColorProvider)?.blue == 0,
+                      theme, () { ref.read(buttonBorderColorProvider.notifier).setColor(Colors.black); }),
+                    _miniColorCircle(Colors.white, 'White',
+                      ref.watch(buttonBorderColorProvider)?.red == 255 && ref.watch(buttonBorderColorProvider)?.green == 255 && ref.watch(buttonBorderColorProvider)?.blue == 255,
+                      theme, () { ref.read(buttonBorderColorProvider.notifier).setColor(Colors.white); }),
+                  ],
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Preview button
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    Text('Preview', style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    ElevatedButton(onPressed: () {}, child: const Text('Button Preview')),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
               // Apply button
               SizedBox(
                 width: double.infinity,
@@ -734,6 +828,34 @@ class _ThemePickerDialogState extends ConsumerState<_ThemePickerDialog> {
       ),
     );
   }
+
+  Widget _miniColorCircle(Color? color, String name, bool isSelected, ThemeData theme, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              color: color ?? theme.colorScheme.primary,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? theme.colorScheme.onSurface : Colors.black12,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: color == null
+                ? Icon(Icons.auto_awesome, size: 12, color: Colors.white)
+                : (isSelected ? Icon(Icons.check, size: 12, color: _isLightColor(color) ? Colors.black : Colors.white) : null),
+          ),
+          const SizedBox(height: 1),
+          Text(name, style: TextStyle(fontSize: 6, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  bool _isLightColor(Color c) => (c.red * 0.299 + c.green * 0.587 + c.blue * 0.114) > 186;
 }
 
 class _BackgroundColorRow extends StatelessWidget {

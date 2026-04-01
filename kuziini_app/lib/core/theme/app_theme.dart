@@ -6,7 +6,7 @@ import '../constants/app_spacing.dart';
 
 abstract final class AppTheme {
   // ── Light Theme ──
-  static ThemeData lightTheme(Color seedColor, {Color? backgroundColor}) {
+  static ThemeData lightTheme(Color seedColor, {Color? backgroundColor, Color? buttonColor, double borderWidth = 0, Color? borderColor}) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: Brightness.light,
@@ -47,40 +47,41 @@ abstract final class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
+          backgroundColor: buttonColor ?? colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusMd,
+            side: borderWidth > 0 ? BorderSide(color: borderColor ?? colorScheme.outline, width: borderWidth) : BorderSide.none,
           ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: buttonColor ?? colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.borderRadiusMd,
+            side: borderWidth > 0 ? BorderSide(color: borderColor ?? colorScheme.outline, width: borderWidth) : BorderSide.none,
           ),
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: colorScheme.primary,
+          foregroundColor: buttonColor ?? colorScheme.primary,
           minimumSize: const Size(double.infinity, 52),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.borderRadiusMd,
-          ),
-          side: BorderSide(color: colorScheme.primary),
-          textStyle: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusMd),
+          side: BorderSide(color: borderColor ?? buttonColor ?? colorScheme.primary, width: borderWidth > 0 ? borderWidth : 1),
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: colorScheme.primary,
-          textStyle: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          foregroundColor: buttonColor ?? colorScheme.primary,
+          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -181,7 +182,7 @@ abstract final class AppTheme {
   }
 
   // ── Dark Theme ──
-  static ThemeData darkTheme(Color seedColor, {Color? backgroundColor}) {
+  static ThemeData darkTheme(Color seedColor, {Color? backgroundColor, Color? buttonColor, double borderWidth = 0, Color? borderColor}) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: Brightness.dark,
@@ -219,40 +220,41 @@ abstract final class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
+          backgroundColor: buttonColor ?? colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusMd,
+            side: borderWidth > 0 ? BorderSide(color: borderColor ?? colorScheme.outline, width: borderWidth) : BorderSide.none,
           ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: buttonColor ?? colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.borderRadiusMd,
+            side: borderWidth > 0 ? BorderSide(color: borderColor ?? colorScheme.outline, width: borderWidth) : BorderSide.none,
           ),
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: colorScheme.primary,
+          foregroundColor: buttonColor ?? colorScheme.primary,
           minimumSize: const Size(double.infinity, 52),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.borderRadiusMd,
-          ),
-          side: BorderSide(color: colorScheme.primary),
-          textStyle: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusMd),
+          side: BorderSide(color: borderColor ?? buttonColor ?? colorScheme.primary, width: borderWidth > 0 ? borderWidth : 1),
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: colorScheme.primary,
-          textStyle: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          foregroundColor: buttonColor ?? colorScheme.primary,
+          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

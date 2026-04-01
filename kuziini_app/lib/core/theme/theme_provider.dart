@@ -127,3 +127,95 @@ class BackgroundColorNotifier extends StateNotifier<Color?> {
     }
   }
 }
+
+// ── Button Color Provider ──
+const _btnKey = 'custom_btn';
+
+final buttonColorProvider =
+    StateNotifierProvider<ButtonColorNotifier, Color?>(
+  (ref) => ButtonColorNotifier(),
+);
+
+class ButtonColorNotifier extends StateNotifier<Color?> {
+  ButtonColorNotifier() : super(null) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final r = prefs.getInt('${_btnKey}_r');
+    final g = prefs.getInt('${_btnKey}_g');
+    final b = prefs.getInt('${_btnKey}_b');
+    if (r != null && g != null && b != null) {
+      state = Color.fromARGB(255, r, g, b);
+    }
+  }
+
+  Future<void> setColor(Color? color) async {
+    state = color;
+    final prefs = await SharedPreferences.getInstance();
+    if (color == null) {
+      await prefs.remove('${_btnKey}_r');
+      await prefs.remove('${_btnKey}_g');
+      await prefs.remove('${_btnKey}_b');
+    } else {
+      await prefs.setInt('${_btnKey}_r', color.red.toInt());
+      await prefs.setInt('${_btnKey}_g', color.green.toInt());
+      await prefs.setInt('${_btnKey}_b', color.blue.toInt());
+    }
+  }
+}
+
+// ── Button Border Provider ──
+const _borderKey = 'custom_border';
+
+final buttonBorderWidthProvider =
+    StateNotifierProvider<ButtonBorderWidthNotifier, double>(
+  (ref) => ButtonBorderWidthNotifier(),
+);
+
+class ButtonBorderWidthNotifier extends StateNotifier<double> {
+  ButtonBorderWidthNotifier() : super(0) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getDouble('${_borderKey}_width') ?? 0;
+  }
+
+  Future<void> setWidth(double width) async {
+    state = width;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('${_borderKey}_width', width);
+  }
+}
+
+final buttonBorderColorProvider =
+    StateNotifierProvider<ButtonBorderColorNotifier, Color?>(
+  (ref) => ButtonBorderColorNotifier(),
+);
+
+class ButtonBorderColorNotifier extends StateNotifier<Color?> {
+  ButtonBorderColorNotifier() : super(null) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final r = prefs.getInt('${_borderKey}_r');
+    final g = prefs.getInt('${_borderKey}_g');
+    final b = prefs.getInt('${_borderKey}_b');
+    if (r != null && g != null && b != null) {
+      state = Color.fromARGB(255, r, g, b);
+    }
+  }
+
+  Future<void> setColor(Color? color) async {
+    state = color;
+    final prefs = await SharedPreferences.getInstance();
+    if (color == null) {
+      await prefs.remove('${_borderKey}_r');
+      await prefs.remove('${_borderKey}_g');
+      await prefs.remove('${_borderKey}_b');
+    } else {
+      await prefs.setInt('${_borderKey}_r', color.red.toInt());
+      await prefs.setInt('${_borderKey}_g', color.green.toInt());
+      await prefs.setInt('${_borderKey}_b', color.blue.toInt());
+    }
+  }
+}

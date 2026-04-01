@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -79,19 +80,23 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
             SliverAppBar(
               floating: true,
               snap: true,
+              centerTitle: true,
               title: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
                     'assets/images/kuziini_logo.png',
                     height: 32,
                     color: theme.colorScheme.onSurface,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Text(
                     'Kuziini',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w300,
                       color: primaryColor,
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ],

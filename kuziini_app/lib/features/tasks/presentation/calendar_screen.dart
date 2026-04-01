@@ -608,39 +608,58 @@ class _CalendarGrid extends ConsumerStatefulWidget {
 }
 
 class _CalendarGridState extends ConsumerState<_CalendarGrid> {
-  DateTime? _dragStart;
-  DateTime? _dragEnd;
-  bool _isDragging = false;
-
-  // Map cell index to date for hit testing
-  final _cellKeys = <int, GlobalKey>{};
-  final _cellDates = <int, DateTime>{};
+  DateTime? _rangeStart;
+  DateTime? _rangeEnd;
 
   bool _isInRange(DateTime date) {
-    if (_dragStart == null || _dragEnd == null) return false;
-    final start = _dragStart!.isBefore(_dragEnd!) ? _dragStart! : _dragEnd!;
-    final end = _dragStart!.isBefore(_dragEnd!) ? _dragEnd! : _dragStart!;
+    if (_rangeStart == null) return false;
+    if (_rangeEnd == null) return AppDateUtils.isSameDay(date, _rangeStart!);
+    final start = _rangeStart!.isBefore(_rangeEnd!) ? _rangeStart! : _rangeEnd!;
+    final end = _rangeStart!.isBefore(_rangeEnd!) ? _rangeEnd! : _rangeStart!;
     return !date.isBefore(start) && !date.isAfter(end);
   }
 
-  void _onDragEnd() {
-    if (_dragStart == null || _dragEnd == null || _dragStart == _dragEnd) {
-      setState(() { _isDragging = false; _dragStart = null; _dragEnd = null; });
-      return;
+  void _onDayTap(DateTime date) {
+    if (_rangeStart == null) {
+      // First tap: just select day (open day view)
+      widget.onDaySelected(date);
+    } else if (_rangeEnd == null) {
+      // Second tap: set end of range
+      if (AppDateUtils.isSameDay(date, _rangeStart!)) {
+        // Same day tapped - cancel range, open day
+        setState(() { _rangeStart = null; });
+        widget.onDaySelected(date);
+      } else {
+        setState(() => _rangeEnd = date);
+      }
+    } else {
+      // Range already set, reset
+      setState(() { _rangeStart = null; _rangeEnd = null; });
     }
+  }
 
-    final start = _dragStart!.isBefore(_dragEnd!) ? _dragStart! : _dragEnd!;
-    final end = _dragStart!.isBefore(_dragEnd!) ? _dragEnd! : _dragStart!;
+  void _onDayLongPress(DateTime date) {
+    // Long press starts range selection
+    setState(() { _rangeStart = date; _rangeEnd = null; });
+  }
 
-    setState(() { _isDragging = false; _dragStart = null; _dragEnd = null; });
+  void _createRangeTask() {
+    if (_rangeStart == null || _rangeEnd == null) return;
+    final start = _rangeStart!.isBefore(_rangeEnd!) ? _rangeStart! : _rangeEnd!;
+    final end = _rangeStart!.isBefore(_rangeEnd!) ? _rangeEnd! : _rangeStart!;
 
-    // Navigate to create task with date range
+    setState(() { _rangeStart = null; _rangeEnd = null; });
+
     final params = <String, String>{
       'date': start.toIso8601String().split('T').first,
       'endDate': end.toIso8601String().split('T').first,
     };
     final uri = Uri(path: '/create-task', queryParameters: params);
     context.push(uri.toString());
+  }
+
+  void _cancelRange() {
+    setState(() { _rangeStart = null; _rangeEnd = null; });
   }
 
   @override
@@ -652,73 +671,45 @@ class _CalendarGridState extends ConsumerState<_CalendarGrid> {
     final startWeekday = firstDay.weekday;
     final daysInMonth = lastDay.day;
 
-    _cellKeys.clear();
-    _cellDates.clear();
+    final hasRange = _rangeStart != null;
+    final hasFullRange = _rangeStart != null && _rangeEnd != null;
 
     final cells = <Widget>[];
-    int cellIdx = 0;
-
     for (int i = 1; i < startWeekday; i++) {
       cells.add(const SizedBox());
-      cellIdx++;
     }
 
     for (int day = 1; day <= daysInMonth; day++) {
       final date = DateTime(widget.month.year, widget.month.month, day);
       final isToday = AppDateUtils.isToday(date);
       final tasks = widget.tasksByDay[day] ?? [];
-      final inRange = _isDragging && _isInRange(date);
-      final idx = cellIdx;
-
-      _cellKeys[idx] = GlobalKey();
-      _cellDates[idx] = date;
+      final inRange = _isInRange(date);
+      final isRangeEdge = (_rangeStart != null && AppDateUtils.isSameDay(date, _rangeStart!)) ||
+          (_rangeEnd != null && AppDateUtils.isSameDay(date, _rangeEnd!));
 
       cells.add(
         GestureDetector(
-          key: _cellKeys[idx],
-          onTap: () => widget.onDaySelected(date),
-          onLongPressStart: (_) {
-            setState(() { _isDragging = true; _dragStart = date; _dragEnd = date; });
-          },
-          onLongPressMoveUpdate: (details) {
-            // Find which cell the finger is over
-            final pos = details.globalPosition;
-            for (final entry in _cellKeys.entries) {
-              final key = entry.value;
-              final ctx = key.currentContext;
-              if (ctx == null) continue;
-              final box = ctx.findRenderObject() as RenderBox?;
-              if (box == null) continue;
-              final cellPos = box.localToGlobal(Offset.zero);
-              final cellSize = box.size;
-              if (pos.dx >= cellPos.dx && pos.dx <= cellPos.dx + cellSize.width &&
-                  pos.dy >= cellPos.dy && pos.dy <= cellPos.dy + cellSize.height) {
-                final d = _cellDates[entry.key];
-                if (d != null && d != _dragEnd) {
-                  setState(() => _dragEnd = d);
-                }
-                break;
-              }
-            }
-          },
-          onLongPressEnd: (_) => _onDragEnd(),
+          onTap: () => _onDayTap(date),
+          onLongPress: () => _onDayLongPress(date),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             margin: const EdgeInsets.all(1),
             decoration: BoxDecoration(
-              color: inRange
-                  ? primaryColor.withValues(alpha: 0.2)
-                  : isToday
-                      ? primaryColor.withValues(alpha: 0.08)
-                      : null,
+              color: isRangeEdge
+                  ? primaryColor
+                  : inRange
+                      ? primaryColor.withValues(alpha: 0.15)
+                      : isToday
+                          ? primaryColor.withValues(alpha: 0.08)
+                          : null,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: inRange
-                    ? primaryColor
+                color: inRange || isRangeEdge
+                    ? primaryColor.withValues(alpha: 0.5)
                     : isToday
                         ? primaryColor.withValues(alpha: 0.4)
                         : Colors.transparent,
-                width: inRange ? 1.5 : isToday ? 1.5 : 0,
+                width: inRange ? 1 : isToday ? 1.5 : 0,
               ),
             ),
             child: Column(
@@ -730,23 +721,21 @@ class _CalendarGridState extends ConsumerState<_CalendarGrid> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: isToday || inRange ? FontWeight.w800 : FontWeight.w500,
-                      color: inRange ? primaryColor : isToday ? primaryColor : theme.colorScheme.onSurface,
+                      color: isRangeEdge ? Colors.white : inRange ? primaryColor : isToday ? primaryColor : theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
-                // Task dots
                 if (tasks.isNotEmpty)
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(2),
                       child: Wrap(
-                        spacing: 2,
-                        runSpacing: 2,
+                        spacing: 2, runSpacing: 2,
                         children: tasks.take(5).map((t) => Container(
                           width: 4, height: 4,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _priorityColorStatic(context, t.priority),
+                            color: isRangeEdge ? Colors.white70 : _priorityColorStatic(context, t.priority),
                           ),
                         )).toList(),
                       ),
@@ -759,32 +748,52 @@ class _CalendarGridState extends ConsumerState<_CalendarGrid> {
           ),
         ),
       );
-      cellIdx++;
     }
 
     return Column(
       children: [
-        // Range indicator
-        if (_isDragging && _dragStart != null && _dragEnd != null)
+        // Range selection bar
+        if (hasRange)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+              color: primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(PhosphorIcons.calendarPlus(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                Icon(PhosphorIcons.calendarPlus(PhosphorIconsStyle.regular), size: 18, color: primaryColor),
                 const SizedBox(width: 8),
-                Text(
-                  '${_dragStart!.day}/${_dragStart!.month} → ${_dragEnd!.day}/${_dragEnd!.month}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor),
+                Expanded(
+                  child: hasFullRange
+                      ? Text(
+                          '${_rangeStart!.day}/${_rangeStart!.month} → ${_rangeEnd!.day}/${_rangeEnd!.month}  (${(_rangeEnd!.difference(_rangeStart!).inDays.abs() + 1)} days)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor),
+                        )
+                      : Text(
+                          'Start: ${_rangeStart!.day}/${_rangeStart!.month} — tap end date',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: primaryColor),
+                        ),
                 ),
-                const SizedBox(width: 8),
-                Text('Release to create task', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                if (hasFullRange)
+                  TextButton(
+                    onPressed: _createRangeTask,
+                    style: TextButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      minimumSize: Size.zero,
+                    ),
+                    child: const Text('+ Task', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                  ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: _cancelRange,
+                  child: Icon(PhosphorIcons.x(PhosphorIconsStyle.bold), size: 16, color: theme.colorScheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),

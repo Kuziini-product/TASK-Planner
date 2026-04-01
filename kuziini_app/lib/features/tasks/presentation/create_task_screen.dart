@@ -680,29 +680,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     : null,
               ),
 
-              // Period indicator for multi-day tasks
-              if (_endDate != null && _dueDate != null && _endDate != _dueDate)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(PhosphorIcons.calendarDots(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Period: ${_endDate!.difference(_dueDate!).inDays + 1} days',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
               // Time pickers
               _OptionTile(
                 icon: PhosphorIcons.clock(PhosphorIconsStyle.regular),
@@ -727,6 +704,50 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   onClear: _endTime != null
                       ? () => setState(() => _endTime = null)
                       : null,
+                ),
+
+              // End date (for multi-day tasks)
+              _OptionTile(
+                icon: PhosphorIcons.calendarDots(PhosphorIconsStyle.regular),
+                label: _endDate != null
+                    ? 'End date: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                    : 'Add end date',
+                isActive: _endDate != null,
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _endDate ?? _dueDate ?? DateTime.now(),
+                    firstDate: _dueDate ?? DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                  );
+                  if (date != null) setState(() => _endDate = date);
+                },
+                onClear: _endDate != null
+                    ? () => setState(() => _endDate = null)
+                    : null,
+              ),
+
+              // Period indicator
+              if (_endDate != null && _dueDate != null && _endDate != _dueDate)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(PhosphorIcons.calendarDots(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Period: ${_endDate!.difference(_dueDate!).inDays + 1} days (${_dueDate!.day}/${_dueDate!.month} → ${_endDate!.day}/${_endDate!.month})',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
 
               AppSpacing.vGapXl,

@@ -87,6 +87,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       final repo = ref.read(taskRepositoryProvider);
       await repo.updateTaskStatus(widget.taskId, status);
       ref.invalidate(taskDetailProvider(widget.taskId));
+      ref.invalidate(dailyTasksProvider);
     } catch (e) {
       if (mounted) {
         context.showSnackBar('Failed to update status', isError: true);
@@ -105,6 +106,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       appBar: KuziiniAppBar(
         showBackButton: true,
         title: 'Task Detail',
+        onBackPressed: () {
+          ref.invalidate(dailyTasksProvider);
+          Navigator.of(context).pop();
+        },
         actions: [
           IconButton(
             onPressed: () {
@@ -135,6 +140,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     await ref
                         .read(taskRepositoryProvider)
                         .deleteTask(widget.taskId);
+                    ref.invalidate(dailyTasksProvider);
                     if (mounted) Navigator.of(context).pop();
                   } catch (e) {
                     if (mounted) {

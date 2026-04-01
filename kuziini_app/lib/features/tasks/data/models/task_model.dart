@@ -154,11 +154,15 @@ class TaskModel {
       'status': status.name,
       'priority': priority.name,
       'created_by': createdBy,
-      'due_date': dueDate?.toIso8601String().split('T').first,
-      'start_time': startTime?.toIso8601String(),
-      'end_time': endTime?.toIso8601String(),
-      'recurrence_rule': recurringPattern,
+      'due_date': dueDate != null
+          ? '${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}'
+          : null,
+      'start_time': startTime?.toUtc().toIso8601String(),
+      'end_time': endTime?.toUtc().toIso8601String(),
+      'is_recurring': isRecurring,
+      'recurring_pattern': recurringPattern,
       'parent_task_id': parentTaskId,
+      'labels': labels.isNotEmpty ? labels : null,
     };
     json.removeWhere((key, value) => value == null);
     return json;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -126,7 +125,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       }
 
       final task = TaskModel(
-        id: const Uuid().v4(),
+        id: '',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().nullIfEmpty,
         priority: _priority,
@@ -138,12 +137,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       );
 
       final repo = ref.read(taskRepositoryProvider);
-      await repo.createTask(task);
+      final createdTask = await repo.createTask(task);
 
-      // Add checklist items
+      // Add checklist items using the server-assigned task ID
       for (int i = 0; i < _checklistItems.length; i++) {
         await repo.addChecklistItem(
-          taskId: task.id,
+          taskId: createdTask.id,
           title: _checklistItems[i],
           sortOrder: i,
         );

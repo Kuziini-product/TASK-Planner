@@ -48,10 +48,12 @@ class TaskRepository {
       query = query.eq('priority', priority.name);
     }
     if (fromDate != null) {
-      query = query.gte('due_date', fromDate.toIso8601String());
+      final fromStr = '${fromDate.year}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}';
+      query = query.gte('due_date', fromStr);
     }
     if (toDate != null) {
-      query = query.lte('due_date', toDate.toIso8601String());
+      final toStr = '${toDate.year}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
+      query = query.lte('due_date', toStr);
     }
 
     final response = await query
@@ -64,14 +66,12 @@ class TaskRepository {
   }
 
   Future<List<TaskModel>> fetchTasksByDate(DateTime date) async {
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
     final response = await _supabase.client
         .from(AppConstants.tableTasks)
         .select('*')
-        .gte('due_date', startOfDay.toIso8601String())
-        .lte('due_date', endOfDay.toIso8601String())
+        .eq('due_date', dateStr)
         .order('start_time', ascending: true);
 
     return (response as List)
@@ -85,10 +85,11 @@ class TaskRepository {
 
   Future<List<TaskModel>> fetchOverdueTasks() async {
     final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final response = await _supabase.client
         .from(AppConstants.tableTasks)
         .select('*')
-        .lt('due_date', now.toIso8601String())
+        .lt('due_date', todayStr)
         .neq('status', 'done')
         .neq('status', 'archived')
         .order('due_date', ascending: true);
@@ -101,12 +102,14 @@ class TaskRepository {
   Future<List<TaskModel>> fetchUpcomingTasks({int days = 7}) async {
     final now = DateTime.now();
     final future = now.add(Duration(days: days));
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final futureStr = '${future.year}-${future.month.toString().padLeft(2, '0')}-${future.day.toString().padLeft(2, '0')}';
 
     final response = await _supabase.client
         .from(AppConstants.tableTasks)
         .select('*')
-        .gte('due_date', now.toIso8601String())
-        .lte('due_date', future.toIso8601String())
+        .gte('due_date', todayStr)
+        .lte('due_date', futureStr)
         .neq('status', 'done')
         .neq('status', 'archived')
         .order('due_date', ascending: true);

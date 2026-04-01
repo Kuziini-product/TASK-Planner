@@ -33,7 +33,7 @@ class AdminRepository {
       final response = await _supabase.client
           .from(AppConstants.tableUsers)
           .select('*')
-          .eq('is_approved', false)
+          .eq('status', 'pending')
           .order('created_at', ascending: false);
       return (response as List)
           .map((json) => UserProfile.fromJson(json as Map<String, dynamic>))
@@ -49,7 +49,7 @@ class AdminRepository {
       await _supabase.update(
         AppConstants.tableUsers,
         {
-          'is_approved': true,
+          'status': 'active',
           'updated_at': DateTime.now().toIso8601String(),
         },
         id: userId,
@@ -63,7 +63,14 @@ class AdminRepository {
 
   Future<bool> rejectUser(String userId) async {
     try {
-      await _supabase.delete(AppConstants.tableUsers, id: userId);
+      await _supabase.update(
+        AppConstants.tableUsers,
+        {
+          'status': 'suspended',
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        id: userId,
+      );
       return true;
     } catch (e) {
       debugPrint('Failed to reject user: $e');
@@ -136,20 +143,21 @@ class AdminRepository {
     try {
       final users = await _supabase.client
           .from(AppConstants.tableUsers)
-          .select('is_approved');
+          .select('status');
       final tasks = await _supabase.client
           .from(AppConstants.tableTasks)
           .select('status');
 
       final totalUsers = (users as List).length;
       final pendingUsers =
-          users.where((u) => u['is_approved'] == false).length;
-      final approvedUsers = totalUsers - pendingUsers;
+          users.where((u) => u['status'] == 'pending').length;
+      final approvedUsers =
+          users.where((u) => u['status'] == 'active').length;
 
       final totalTasks = (tasks as List).length;
       final completedTasks =
           tasks.where((t) => t['status'] == 'done').length;
-      final overdueTasks = totalTasks - completedTasks;
+      final activeTasks = totalTasks - completedTasks;
 
       return {
         'totalUsers': totalUsers,
@@ -157,7 +165,7 @@ class AdminRepository {
         'approvedUsers': approvedUsers,
         'totalTasks': totalTasks,
         'completedTasks': completedTasks,
-        'activeTasks': overdueTasks,
+        'activeTasks': activeTasks,
       };
     } catch (e) {
       debugPrint('Failed to get admin stats: $e');

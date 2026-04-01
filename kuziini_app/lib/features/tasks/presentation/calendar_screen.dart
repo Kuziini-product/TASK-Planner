@@ -270,10 +270,10 @@ class _WeekView extends ConsumerWidget {
 
                       return Expanded(
                         child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
                           decoration: BoxDecoration(
                             border: Border(
-                              left: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+                              left: BorderSide(color: theme.dividerColor.withValues(alpha: 0.08), width: 0.5),
                             ),
                           ),
                           child: LayoutBuilder(
@@ -283,9 +283,12 @@ class _WeekView extends ConsumerWidget {
                                 children: allTasks.map((task) {
                                   return GestureDetector(
                                     onTap: () => context.push('/task/${task.id}'),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 2),
-                                      child: _WeekTaskBar(task: task, colWidth: colWidth),
+                                    child: Tooltip(
+                                      message: '${task.title}${task.startTime != null ? '\n${AppDateUtils.formatTime(task.startTime!)}' : ''}',
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 2),
+                                        child: _WeekTaskBar(task: task, colWidth: colWidth),
+                                      ),
                                     ),
                                   );
                                 }).toList(),
@@ -320,46 +323,46 @@ class _WeekTaskBar extends StatelessWidget {
 
     if (task.startTime == null) {
       // Unscheduled: small centered bar
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          width: colWidth * 0.4,
-          height: 5,
-          margin: const EdgeInsets.only(left: 2),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(2.5),
-          ),
+      return Container(
+        width: colWidth * 0.35,
+        height: 6,
+        margin: const EdgeInsets.only(left: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(3),
         ),
       );
     }
 
-    // Scheduled: position proportional to time
+    // Scheduled: position proportional to time within column
     final startMin = _minutesSinceStart(task.startTime!);
     final endMin = task.endTime != null ? _minutesSinceStart(task.endTime!) : startMin + 60;
 
-    final leftFraction = (startMin / _totalMinutes).clamp(0.0, 1.0);
+    final leftFraction = (startMin / _totalMinutes).clamp(0.0, 0.95);
     final widthFraction = ((endMin - startMin) / _totalMinutes).clamp(0.05, 1.0 - leftFraction);
 
     final left = leftFraction * colWidth;
-    final width = widthFraction * colWidth;
+    final width = (widthFraction * colWidth).clamp(4.0, colWidth - left);
 
-    return SizedBox(
-      height: 7,
-      child: Stack(
-        children: [
-          Positioned(
-            left: left.clamp(0, colWidth - 4),
-            child: Container(
-              width: width.clamp(4, colWidth),
-              height: 5,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2.5),
+    return ClipRect(
+      child: SizedBox(
+        height: 8,
+        width: colWidth,
+        child: Stack(
+          children: [
+            Positioned(
+              left: left,
+              child: Container(
+                width: width,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

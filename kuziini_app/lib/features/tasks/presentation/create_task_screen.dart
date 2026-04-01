@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:js_util' as js_util;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -37,11 +40,22 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   String? _assigneeName;
   bool _isSubmitting = false;
 
+  // Location fields
+  bool _useDefaultLocation = true;
+  final _locationNameController = TextEditingController(text: 'Kuziini');
+  final _locationAddressController = TextEditingController(text: 'Bulevardul Unirii Nr 63');
+  final _locationLinkController = TextEditingController();
+  double? _locationLat;
+  double? _locationLng;
+
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     _checklistController.dispose();
+    _locationNameController.dispose();
+    _locationAddressController.dispose();
+    _locationLinkController.dispose();
     super.dispose();
   }
 
@@ -87,6 +101,46 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     }
   }
 
+  Future<void> _getMyLocation() async {
+    try {
+      final coords = await _jsGeolocation();
+      if (coords != null && mounted) {
+        setState(() {
+          _locationLat = coords['lat'];
+          _locationLng = coords['lng'];
+          _locationAddressController.text = 'My Location (${coords['lat']!.toStringAsFixed(5)}, ${coords['lng']!.toStringAsFixed(5)})';
+          _locationLinkController.text = 'https://www.google.com/maps?q=${coords['lat']},${coords['lng']}';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        context.showSnackBar('Could not get location. Allow location access in browser.', isError: true);
+      }
+    }
+  }
+
+  Future<Map<String, double>?> _jsGeolocation() async {
+    final completer = Completer<Map<String, double>?>();
+    try {
+      final nav = js_util.getProperty(js_util.globalThis, 'navigator');
+      final geo = js_util.getProperty(nav, 'geolocation');
+      js_util.callMethod(geo, 'getCurrentPosition', [
+        js_util.allowInterop((pos) {
+          final coords = js_util.getProperty(pos, 'coords');
+          final lat = js_util.getProperty<num>(coords, 'latitude').toDouble();
+          final lng = js_util.getProperty<num>(coords, 'longitude').toDouble();
+          completer.complete({'lat': lat, 'lng': lng});
+        }),
+        js_util.allowInterop((err) {
+          completer.complete(null);
+        }),
+      ]);
+    } catch (_) {
+      completer.complete(null);
+    }
+    return completer.future;
+  }
+
   void _addChecklistItem() {
     final text = _checklistController.text.trim();
     if (text.isEmpty) return;
@@ -128,6 +182,23 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         );
       }
 
+      // Resolve location
+      String? locName;
+      String? locAddress;
+      String? locUrl;
+      double? locLat;
+      double? locLng;
+      if (_useDefaultLocation) {
+        locName = 'Kuziini';
+        locAddress = 'Bulevardul Unirii Nr 63';
+      } else {
+        locName = _locationNameController.text.trim().nullIfEmpty;
+        locAddress = _locationAddressController.text.trim().nullIfEmpty;
+        locUrl = _locationLinkController.text.trim().nullIfEmpty;
+        locLat = _locationLat;
+        locLng = _locationLng;
+      }
+
       final task = TaskModel(
         id: '',
         title: _titleController.text.trim(),
@@ -138,6 +209,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         startTime: startDateTime,
         endTime: endDateTime,
         labels: _labels,
+        locationName: locName,
+        locationAddress: locAddress,
+        locationUrl: locUrl,
+        locationLat: locLat,
+        locationLng: locLng,
       );
 
       final repo = ref.read(taskRepositoryProvider);
@@ -320,6 +396,63 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       ? () => setState(() => _endTime = null)
                       : null,
                 ),
+
+              AppSpacing.vGapXl,
+
+              // Location section
+              Text('Location', style: theme.textTheme.labelLarge),
+              AppSpacing.vGapSm,
+              Row(
+                children: [
+                  Checkbox(
+                    value: _useDefaultLocation,
+                    onChanged: (v) => setState(() => _useDefaultLocation = v ?? true),
+                    activeColor: AppColors.primary,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _useDefaultLocation = !_useDefaultLocation),
+                      child: Text(
+                        'Use default location (Kuziini, Bulevardul Unirii Nr 63)',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!_useDefaultLocation) ...[
+                AppSpacing.vGapSm,
+                KuziiniTextField(
+                  controller: _locationNameController,
+                  hint: 'Location name',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                AppSpacing.vGapSm,
+                KuziiniTextField(
+                  controller: _locationAddressController,
+                  hint: 'Address',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                AppSpacing.vGapSm,
+                KuziiniTextField(
+                  controller: _locationLinkController,
+                  hint: 'Google Maps link (optional)',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                AppSpacing.vGapSm,
+                OutlinedButton.icon(
+                  onPressed: _getMyLocation,
+                  icon: Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 16),
+                  label: const Text('My Location'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
 
               AppSpacing.vGapMd,
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -14,10 +15,12 @@ import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_view.dart';
 import '../data/models/task_model.dart';
 import '../data/models/checklist_item.dart';
+import '../data/models/task_comment.dart';
 import '../providers/tasks_provider.dart';
 import 'widgets/attachment_section.dart';
 import 'widgets/comment_section.dart';
 import 'widgets/priority_badge.dart';
+import 'widgets/share_task_dialog.dart';
 import 'widgets/status_chip.dart';
 import 'widgets/user_picker.dart';
 
@@ -85,7 +88,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         actions: [
           IconButton(
             onPressed: () {
-              // Share task
+              final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+              if (task != null) {
+                final comments = ref.read(taskCommentsProvider(widget.taskId)).valueOrNull ?? [];
+                showShareTaskDialog(context, task, comments);
+              }
             },
             icon: Icon(PhosphorIcons.shareFat(PhosphorIconsStyle.regular)),
           ),
@@ -279,6 +286,53 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
+              ),
+            ),
+
+          if (task.hasLocation)
+            _DetailRow(
+              icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
+              label: 'Location',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        final url = task.locationMapUrl;
+                        if (url != null) {
+                          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Text(
+                        task.locationDisplay,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primary,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (task.locationMapUrl != null)
+                    TextButton.icon(
+                      onPressed: () {
+                        final dirUrl = task.locationLat != null && task.locationLng != null
+                            ? 'https://www.google.com/maps/dir/?api=1&destination=${task.locationLat},${task.locationLng}'
+                            : task.locationAddress != null
+                                ? 'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(task.locationAddress!)}'
+                                : task.locationMapUrl!;
+                        launchUrl(Uri.parse(dirUrl), mode: LaunchMode.externalApplication);
+                      },
+                      icon: Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 14),
+                      label: const Text('Navigate'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        visualDensity: VisualDensity.compact,
+                        textStyle: theme.textTheme.labelSmall,
+                      ),
+                    ),
+                ],
               ),
             ),
 

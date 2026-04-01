@@ -109,6 +109,34 @@ class TaskCard extends StatelessWidget {
             ),
           ],
 
+          // Location preview
+          if (task.hasLocation) ...[
+            AppSpacing.vGapXs,
+            Padding(
+              padding: const EdgeInsets.only(left: 30),
+              child: Row(
+                children: [
+                  Icon(
+                    PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
+                    size: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      task.locationDisplay,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // Bottom row: metadata
           AppSpacing.vGapSm,
           Padding(

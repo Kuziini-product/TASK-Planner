@@ -62,6 +62,11 @@ class TaskModel {
     this.createdAt,
     this.updatedAt,
     this.completedAt,
+    this.locationName,
+    this.locationAddress,
+    this.locationUrl,
+    this.locationLat,
+    this.locationLng,
   });
 
   final String id;
@@ -89,6 +94,11 @@ class TaskModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? completedAt;
+  final String? locationName;
+  final String? locationAddress;
+  final String? locationUrl;
+  final double? locationLat;
+  final double? locationLng;
 
   bool get isCompleted => status == TaskStatus.done;
   bool get isArchived => status == TaskStatus.archived;
@@ -99,6 +109,18 @@ class TaskModel {
   bool get hasAttachments => attachmentCount > 0;
   bool get isAssigned => assigneeId != null;
   bool get isSubtask => parentTaskId != null;
+  bool get hasLocation => locationName != null || locationAddress != null || locationUrl != null;
+  String get locationDisplay {
+    if (locationName != null && locationName!.isNotEmpty) return locationName!;
+    if (locationAddress != null && locationAddress!.isNotEmpty) return locationAddress!;
+    return 'Location set';
+  }
+  String? get locationMapUrl {
+    if (locationUrl != null) return locationUrl;
+    if (locationLat != null && locationLng != null) return 'https://www.google.com/maps?q=$locationLat,$locationLng';
+    if (locationAddress != null) return 'https://www.google.com/maps/search/${Uri.encodeComponent(locationAddress!)}';
+    return null;
+  }
 
   double get checklistProgress =>
       checklistTotal > 0 ? checklistCompleted / checklistTotal : 0;
@@ -144,6 +166,11 @@ class TaskModel {
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
+      locationName: json['location_name'] as String?,
+      locationAddress: json['location_address'] as String?,
+      locationUrl: json['location_url'] as String?,
+      locationLat: (json['location_lat'] as num?)?.toDouble(),
+      locationLng: (json['location_lng'] as num?)?.toDouble(),
     );
   }
 
@@ -161,6 +188,11 @@ class TaskModel {
       'end_time': endTime?.toUtc().toIso8601String(),
       'recurrence_rule': recurringPattern,
       'parent_task_id': parentTaskId,
+      'location_name': locationName,
+      'location_address': locationAddress,
+      'location_url': locationUrl,
+      'location_lat': locationLat,
+      'location_lng': locationLng,
     };
     json.removeWhere((key, value) => value == null);
     return json;
@@ -197,6 +229,11 @@ class TaskModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? completedAt,
+    String? locationName,
+    String? locationAddress,
+    String? locationUrl,
+    double? locationLat,
+    double? locationLng,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -224,6 +261,11 @@ class TaskModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
+      locationName: locationName ?? this.locationName,
+      locationAddress: locationAddress ?? this.locationAddress,
+      locationUrl: locationUrl ?? this.locationUrl,
+      locationLat: locationLat ?? this.locationLat,
+      locationLng: locationLng ?? this.locationLng,
     );
   }
 }

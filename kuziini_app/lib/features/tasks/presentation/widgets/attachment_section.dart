@@ -801,34 +801,19 @@ class _EmptyAttachments extends StatelessWidget {
 
     return InkWell(
       onTap: onAdd,
-      borderRadius: AppSpacing.borderRadiusMd,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: theme.dividerColor,
-            style: BorderStyle.solid,
-          ),
-          borderRadius: AppSpacing.borderRadiusMd,
-        ),
-        child: Column(
+      borderRadius: AppSpacing.borderRadiusSm,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
           children: [
             Icon(
-              PhosphorIcons.uploadSimple(PhosphorIconsStyle.regular),
-              size: 32,
+              PhosphorIcons.plus(PhosphorIconsStyle.regular),
+              size: 14,
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            AppSpacing.vGapSm,
+            const SizedBox(width: 6),
             Text(
-              'No attachments yet',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            AppSpacing.vGapXs,
-            Text(
-              'Tap to add photos, documents, or location',
+              'Add attachment',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

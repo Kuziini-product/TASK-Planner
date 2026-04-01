@@ -222,126 +222,116 @@ class _WeekView extends ConsumerWidget {
             }).toList(),
           ),
         ),
-        const SizedBox(height: 8),
-        // Hour slot cards - only show hours that have tasks
+        const SizedBox(height: 16),
+        // Logo + task list
         Expanded(
           child: tasksAsync.when(
             data: (tasks) {
-              // Group all week tasks by day+hour, including multi-day tasks
-              final slotMap = <String, List<TaskModel>>{};
+              // Collect all tasks for this week, sorted by priority then time
+              final weekTasks = <TaskModel>[];
+              final seen = <String>{};
               for (final task in tasks) {
                 if (task.dueDate == null) continue;
-
-                // Find which days of this week the task covers
                 for (final day in days) {
-                  if (!task.coversDate(day)) continue;
-                  final dayLabel = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1];
-
-                  if (task.startTime != null) {
-                    final h = task.startTime!.toLocal().hour;
-                    final key = '$dayLabel ${h.toString().padLeft(2, '0')}:00';
-                    slotMap.putIfAbsent(key, () => []).add(task);
-                  } else {
-                    final key = '$dayLabel Unscheduled';
-                    slotMap.putIfAbsent(key, () => []).add(task);
+                  if (task.coversDate(day) && !seen.contains(task.id)) {
+                    weekTasks.add(task);
+                    seen.add(task.id);
                   }
                 }
               }
+              // Sort: urgent first, then by date/time
+              weekTasks.sort((a, b) {
+                final pa = a.priority.index;
+                final pb = b.priority.index;
+                if (pa != pb) return pa.compareTo(pb);
+                final da = a.startTime ?? a.dueDate ?? DateTime(2099);
+                final db = b.startTime ?? b.dueDate ?? DateTime(2099);
+                return da.compareTo(db);
+              });
 
-              if (slotMap.isEmpty) {
-                return Center(child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)));
-              }
-
-              // Sort keys by day then hour
-              final sortedKeys = slotMap.keys.toList()..sort();
-
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: sortedKeys.length,
-                itemBuilder: (context, index) {
-                  final key = sortedKeys[index];
-                  final slotTasks = slotMap[key]!;
-                  final color = _priorityColorStatic(context, slotTasks.first.priority);
-                  final taskCount = slotTasks.length;
-
-                  return GestureDetector(
-                    onTap: () {
-                      if (taskCount == 1) {
-                        context.push('/task/${slotTasks.first.id}');
-                      } else {
-                        // Show expanded list
-                        showModalBottomSheet(
-                          context: context,
-                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                          builder: (ctx) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
-                                  decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text(key, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                                ),
-                                const SizedBox(height: 8),
-                                ...slotTasks.map((t) => ListTile(
-                                  leading: Container(width: 4, height: 32, decoration: BoxDecoration(color: _priorityColorStatic(context, t.priority), borderRadius: BorderRadius.circular(2))),
-                                  title: Text(t.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                                  subtitle: t.startTime != null ? Text(
-                                    t.endTime != null
-                                        ? '${AppDateUtils.formatTime(t.startTime!)} - ${AppDateUtils.formatTime(t.endTime!)}'
-                                        : AppDateUtils.formatTime(t.startTime!),
-                                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
-                                  ) : null,
-                                  onTap: () { Navigator.pop(ctx); context.push('/task/${t.id}'); },
-                                  dense: true,
-                                )),
-                                const SizedBox(height: 16),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 3),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: color.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(width: 4, height: 24, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(key, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  taskCount == 1 ? slotTasks.first.title : '$taskCount tasks',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (taskCount > 1)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                              child: Text('$taskCount', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-                            ),
-                          const SizedBox(width: 4),
-                          Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.regular), size: 14, color: theme.colorScheme.onSurfaceVariant),
-                        ],
-                      ),
+              return ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  // Kuziini logo centered
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Image.asset(
+                      'assets/images/kuziini_logo.png',
+                      height: 40,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (weekTasks.isEmpty)
+                    Center(child: Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                    ))
+                  else
+                    ...weekTasks.map((task) {
+                      final color = _priorityColorStatic(context, task.priority);
+                      final dayLabel = task.dueDate != null
+                          ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1]
+                          : '';
+                      final timeStr = task.startTime != null
+                          ? AppDateUtils.formatTime(task.startTime!)
+                          : '';
+
+                      return GestureDetector(
+                        onTap: () => context.push('/task/${task.id}'),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Row(
+                            children: [
+                              // Color dot
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: color,
+                                  boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4)],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Task info
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      task.title,
+                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (dayLabel.isNotEmpty || timeStr.isNotEmpty)
+                                      Text(
+                                        [dayLabel, timeStr].where((s) => s.isNotEmpty).join(' · '),
+                                        style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              // Priority label
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  task.priority.label,
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                ],
               );
             },
             loading: () => const LoadingIndicator(size: 24),

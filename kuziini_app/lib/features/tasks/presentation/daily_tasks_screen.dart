@@ -107,6 +107,16 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                 userName: profile.valueOrNull?.displayName,
                 onDateTap: _toggleCalendar,
                 showCalendar: _showCalendar,
+                onTotalTap: () {
+                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                },
+                onCompletedTap: () {
+                  // Show only completed - set filter to all and scroll
+                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                },
+                onRemainingTap: () {
+                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.myTasks;
+                },
               ),
             ),
 
@@ -250,6 +260,9 @@ class _CompactDayHeader extends StatelessWidget {
     this.userName,
     required this.onDateTap,
     required this.showCalendar,
+    this.onTotalTap,
+    this.onCompletedTap,
+    this.onRemainingTap,
   });
 
   final DateTime date;
@@ -258,6 +271,9 @@ class _CompactDayHeader extends StatelessWidget {
   final String? userName;
   final VoidCallback onDateTap;
   final bool showCalendar;
+  final VoidCallback? onTotalTap;
+  final VoidCallback? onCompletedTap;
+  final VoidCallback? onRemainingTap;
 
   @override
   Widget build(BuildContext context) {
@@ -314,23 +330,32 @@ class _CompactDayHeader extends StatelessWidget {
                       ),
                       const Spacer(),
                       if (totalTasks > 0) ...[
-                        _StatBadge(
-                          icon: PhosphorIcons.listChecks(PhosphorIconsStyle.regular),
-                          label: '$totalTasks',
-                          color: theme.colorScheme.onSurfaceVariant,
+                        GestureDetector(
+                          onTap: onTotalTap,
+                          child: _StatBadge(
+                            icon: PhosphorIcons.listChecks(PhosphorIconsStyle.regular),
+                            label: '$totalTasks',
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        _StatBadge(
-                          icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
-                          label: '$completedTasks',
-                          color: AppColors.success,
+                        GestureDetector(
+                          onTap: onCompletedTap,
+                          child: _StatBadge(
+                            icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                            label: '$completedTasks',
+                            color: AppColors.success,
+                          ),
                         ),
                         if (remaining > 0) ...[
                           const SizedBox(width: 8),
-                          _StatBadge(
+                          GestureDetector(
+                          onTap: onRemainingTap,
+                          child: _StatBadge(
                             icon: PhosphorIcons.clock(PhosphorIconsStyle.regular),
                             label: '$remaining',
                             color: AppColors.warning,
+                          ),
                           ),
                         ],
                       ],

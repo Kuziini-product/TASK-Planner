@@ -36,9 +36,8 @@ class TaskRepository {
         .from(AppConstants.tableTasks)
         .select('*');
 
-    if (assigneeId != null) {
-      query = query.eq('assignee_id', assigneeId);
-    }
+    // assignee filtering is handled via task_assignees table
+    // if (assigneeId != null) - use fetchTasksAssignedTo instead
     if (createdBy != null) {
       query = query.eq('created_by', createdBy);
     }
@@ -91,7 +90,7 @@ class TaskRepository {
         .select('*')
         .lt('due_date', now.toIso8601String())
         .neq('status', 'done')
-        .neq('status', 'cancelled')
+        .neq('status', 'archived')
         .order('due_date', ascending: true);
 
     return (response as List)
@@ -109,7 +108,7 @@ class TaskRepository {
         .gte('due_date', now.toIso8601String())
         .lte('due_date', future.toIso8601String())
         .neq('status', 'done')
-        .neq('status', 'cancelled')
+        .neq('status', 'archived')
         .order('due_date', ascending: true);
 
     return (response as List)
@@ -154,8 +153,13 @@ class TaskRepository {
     await _supabase.delete(AppConstants.tableTasks, id: taskId);
   }
 
-  Future<TaskModel> assignTask(String taskId, String assigneeId) async {
-    return updateTask(taskId, {'assignee_id': assigneeId});
+  Future<void> assignTask(String taskId, String assigneeId) async {
+    final userId = _supabase.currentUserId;
+    await _supabase.insert('task_assignees', {
+      'task_id': taskId,
+      'user_id': assigneeId,
+      'assigned_by': userId,
+    });
   }
 
   // ── Real-time ──
@@ -356,7 +360,7 @@ class TaskRepository {
   Future<Map<String, int>> getTaskStats({String? userId}) async {
     var query = _supabase.client.from(AppConstants.tableTasks).select('status');
     if (userId != null) {
-      query = query.or('assignee_id.eq.$userId,created_by.eq.$userId');
+      query = query.eq('created_by', userId);
     }
 
     final response = await query;
@@ -364,16 +368,16 @@ class TaskRepository {
 
     int total = tasks.length;
     int done = tasks.where((t) => t['status'] == 'done').length;
-    int inProgress = tasks.where((t) => t['status'] == 'inProgress').length;
+    int inProgress = tasks.where((t) => t['status'] == 'in_progress').length;
     int todo = tasks.where((t) => t['status'] == 'todo').length;
-    int blocked = tasks.where((t) => t['status'] == 'blocked').length;
+    int review = tasks.where((t) => t['status'] == 'review').length;
 
     return {
       'total': total,
       'done': done,
-      'inProgress': inProgress,
+      'in_progress': inProgress,
       'todo': todo,
-      'blocked': blocked,
+      'review': review,
     };
   }
 }

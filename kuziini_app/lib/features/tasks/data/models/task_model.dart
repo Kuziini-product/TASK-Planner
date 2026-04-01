@@ -1,9 +1,9 @@
 enum TaskStatus {
   todo('To Do'),
-  inProgress('In Progress'),
+  in_progress('In Progress'),
+  review('Review'),
   done('Done'),
-  blocked('Blocked'),
-  cancelled('Cancelled');
+  archived('Archived');
 
   const TaskStatus(this.label);
   final String label;
@@ -91,6 +91,7 @@ class TaskModel {
   final DateTime? completedAt;
 
   bool get isCompleted => status == TaskStatus.done;
+  bool get isArchived => status == TaskStatus.archived;
   bool get isOverdue =>
       dueDate != null && dueDate!.isBefore(DateTime.now()) && !isCompleted;
   bool get hasChecklist => checklistTotal > 0;
@@ -147,28 +148,24 @@ class TaskModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final json = <String, dynamic>{
       'title': title,
-      'description': description,
+      'description': description ?? '',
       'status': status.name,
       'priority': priority.name,
       'created_by': createdBy,
-      'assignee_id': assigneeId,
-      'due_date': dueDate?.toIso8601String(),
+      'due_date': dueDate?.toIso8601String().split('T').first,
       'start_time': startTime?.toIso8601String(),
       'end_time': endTime?.toIso8601String(),
-      'labels': labels,
-      'is_recurring': isRecurring,
-      'recurring_pattern': recurringPattern,
+      'recurrence_rule': recurringPattern,
       'parent_task_id': parentTaskId,
     };
+    json.removeWhere((key, value) => value == null);
+    return json;
   }
 
   Map<String, dynamic> toInsertJson() {
     final json = toJson();
-    json.remove('id');
-    json['created_at'] = DateTime.now().toIso8601String();
     return json;
   }
 

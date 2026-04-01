@@ -23,14 +23,14 @@ class StatusChip extends StatelessWidget {
     switch (status) {
       case TaskStatus.todo:
         return AppColors.statusTodo;
-      case TaskStatus.inProgress:
+      case TaskStatus.in_progress:
         return AppColors.statusInProgress;
+      case TaskStatus.review:
+        return Colors.orange;
       case TaskStatus.done:
         return AppColors.statusDone;
-      case TaskStatus.blocked:
-        return AppColors.statusBlocked;
-      case TaskStatus.cancelled:
-        return AppColors.statusCancelled;
+      case TaskStatus.archived:
+        return Colors.grey;
     }
   }
 
@@ -38,14 +38,14 @@ class StatusChip extends StatelessWidget {
     switch (status) {
       case TaskStatus.todo:
         return PhosphorIcons.circle(PhosphorIconsStyle.regular);
-      case TaskStatus.inProgress:
+      case TaskStatus.in_progress:
         return PhosphorIcons.circleHalf(PhosphorIconsStyle.fill);
+      case TaskStatus.review:
+        return PhosphorIcons.eye(PhosphorIconsStyle.fill);
       case TaskStatus.done:
         return PhosphorIcons.checkCircle(PhosphorIconsStyle.fill);
-      case TaskStatus.blocked:
-        return PhosphorIcons.prohibit(PhosphorIconsStyle.fill);
-      case TaskStatus.cancelled:
-        return PhosphorIcons.xCircle(PhosphorIconsStyle.fill);
+      case TaskStatus.archived:
+        return PhosphorIcons.archive(PhosphorIconsStyle.fill);
     }
   }
 

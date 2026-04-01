@@ -162,7 +162,7 @@ class ProfileScreen extends ConsumerWidget {
                       AppSpacing.hGapMd,
                       _StatCard(
                         label: 'In Progress',
-                        value: '${stats['inProgress'] ?? 0}',
+                        value: '${stats['in_progress'] ?? 0}',
                         color: AppColors.warning,
                       ),
                     ],

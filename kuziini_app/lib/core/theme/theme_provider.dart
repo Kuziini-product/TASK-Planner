@@ -219,3 +219,27 @@ class ButtonBorderColorNotifier extends StateNotifier<Color?> {
     }
   }
 }
+
+// ── Default Task Duration Provider ──
+/// Duration in minutes: 15, 30, 60 (default), 90, 120
+const _durationKey = 'default_task_duration';
+
+final defaultTaskDurationProvider =
+    StateNotifierProvider<DefaultTaskDurationNotifier, int>(
+  (ref) => DefaultTaskDurationNotifier(),
+);
+
+class DefaultTaskDurationNotifier extends StateNotifier<int> {
+  DefaultTaskDurationNotifier() : super(60) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getInt(_durationKey) ?? 60;
+  }
+
+  Future<void> setDuration(int minutes) async {
+    state = minutes;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_durationKey, minutes);
+  }
+}

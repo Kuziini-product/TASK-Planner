@@ -97,6 +97,14 @@ class SettingsScreen extends ConsumerWidget {
 
           AppSpacing.vGapXl,
 
+          // Task Settings
+          _SectionHeader(title: 'Tasks'),
+          AppSpacing.vGapSm,
+
+          _DefaultDurationTile(),
+
+          AppSpacing.vGapXl,
+
           // About
           _SectionHeader(title: 'About'),
           AppSpacing.vGapSm,
@@ -932,4 +940,69 @@ class _BgOption {
   final Color? color;
   final IconData? icon;
   const _BgOption(this.name, this.color, this.icon);
+}
+
+class _DefaultDurationTile extends ConsumerWidget {
+  static const _options = [15, 30, 60, 90, 120];
+
+  static String _label(int minutes) {
+    if (minutes < 60) return '$minutes min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '$h h' : '$h h $m min';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(defaultTaskDurationProvider);
+
+    return _SettingsTile(
+      icon: PhosphorIcons.timer(PhosphorIconsStyle.regular),
+      title: 'Default Task Duration',
+      subtitle: _label(current),
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (ctx) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Default Task Duration',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text('Auto-applied to new tasks',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 16),
+                ..._options.map((mins) => ListTile(
+                  leading: Icon(
+                    mins == current ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(PhosphorIconsStyle.regular),
+                    color: mins == current ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  title: Text(_label(mins)),
+                  onTap: () {
+                    ref.read(defaultTaskDurationProvider.notifier).setDuration(mins);
+                    Navigator.pop(ctx);
+                  },
+                )),
+                SizedBox(height: MediaQuery.of(ctx).padding.bottom),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

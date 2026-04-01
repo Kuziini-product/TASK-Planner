@@ -137,7 +137,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.createTask,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const CreateTaskScreen(),
+        builder: (context, state) => CreateTaskScreen(
+          queryParams: state.uri.queryParameters,
+        ),
       ),
       GoRoute(
         path: AppRoutes.search,

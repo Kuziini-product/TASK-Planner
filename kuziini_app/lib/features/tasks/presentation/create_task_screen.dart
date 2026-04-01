@@ -8,6 +8,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
 import '../../../core/widgets/kuziini_button.dart';
@@ -18,7 +19,9 @@ import '../providers/tasks_provider.dart';
 import 'widgets/user_picker.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
-  const CreateTaskScreen({super.key});
+  const CreateTaskScreen({super.key, this.queryParams = const {}});
+
+  final Map<String, String> queryParams;
 
   @override
   ConsumerState<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -47,6 +50,67 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _locationLinkController = TextEditingController();
   double? _locationLat;
   double? _locationLng;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyVoiceParams();
+  }
+
+  void _applyVoiceParams() {
+    final p = widget.queryParams;
+    if (p.isEmpty) return;
+
+    if (p.containsKey('title')) _titleController.text = p['title']!;
+    if (p.containsKey('desc')) _descriptionController.text = p['desc']!;
+
+    if (p.containsKey('date')) {
+      _dueDate = DateTime.tryParse(p['date']!);
+    }
+
+    if (p.containsKey('hour')) {
+      final h = int.tryParse(p['hour'] ?? '');
+      final m = int.tryParse(p['minute'] ?? '0') ?? 0;
+      if (h != null) _startTime = TimeOfDay(hour: h, minute: m);
+    }
+
+    if (p.containsKey('priority')) {
+      switch (p['priority']) {
+        case 'urgent': _priority = TaskPriority.urgent;
+        case 'high': _priority = TaskPriority.high;
+        case 'medium': _priority = TaskPriority.medium;
+        case 'low': _priority = TaskPriority.low;
+      }
+    }
+
+    if (p.containsKey('locName') || p.containsKey('locAddress')) {
+      _useDefaultLocation = false;
+      if (p.containsKey('locName')) _locationNameController.text = p['locName']!;
+      if (p.containsKey('locAddress')) _locationAddressController.text = p['locAddress']!;
+    }
+
+    // Assignee name is resolved after build via _resolveAssignee
+    if (p.containsKey('assignee')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resolveAssignee(p['assignee']!));
+    }
+  }
+
+  Future<void> _resolveAssignee(String name) async {
+    try {
+      final result = await SupabaseService.instance.client
+          .from('profiles')
+          .select('id, display_name')
+          .ilike('display_name', '%$name%')
+          .limit(1)
+          .maybeSingle();
+      if (result != null && mounted) {
+        setState(() {
+          _assigneeId = result['id'] as String;
+          _assigneeName = result['display_name'] as String;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -351,6 +415,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           _endTime!.hour,
           _endTime!.minute,
         );
+      } else if (startDateTime != null) {
+        // Auto-apply default duration when no end time set
+        final defaultMinutes = ref.read(defaultTaskDurationProvider);
+        endDateTime = startDateTime.add(Duration(minutes: defaultMinutes));
       }
 
       // Resolve location

@@ -152,18 +152,30 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'Total',
                         value: '${stats['total'] ?? 0}',
                         color: AppColors.info,
+                        onTap: () {
+                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                          context.go(AppRoutes.today);
+                        },
                       ),
                       AppSpacing.hGapMd,
                       _StatCard(
                         label: 'Done',
                         value: '${stats['done'] ?? 0}',
                         color: AppColors.success,
+                        onTap: () {
+                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                          context.go(AppRoutes.today);
+                        },
                       ),
                       AppSpacing.hGapMd,
                       _StatCard(
                         label: 'In Progress',
                         value: '${stats['in_progress'] ?? 0}',
                         color: AppColors.warning,
+                        onTap: () {
+                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.myTasks;
+                          context.go(AppRoutes.today);
+                        },
                       ),
                     ],
                   ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
@@ -199,11 +211,13 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -211,6 +225,7 @@ class _StatCard extends StatelessWidget {
 
     return Expanded(
       child: KuziiniCard(
+        onTap: onTap,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         child: Column(
           children: [

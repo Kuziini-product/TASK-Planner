@@ -29,45 +29,14 @@ class VoiceInputButton extends StatefulWidget {
 }
 
 class _VoiceInputButtonState extends State<VoiceInputButton> {
-  final SpeechToText _speech = SpeechToText();
-  bool _isAvailable = false;
-  bool _checking = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAvailability();
-  }
-
-  Future<void> _checkAvailability() async {
-    try {
-      final available = await _speech.initialize(
-        onError: (_) {},
-        onStatus: (_) {},
-      );
-      if (mounted) {
-        setState(() {
-          _isAvailable = available;
-          _checking = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isAvailable = false;
-          _checking = false;
-        });
-      }
-    }
-  }
-
   void _startListening() {
+    final speech = SpeechToText();
     showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _VoiceListeningSheet(
-        speech: _speech,
+        speech: speech,
         hintText: widget.hintText ?? 'Listening...',
       ),
     ).then((result) {
@@ -79,9 +48,6 @@ class _VoiceInputButtonState extends State<VoiceInputButton> {
 
   @override
   Widget build(BuildContext context) {
-    if (_checking || !_isAvailable) {
-      return const SizedBox.shrink();
-    }
 
     if (widget.mini) {
       return SizedBox(

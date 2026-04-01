@@ -1,0 +1,35 @@
+# Flutter
+kuziini_app/.dart_tool/
+kuziini_app/.packages
+kuziini_app/build/
+kuziini_app/.flutter-plugins
+kuziini_app/.flutter-plugins-dependencies
+kuziini_app/.pub-cache/
+kuziini_app/.pub/
+kuziini_app/pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.*
+
+# Secrets
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Build
+*.apk
+*.aab
+*.ipa
+*.app

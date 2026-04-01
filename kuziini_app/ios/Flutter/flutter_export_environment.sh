@@ -1,6 +1,6 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=C:\Users\madal\OneDrive\Desktop\APP\Task Manager Kuziini\flutter"
+export "FLUTTER_ROOT=C:\flutter_windows_3.41.6-stable\flutter"
 export "FLUTTER_APPLICATION_PATH=C:\Users\madal\OneDrive\Desktop\APP\Task Manager Kuziini\kuziini_app"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_TARGET=lib\main.dart"

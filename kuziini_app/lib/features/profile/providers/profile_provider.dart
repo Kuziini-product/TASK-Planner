@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,8 +34,8 @@ class ProfileActions {
     return result;
   }
 
-  Future<String?> uploadAvatar(File file) async {
-    final url = await _repo.uploadAvatar(file);
+  Future<String?> uploadAvatar(Uint8List bytes, String fileName) async {
+    final url = await _repo.uploadAvatar(bytes, fileName);
     if (url != null) {
       _ref.invalidate(profileProvider);
       _ref.invalidate(currentUserProfileProvider);

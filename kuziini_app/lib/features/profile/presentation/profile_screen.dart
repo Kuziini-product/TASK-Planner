@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,9 +58,10 @@ class ProfileScreen extends ConsumerWidget {
                             imageQuality: 80,
                           );
                           if (image != null) {
+                            final bytes = await image.readAsBytes();
                             await ref
                                 .read(profileActionsProvider)
-                                .uploadAvatar(File(image.path));
+                                .uploadAvatar(bytes, image.name);
                           }
                         },
                         child: Stack(

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -296,7 +296,7 @@ class TaskRepository {
   Future<TaskAttachment> uploadAttachment({
     required String taskId,
     required String userId,
-    required File file,
+    required Uint8List fileBytes,
     required String fileName,
   }) async {
     final fileExt = fileName.split('.').last;
@@ -305,7 +305,7 @@ class TaskRepository {
     final fileUrl = await _supabase.uploadFile(
       AppConstants.bucketAttachments,
       storagePath,
-      file,
+      fileBytes,
     );
 
     final attachment = TaskAttachment(
@@ -315,7 +315,7 @@ class TaskRepository {
       fileName: fileName,
       fileUrl: fileUrl,
       fileType: fileExt,
-      fileSizeBytes: await file.length(),
+      fileSizeBytes: fileBytes.length,
     );
 
     final response = await _supabase.insert(

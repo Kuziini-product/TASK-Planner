@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -151,9 +150,14 @@ class SupabaseService {
   Future<String> uploadFile(
     String bucket,
     String path,
-    File file,
-  ) async {
-    await storage.from(bucket).upload(path, file);
+    Uint8List bytes, {
+    String? contentType,
+  }) async {
+    await storage.from(bucket).uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: contentType),
+    );
     return storage.from(bucket).getPublicUrl(path);
   }
 

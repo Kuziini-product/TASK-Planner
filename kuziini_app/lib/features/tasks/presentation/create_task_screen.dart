@@ -36,6 +36,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   TaskPriority _priority = TaskPriority.none;
   DateTime? _dueDate;
+  DateTime? _endDate; // For multi-day tasks
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   final List<String> _checklistItems = [];
@@ -101,6 +102,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
     if (p.containsKey('date')) {
       _dueDate = DateTime.tryParse(p['date']!);
+    }
+    if (p.containsKey('endDate')) {
+      _endDate = DateTime.tryParse(p['endDate']!);
     }
 
     if (p.containsKey('hour')) {
@@ -665,14 +669,39 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               _OptionTile(
                 icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
                 label: _dueDate != null
-                    ? '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
+                    ? _endDate != null && _endDate != _dueDate
+                        ? '${_dueDate!.day}/${_dueDate!.month} → ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                        : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
                     : 'Add due date',
                 isActive: _dueDate != null,
                 onTap: _pickDate,
                 onClear: _dueDate != null
-                    ? () => setState(() => _dueDate = null)
+                    ? () => setState(() { _dueDate = null; _endDate = null; })
                     : null,
               ),
+
+              // Period indicator for multi-day tasks
+              if (_endDate != null && _dueDate != null && _endDate != _dueDate)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(PhosphorIcons.calendarDots(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Period: ${_endDate!.difference(_dueDate!).inDays + 1} days',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
               // Time pickers
               _OptionTile(

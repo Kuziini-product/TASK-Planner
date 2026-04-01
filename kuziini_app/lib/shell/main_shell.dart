@@ -14,26 +14,24 @@ class MainShell extends ConsumerWidget {
 
   static int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith(AppRoutes.today)) return 0;
-    if (location.startsWith(AppRoutes.calendar)) return 1;
-    // Index 2 is the center FAB (no tab)
-    if (location.startsWith(AppRoutes.notifications)) return 3;
-    if (location.startsWith(AppRoutes.profile)) return 4;
-    return 0;
+    if (location.startsWith(AppRoutes.today)) return -1;
+    if (location.startsWith(AppRoutes.calendar)) return 0;
+    // Index 1 is the center FAB (no tab)
+    if (location.startsWith(AppRoutes.notifications)) return 2;
+    if (location.startsWith(AppRoutes.profile)) return 3;
+    return -1;
   }
 
   void _onItemTapped(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.go(AppRoutes.today);
-      case 1:
         context.go(AppRoutes.calendar);
-      case 2:
+      case 1:
         // FAB action - handled separately
         context.push(AppRoutes.createTask);
-      case 3:
+      case 2:
         context.go(AppRoutes.notifications);
-      case 4:
+      case 3:
         context.go(AppRoutes.profile);
     }
   }
@@ -65,22 +63,15 @@ class MainShell extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _NavItem(
-                  icon: PhosphorIcons.house(PhosphorIconsStyle.regular),
-                  activeIcon: PhosphorIcons.house(PhosphorIconsStyle.fill),
-                  label: 'Today',
-                  isSelected: selectedIndex == 0,
-                  onTap: () => _onItemTapped(context, 0),
-                ),
-                _NavItem(
                   icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
                   activeIcon: PhosphorIcons.calendar(PhosphorIconsStyle.fill),
                   label: 'Calendar',
-                  isSelected: selectedIndex == 1,
-                  onTap: () => _onItemTapped(context, 1),
+                  isSelected: selectedIndex == 0,
+                  onTap: () => _onItemTapped(context, 0),
                 ),
                 // Center FAB
                 GestureDetector(
-                  onTap: () => _onItemTapped(context, 2),
+                  onTap: () => _onItemTapped(context, 1),
                   child: Container(
                     width: 48,
                     height: 48,
@@ -106,16 +97,16 @@ class MainShell extends ConsumerWidget {
                   icon: PhosphorIcons.bell(PhosphorIconsStyle.regular),
                   activeIcon: PhosphorIcons.bell(PhosphorIconsStyle.fill),
                   label: 'Alerts',
-                  isSelected: selectedIndex == 3,
-                  onTap: () => _onItemTapped(context, 3),
+                  isSelected: selectedIndex == 2,
+                  onTap: () => _onItemTapped(context, 2),
                   badge: unreadCount.whenOrNull(data: (count) => count) ?? 0,
                 ),
                 _NavItem(
                   icon: PhosphorIcons.user(PhosphorIconsStyle.regular),
                   activeIcon: PhosphorIcons.user(PhosphorIconsStyle.fill),
                   label: 'Profile',
-                  isSelected: selectedIndex == 4,
-                  onTap: () => _onItemTapped(context, 4),
+                  isSelected: selectedIndex == 3,
+                  onTap: () => _onItemTapped(context, 3),
                 ),
               ],
             ),

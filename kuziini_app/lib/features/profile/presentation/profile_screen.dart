@@ -193,15 +193,6 @@ class ProfileScreen extends ConsumerWidget {
                   error: (_, __) => const SizedBox.shrink(),
                 ),
 
-                AppSpacing.vGapXxl,
-
-                // Menu items
-                _ProfileMenuItem(
-                  icon: PhosphorIcons.gear(PhosphorIconsStyle.regular),
-                  label: 'Settings',
-                  onTap: () => context.push(AppRoutes.settings),
-                ),
-
                 // Admin & Sign Out are in Settings
 
                 const SizedBox(height: 40),

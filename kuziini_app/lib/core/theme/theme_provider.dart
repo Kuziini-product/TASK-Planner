@@ -4,6 +4,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
 
+// ── Accent color options ──
+class AccentColorOption {
+  final String name;
+  final Color color;
+
+  const AccentColorOption(this.name, this.color);
+}
+
+const List<AccentColorOption> accentColorOptions = [
+  AccentColorOption('Teal', Color(0xFF0D7377)),
+  AccentColorOption('Blue', Color(0xFF2196F3)),
+  AccentColorOption('Purple', Color(0xFF9C27B0)),
+  AccentColorOption('Indigo', Color(0xFF3F51B5)),
+  AccentColorOption('Pink', Color(0xFFE91E63)),
+  AccentColorOption('Red', Color(0xFFF44336)),
+  AccentColorOption('Orange', Color(0xFFFF9800)),
+  AccentColorOption('Green', Color(0xFF4CAF50)),
+  AccentColorOption('Amber', Color(0xFFFFC107)),
+  AccentColorOption('Cyan', Color(0xFF00BCD4)),
+];
+
+// ── Theme Mode Provider ──
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
   (ref) => ThemeModeNotifier(),
 );
@@ -33,4 +55,36 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 
   bool get isDark => state == ThemeMode.dark;
+}
+
+// ── Primary Color Provider ──
+final primaryColorProvider =
+    StateNotifierProvider<PrimaryColorNotifier, Color>(
+  (ref) => PrimaryColorNotifier(),
+);
+
+class PrimaryColorNotifier extends StateNotifier<Color> {
+  PrimaryColorNotifier() : super(accentColorOptions.first.color) {
+    _loadColor();
+  }
+
+  Future<void> _loadColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hex = prefs.getString(AppConstants.prefAccentColor);
+    if (hex != null) {
+      final value = int.tryParse(hex, radix: 16);
+      if (value != null) {
+        state = Color(value);
+      }
+    }
+  }
+
+  Future<void> setColor(Color color) async {
+    state = color;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      AppConstants.prefAccentColor,
+      color.value.toRadixString(16).padLeft(8, '0'),
+    );
+  }
 }

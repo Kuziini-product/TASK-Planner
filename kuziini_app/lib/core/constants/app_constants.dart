@@ -20,6 +20,7 @@ abstract final class AppConstants {
 
   // ── SharedPreferences Keys ──
   static const String prefThemeMode = 'theme_mode';
+  static const String prefAccentColor = 'accent_color';
   static const String prefFcmToken = 'fcm_token';
   static const String prefNotificationsEnabled = 'notifications_enabled';
   static const String prefLastSyncTime = 'last_sync_time';

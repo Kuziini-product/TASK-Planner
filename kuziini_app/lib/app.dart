@@ -12,13 +12,14 @@ class KuziiniApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final primaryColor = ref.watch(primaryColorProvider);
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
       title: 'Kuziini Task Manager',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme(primaryColor),
+      darkTheme: AppTheme.darkTheme(primaryColor),
       themeMode: themeMode,
       routerConfig: router,
       localizationsDelegates: const [

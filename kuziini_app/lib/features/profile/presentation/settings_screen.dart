@@ -19,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final themeMode = ref.watch(themeModeProvider);
+    final currentColor = ref.watch(primaryColorProvider);
 
     return Scaffold(
       appBar: const KuziiniAppBar(
@@ -57,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
                         title: Text(label),
                         value: mode,
                         groupValue: themeMode,
-                        activeColor: AppColors.primary,
+                        activeColor: theme.colorScheme.primary,
                         onChanged: (value) {
                           if (value != null) {
                             ref
@@ -71,6 +72,18 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               );
+            },
+          ),
+
+          AppSpacing.vGapLg,
+
+          // Accent Color
+          _SectionHeader(title: 'Accent Color'),
+          AppSpacing.vGapSm,
+          _AccentColorPicker(
+            currentColor: currentColor,
+            onColorSelected: (color) {
+              ref.read(primaryColorProvider.notifier).setColor(color);
             },
           ),
 
@@ -245,6 +258,76 @@ class _SettingsTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AccentColorPicker extends StatelessWidget {
+  const _AccentColorPicker({
+    required this.currentColor,
+    required this.onColorSelected,
+  });
+
+  final Color currentColor;
+  final ValueChanged<Color> onColorSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return SizedBox(
+      height: 60,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: accentColorOptions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final option = accentColorOptions[index];
+          final isSelected = option.color.value == currentColor.value;
+
+          return GestureDetector(
+            onTap: () => onColorSelected(option.color),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: option.color,
+                shape: BoxShape.circle,
+                border: isSelected
+                    ? Border.all(
+                        color: isDark ? Colors.white : Colors.black87,
+                        width: 2.5,
+                      )
+                    : Border.all(
+                        color: isDark
+                            ? Colors.white12
+                            : Colors.black.withValues(alpha: 0.08),
+                        width: 1,
+                      ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: option.color.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    )
+                  : null,
+            ),
+          );
+        },
       ),
     );
   }

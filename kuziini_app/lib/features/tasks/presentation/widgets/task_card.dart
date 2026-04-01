@@ -86,38 +86,54 @@ class TaskCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // Time and date on the right
+              // Time/date on the right
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (task.startTime != null)
+                  if (task.isMultiDay) ...[
+                    // Multi-day: show date range
                     Text(
-                      task.endTime != null
-                          ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                          : AppDateUtils.formatTime(task.startTime!),
+                      '${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: task.isOverdue
-                            ? AppColors.error
-                            : theme.colorScheme.primary,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
-                  if (task.dueDate != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        AppDateUtils.getRelativeDateLabel(task.dueDate!),
+                    Text(
+                      '${task.endDate!.difference(task.dueDate!).inDays + 1} days',
+                      style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ] else ...[
+                    if (task.startTime != null)
+                      Text(
+                        task.endTime != null
+                            ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                            : AppDateUtils.formatTime(task.startTime!),
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: task.isOverdue
                               ? AppColors.error
-                              : theme.colorScheme.onSurfaceVariant,
+                              : theme.colorScheme.primary,
                         ),
                       ),
-                    ),
+                    if (task.dueDate != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          AppDateUtils.getRelativeDateLabel(task.dueDate!),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: task.isOverdue
+                                ? AppColors.error
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ],

@@ -151,39 +151,77 @@ class ProfileScreen extends ConsumerWidget {
 
                 // Stats
                 statsAsync.when(
-                  data: (stats) => Row(
-                    children: [
-                      _StatCard(
-                        label: 'Total',
-                        value: '${stats['total'] ?? 0}',
-                        color: AppColors.info,
-                        onTap: () {
-                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
-                          context.go(AppRoutes.today);
-                        },
-                      ),
-                      AppSpacing.hGapMd,
-                      _StatCard(
-                        label: 'Done',
-                        value: '${stats['done'] ?? 0}',
-                        color: AppColors.success,
-                        onTap: () {
-                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.done;
-                          context.go(AppRoutes.today);
-                        },
-                      ),
-                      AppSpacing.hGapMd,
-                      _StatCard(
-                        label: 'In Progress',
-                        value: '${stats['in_progress'] ?? 0}',
-                        color: AppColors.warning,
-                        onTap: () {
-                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.inProgress;
-                          context.go(AppRoutes.today);
-                        },
-                      ),
-                    ],
-                  ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
+                  data: (stats) {
+                    final overdue = stats['overdue'] ?? 0;
+                    return Column(
+                      children: [
+                        // Overdue badge - prominent at top
+                        if (overdue > 0)
+                          GestureDetector(
+                            onTap: () {
+                              ref.read(taskFilterProvider.notifier).state = TaskFilterType.overdue;
+                              context.go(AppRoutes.today);
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(PhosphorIcons.warning(PhosphorIconsStyle.fill), color: AppColors.error, size: 20),
+                                  const SizedBox(width: 10),
+                                  Text('Overdue Tasks', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.error)),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(12)),
+                                    child: Text('$overdue', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            _StatCard(
+                              label: 'Total',
+                              value: '${stats['total'] ?? 0}',
+                              color: AppColors.info,
+                              onTap: () {
+                                ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                                context.go(AppRoutes.today);
+                              },
+                            ),
+                            AppSpacing.hGapMd,
+                            _StatCard(
+                              label: 'Done',
+                              value: '${stats['done'] ?? 0}',
+                              color: AppColors.success,
+                              onTap: () {
+                                ref.read(taskFilterProvider.notifier).state = TaskFilterType.done;
+                                context.go(AppRoutes.today);
+                              },
+                            ),
+                            AppSpacing.hGapMd,
+                            _StatCard(
+                              label: 'In Progress',
+                              value: '${stats['in_progress'] ?? 0}',
+                              color: AppColors.warning,
+                              onTap: () {
+                                ref.read(taskFilterProvider.notifier).state = TaskFilterType.inProgress;
+                                context.go(AppRoutes.today);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                   loading: () => const LoadingIndicator(size: 24),
                   error: (_, __) => const SizedBox.shrink(),
                 ),

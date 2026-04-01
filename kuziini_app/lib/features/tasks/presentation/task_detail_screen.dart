@@ -114,6 +114,102 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
+  Future<void> _showRelocateDialog() async {
+    final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+    if (task == null) return;
+
+    DateTime? newDate = task.dueDate;
+    DateTime? newEndDate = task.endDate;
+    TimeOfDay? newStartTime = task.startTime != null ? TimeOfDay.fromDateTime(task.startTime!.toLocal()) : null;
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(ctx).dividerColor, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Text('Relocate Task', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                // Date
+                ListTile(
+                  leading: Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular)),
+                  title: Text(newDate != null ? '${newDate!.day}/${newDate!.month}/${newDate!.year}' : 'Select date'),
+                  onTap: () async {
+                    final d = await showDatePicker(context: ctx, initialDate: newDate ?? DateTime.now(), firstDate: DateTime.now().subtract(const Duration(days: 365)), lastDate: DateTime.now().add(const Duration(days: 365 * 2)));
+                    if (d != null) setSheetState(() => newDate = d);
+                  },
+                  dense: true,
+                ),
+                // End date
+                ListTile(
+                  leading: Icon(PhosphorIcons.calendarDots(PhosphorIconsStyle.regular)),
+                  title: Text(newEndDate != null ? 'End: ${newEndDate!.day}/${newEndDate!.month}/${newEndDate!.year}' : 'Add end date (multi-day)'),
+                  trailing: newEndDate != null ? IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setSheetState(() => newEndDate = null)) : null,
+                  onTap: () async {
+                    final d = await showDatePicker(context: ctx, initialDate: newEndDate ?? newDate ?? DateTime.now(), firstDate: newDate ?? DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365 * 2)));
+                    if (d != null) setSheetState(() => newEndDate = d);
+                  },
+                  dense: true,
+                ),
+                // Time
+                ListTile(
+                  leading: Icon(PhosphorIcons.clock(PhosphorIconsStyle.regular)),
+                  title: Text(newStartTime != null ? 'Time: ${newStartTime!.format(ctx)}' : 'Select time'),
+                  trailing: newStartTime != null ? IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setSheetState(() => newStartTime = null)) : null,
+                  onTap: () async {
+                    final t = await showTimePicker(context: ctx, initialTime: newStartTime ?? TimeOfDay.now());
+                    if (t != null) setSheetState(() => newStartTime = t);
+                  },
+                  dense: true,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Relocate'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final repo = ref.read(taskRepositoryProvider);
+        final dateOnly = newDate != null ? '${newDate!.year}-${newDate!.month.toString().padLeft(2, '0')}-${newDate!.day.toString().padLeft(2, '0')}' : null;
+        final endDateOnly = newEndDate != null ? '${newEndDate!.year}-${newEndDate!.month.toString().padLeft(2, '0')}-${newEndDate!.day.toString().padLeft(2, '0')}' : null;
+
+        final updateData = <String, dynamic>{
+          'due_date': dateOnly,
+          'end_date': endDateOnly,
+        };
+
+        if (newStartTime != null && newDate != null) {
+          final st = DateTime(newDate!.year, newDate!.month, newDate!.day, newStartTime!.hour, newStartTime!.minute);
+          updateData['start_time'] = st.toUtc().toIso8601String();
+        }
+
+        await repo.updateTask(widget.taskId, updateData);
+        ref.invalidate(taskDetailProvider(widget.taskId));
+        ref.invalidate(dailyTasksProvider);
+        if (mounted) context.showSnackBar('Task relocated');
+      } catch (e) {
+        if (mounted) context.showSnackBar('Failed to relocate', isError: true);
+      }
+    }
+  }
+
   Future<void> _updateStatus(TaskStatus status) async {
     try {
       final repo = ref.read(taskRepositoryProvider);
@@ -134,15 +230,26 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     final checklistAsync = ref.watch(taskChecklistProvider(widget.taskId));
 
     return Scaffold(
-      appBar: KuziiniAppBar(
-        showBackButton: true,
-        title: 'Task Detail',
-        onBackPressed: () {
-          ref.invalidate(dailyTasksProvider);
-          Navigator.of(context).pop();
-        },
+      appBar: AppBar(
+        leading: TextButton.icon(
+          onPressed: () {
+            ref.invalidate(dailyTasksProvider);
+            Navigator.of(context).pop();
+          },
+          icon: Icon(PhosphorIcons.arrowLeft(PhosphorIconsStyle.bold), size: 18),
+          label: const Text('Back', style: TextStyle(fontSize: 13)),
+          style: TextButton.styleFrom(padding: EdgeInsets.zero),
+        ),
+        leadingWidth: 90,
+        title: const Text('Task Detail'),
         actions: [
-          // Edit button - visible directly
+          // Relocate button
+          IconButton(
+            onPressed: () => _showRelocateDialog(),
+            icon: Icon(PhosphorIcons.calendarPlus(PhosphorIconsStyle.regular)),
+            tooltip: 'Relocate',
+          ),
+          // Edit button
           IconButton(
             onPressed: () => _handleEdit(),
             icon: Icon(PhosphorIcons.pencilSimple(PhosphorIconsStyle.regular)),

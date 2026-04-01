@@ -546,14 +546,42 @@ class _DayDetailView extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
+        leading: TextButton.icon(
           onPressed: () => ref.read(_calendarSelectedDayProvider.notifier).state = null,
-          icon: Icon(PhosphorIcons.arrowLeft(PhosphorIconsStyle.bold)),
+          icon: Icon(PhosphorIcons.arrowLeft(PhosphorIconsStyle.bold), size: 18),
+          label: const Text('Back', style: TextStyle(fontSize: 13)),
+          style: TextButton.styleFrom(padding: EdgeInsets.zero),
         ),
+        leadingWidth: 90,
         centerTitle: true,
-        title: Text(
-          AppDateUtils.formatFull(day),
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Previous day
+            IconButton(
+              onPressed: () {
+                final prev = day.subtract(const Duration(days: 1));
+                ref.read(_calendarSelectedDayProvider.notifier).state = prev;
+              },
+              icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), size: 16),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              padding: EdgeInsets.zero,
+            ),
+            Text(
+              AppDateUtils.formatFull(day),
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            // Next day
+            IconButton(
+              onPressed: () {
+                final next = day.add(const Duration(days: 1));
+                ref.read(_calendarSelectedDayProvider.notifier).state = next;
+              },
+              icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), size: 16),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              padding: EdgeInsets.zero,
+            ),
+          ],
         ),
       ),
       body: _TaskListForDay(day: day),

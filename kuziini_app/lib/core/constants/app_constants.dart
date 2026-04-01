@@ -5,18 +5,18 @@ abstract final class AppConstants {
   static const String appVersion = '1.0.0';
 
   // ── Supabase Tables ──
-  static const String tableUsers = 'users';
+  static const String tableUsers = 'profiles';
   static const String tableTasks = 'tasks';
   static const String tableTaskComments = 'task_comments';
   static const String tableTaskAttachments = 'task_attachments';
-  static const String tableChecklistItems = 'checklist_items';
+  static const String tableChecklistItems = 'task_checklists';
   static const String tableNotifications = 'notifications';
   static const String tableInvitations = 'invitations';
   static const String tableActivityLogs = 'activity_logs';
 
   // ── Storage Buckets ──
   static const String bucketAvatars = 'avatars';
-  static const String bucketAttachments = 'attachments';
+  static const String bucketAttachments = 'task-attachments';
 
   // ── SharedPreferences Keys ──
   static const String prefThemeMode = 'theme_mode';

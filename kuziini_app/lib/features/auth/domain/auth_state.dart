@@ -11,9 +11,10 @@ class UserProfile {
     required this.email,
     this.fullName,
     this.avatarUrl,
-    this.role = 'member',
-    this.isApproved = false,
-    this.fcmToken,
+    this.role = 'user',
+    this.status = 'pending',
+    this.phone,
+    this.timezone,
     this.createdAt,
     this.updatedAt,
   });
@@ -23,16 +24,19 @@ class UserProfile {
   final String? fullName;
   final String? avatarUrl;
   final String role;
-  final bool isApproved;
-  final String? fcmToken;
+  final String status;
+  final String? phone;
+  final String? timezone;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  bool get isApproved => status == 'active';
+  bool get isPending => status == 'pending';
   bool get isAdmin => role == 'admin';
-  bool get isMember => role == 'member';
-  bool get isViewer => role == 'viewer';
+  bool get isManager => role == 'manager';
+  bool get isUser => role == 'user';
 
-  String get displayName => fullName ?? email.split('@').first;
+  String get displayName => (fullName != null && fullName!.isNotEmpty) ? fullName! : email.split('@').first;
 
   String get initials {
     if (fullName != null && fullName!.isNotEmpty) {
@@ -48,12 +52,13 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'] as String,
-      email: json['email'] as String,
+      email: json['email'] as String? ?? '',
       fullName: json['full_name'] as String?,
       avatarUrl: json['avatar_url'] as String?,
-      role: json['role'] as String? ?? 'member',
-      isApproved: json['is_approved'] as bool? ?? false,
-      fcmToken: json['fcm_token'] as String?,
+      role: json['role'] as String? ?? 'user',
+      status: json['status'] as String? ?? 'pending',
+      phone: json['phone'] as String?,
+      timezone: json['timezone'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -70,10 +75,9 @@ class UserProfile {
       'full_name': fullName,
       'avatar_url': avatarUrl,
       'role': role,
-      'is_approved': isApproved,
-      'fcm_token': fcmToken,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'status': status,
+      'phone': phone,
+      'timezone': timezone,
     };
   }
 
@@ -83,8 +87,9 @@ class UserProfile {
     String? fullName,
     String? avatarUrl,
     String? role,
-    bool? isApproved,
-    String? fcmToken,
+    String? status,
+    String? phone,
+    String? timezone,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -94,8 +99,9 @@ class UserProfile {
       fullName: fullName ?? this.fullName,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
-      isApproved: isApproved ?? this.isApproved,
-      fcmToken: fcmToken ?? this.fcmToken,
+      status: status ?? this.status,
+      phone: phone ?? this.phone,
+      timezone: timezone ?? this.timezone,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -31,30 +31,13 @@ class AuthRepository {
     required String password,
     String? fullName,
   }) async {
-    final response = await _supabase.auth.signUp(
+    return await _supabase.auth.signUp(
       email: email,
       password: password,
       data: {
-        'full_name': fullName,
+        'full_name': fullName ?? '',
       },
     );
-
-    if (response.user != null) {
-      try {
-        await _supabase.insert(AppConstants.tableUsers, {
-          'id': response.user!.id,
-          'email': email,
-          'full_name': fullName,
-          'role': AppConstants.roleMember,
-          'is_approved': false,
-          'created_at': DateTime.now().toIso8601String(),
-        });
-      } catch (e) {
-        debugPrint('Failed to create user profile: $e');
-      }
-    }
-
-    return response;
   }
 
   Future<void> signOut() async {
@@ -84,12 +67,15 @@ class AuthRepository {
   Future<AuthStatus> checkAuthStatus() async {
     if (!isAuthenticated) return AuthStatus.unauthenticated;
 
-    final profile = await getUserProfile();
-    if (profile == null) return AuthStatus.unauthenticated;
-
-    if (!profile.isApproved) return AuthStatus.pendingApproval;
-
-    return AuthStatus.authenticated;
+    try {
+      final profile = await getUserProfile();
+      if (profile == null) return AuthStatus.pendingApproval;
+      if (!profile.isApproved) return AuthStatus.pendingApproval;
+      return AuthStatus.authenticated;
+    } catch (e) {
+      debugPrint('Auth status check failed: $e');
+      return AuthStatus.unauthenticated;
+    }
   }
 
   Future<UserProfile?> updateProfile(Map<String, dynamic> data) async {
@@ -99,10 +85,7 @@ class AuthRepository {
     try {
       final updated = await _supabase.update(
         AppConstants.tableUsers,
-        {
-          ...data,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
+        data,
         id: userId,
       );
       return UserProfile.fromJson(updated);
@@ -121,13 +104,10 @@ class AuthRepository {
 
       if (invitations.isEmpty) return false;
 
-      final invitation = invitations.first;
-      final email = invitation['email'] as String;
-
       await _supabase.update(
         AppConstants.tableInvitations,
-        {'status': 'accepted', 'accepted_at': DateTime.now().toIso8601String()},
-        id: invitation['id'] as String,
+        {'status': 'accepted'},
+        id: invitations.first['id'] as String,
       );
 
       return true;

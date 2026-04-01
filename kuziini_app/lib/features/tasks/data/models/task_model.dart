@@ -49,6 +49,7 @@ class TaskModel {
     this.creatorName,
     this.creatorAvatarUrl,
     this.dueDate,
+    this.endDate,
     this.startTime,
     this.endTime,
     this.labels = const [],
@@ -81,6 +82,7 @@ class TaskModel {
   final String? creatorName;
   final String? creatorAvatarUrl;
   final DateTime? dueDate;
+  final DateTime? endDate;
   final DateTime? startTime;
   final DateTime? endTime;
   final List<String> labels;
@@ -109,6 +111,18 @@ class TaskModel {
   bool get hasAttachments => attachmentCount > 0;
   bool get isAssigned => assigneeId != null;
   bool get isSubtask => parentTaskId != null;
+  bool get isMultiDay => endDate != null && dueDate != null &&
+      !(dueDate!.year == endDate!.year && dueDate!.month == endDate!.month && dueDate!.day == endDate!.day);
+
+  /// Check if a specific date falls within this task's date range.
+  bool coversDate(DateTime date) {
+    if (dueDate == null) return false;
+    final d = DateTime(date.year, date.month, date.day);
+    final start = DateTime(dueDate!.year, dueDate!.month, dueDate!.day);
+    if (endDate == null) return d == start;
+    final end = DateTime(endDate!.year, endDate!.month, endDate!.day);
+    return !d.isBefore(start) && !d.isAfter(end);
+  }
   bool get hasLocation => locationName != null || locationAddress != null || locationUrl != null;
   String get locationDisplay {
     if (locationName != null && locationName!.isNotEmpty) return locationName!;
@@ -140,6 +154,9 @@ class TaskModel {
       creatorAvatarUrl: json['creator_avatar_url'] as String?,
       dueDate: json['due_date'] != null
           ? DateTime.parse(json['due_date'] as String)
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.parse(json['end_date'] as String)
           : null,
       startTime: json['start_time'] != null
           ? DateTime.parse(json['start_time'] as String)
@@ -184,6 +201,9 @@ class TaskModel {
       'due_date': dueDate != null
           ? '${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}'
           : null,
+      'end_date': endDate != null
+          ? '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}'
+          : null,
       'start_time': startTime?.toUtc().toIso8601String(),
       'end_time': endTime?.toUtc().toIso8601String(),
       'recurrence_rule': recurringPattern,
@@ -216,6 +236,7 @@ class TaskModel {
     String? creatorName,
     String? creatorAvatarUrl,
     DateTime? dueDate,
+    DateTime? endDate,
     DateTime? startTime,
     DateTime? endTime,
     List<String>? labels,
@@ -248,6 +269,7 @@ class TaskModel {
       creatorName: creatorName ?? this.creatorName,
       creatorAvatarUrl: creatorAvatarUrl ?? this.creatorAvatarUrl,
       dueDate: dueDate ?? this.dueDate,
+      endDate: endDate ?? this.endDate,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       labels: labels ?? this.labels,

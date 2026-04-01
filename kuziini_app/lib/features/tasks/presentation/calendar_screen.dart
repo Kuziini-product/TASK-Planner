@@ -227,22 +227,25 @@ class _WeekView extends ConsumerWidget {
         Expanded(
           child: tasksAsync.when(
             data: (tasks) {
-              // Group all week tasks by hour
+              // Group all week tasks by day+hour, including multi-day tasks
               final slotMap = <String, List<TaskModel>>{};
               for (final task in tasks) {
-                if (task.startTime == null || task.dueDate == null) continue;
-                final h = task.startTime!.toLocal().hour;
-                final dayLabel = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1];
-                final key = '$dayLabel ${h.toString().padLeft(2, '0')}:00';
-                slotMap.putIfAbsent(key, () => []).add(task);
-              }
+                if (task.dueDate == null) continue;
 
-              // Also group unscheduled
-              for (final task in tasks) {
-                if (task.startTime != null || task.dueDate == null) continue;
-                final dayLabel = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1];
-                final key = '$dayLabel Unscheduled';
-                slotMap.putIfAbsent(key, () => []).add(task);
+                // Find which days of this week the task covers
+                for (final day in days) {
+                  if (!task.coversDate(day)) continue;
+                  final dayLabel = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.weekday - 1];
+
+                  if (task.startTime != null) {
+                    final h = task.startTime!.toLocal().hour;
+                    final key = '$dayLabel ${h.toString().padLeft(2, '0')}:00';
+                    slotMap.putIfAbsent(key, () => []).add(task);
+                  } else {
+                    final key = '$dayLabel Unscheduled';
+                    slotMap.putIfAbsent(key, () => []).add(task);
+                  }
+                }
               }
 
               if (slotMap.isEmpty) {
@@ -420,7 +423,18 @@ class _MonthView extends ConsumerWidget {
               final tasksByDay = <int, List<TaskModel>>{};
               for (final task in tasks) {
                 if (task.dueDate != null) {
-                  tasksByDay.putIfAbsent(task.dueDate!.day, () => []).add(task);
+                  // For multi-day tasks, add to all days in range
+                  if (task.endDate != null) {
+                    final start = task.dueDate!;
+                    final end = task.endDate!;
+                    for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+                      if (d.month == currentMonth.month && d.year == currentMonth.year) {
+                        tasksByDay.putIfAbsent(d.day, () => []).add(task);
+                      }
+                    }
+                  } else {
+                    tasksByDay.putIfAbsent(task.dueDate!.day, () => []).add(task);
+                  }
                 }
               }
               return _CalendarGrid(
@@ -562,7 +576,7 @@ class _TaskListForDay extends ConsumerWidget {
     return tasksAsync.when(
       data: (allTasks) {
         final dayTasks = allTasks
-            .where((t) => t.dueDate != null && AppDateUtils.isSameDay(t.dueDate!, day))
+            .where((t) => t.coversDate(day))
             .toList();
 
         if (dayTasks.isEmpty) {

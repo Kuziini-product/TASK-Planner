@@ -42,9 +42,8 @@ class MainShell extends ConsumerWidget {
         if (result.hour != null) params['hour'] = result.hour.toString();
         if (result.minute != null) params['minute'] = result.minute.toString();
         if (result.priority != null) params['priority'] = result.priority!;
-        if (result.locationName != null) params['locName'] = result.locationName!;
-        if (result.locationAddress != null) params['locAddress'] = result.locationAddress!;
-        if (result.assigneeName != null) params['assignee'] = result.assigneeName!;
+        if (result.address != null) params['locAddress'] = result.address!;
+        if (result.assignees.isNotEmpty) params['assignee'] = result.assignees.first;
 
         final uri = Uri(path: AppRoutes.createTask, queryParameters: params.isNotEmpty ? params : null);
         context.push(uri.toString());
@@ -237,8 +236,8 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// ── Voice Task Sheet ──
-// Full-screen voice input that shows parsed task fields live.
+// ── Voice Task Sheet v3 ──
+// Live card-based UI: each field is a card, active field is highlighted.
 
 class _VoiceTaskSheet extends StatefulWidget {
   const _VoiceTaskSheet();
@@ -272,7 +271,6 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
   void _start() {
     Object? recognition;
     try {
-      // ignore: avoid_dynamic_calls
       final global = _jsGlobalThis;
       final ctor = _jsGetProp(global, 'webkitSpeechRecognition') ?? _jsGetProp(global, 'SpeechRecognition');
       if (ctor == null) throw 'not supported';
@@ -333,130 +331,169 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor = theme.colorScheme.primary;
     final parsed = _text.isNotEmpty ? VoiceTaskParser.parse(_text) : null;
+    final activeField = parsed?.activeField ?? VoiceField.title;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        margin: const EdgeInsets.all(16),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) => Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, -4))],
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20)],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          controller: scrollController,
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16),
           children: [
+            // Handle
+            Center(child: Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+            )),
+
+            // Header + mic
             Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Container(width: 40, height: 4,
-                decoration: BoxDecoration(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2))),
-            ),
-            const SizedBox(height: 12),
-
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(PhosphorIcons.microphone(PhosphorIconsStyle.fill), color: primaryColor, size: 20),
-                const SizedBox(width: 8),
-                Text('Voice Task Creator', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Speak: task title, descriere, data, ora, locație, urgent/medium/low, arond [name]',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 10),
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: 16),
-
-            // Pulsing mic
-            AnimatedBuilder(
-              animation: _pulseAnim,
-              builder: (context, _) => Container(
-                width: 64, height: 64,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: (_listening ? AppColors.error : primaryColor).withValues(alpha: 0.1)),
-                child: Center(
-                  child: Transform.scale(
-                    scale: _listening ? _pulseAnim.value : 1.0,
-                    child: Container(
-                      width: 48, height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _listening ? AppColors.error : primaryColor,
-                        boxShadow: _listening ? [BoxShadow(color: AppColors.error.withValues(alpha: 0.4), blurRadius: 12)] : null,
-                      ),
-                      child: Icon(
-                        _listening ? PhosphorIcons.microphone(PhosphorIconsStyle.fill) : PhosphorIcons.microphoneSlash(PhosphorIconsStyle.fill),
-                        color: Colors.white, size: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Voice Task', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text('Speak naturally — keywords switch fields', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+                    ],
+                  )),
+                  // Pulsing mic
+                  GestureDetector(
+                    onTap: _listening ? _stop : _start,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnim,
+                      builder: (context, _) => Transform.scale(
+                        scale: _listening ? _pulseAnim.value : 1.0,
+                        child: Container(
+                          width: 52, height: 52,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _listening ? AppColors.error : primaryColor,
+                            boxShadow: _listening ? [BoxShadow(color: AppColors.error.withValues(alpha: 0.4), blurRadius: 12)] : null,
+                          ),
+                          child: Icon(
+                            _listening ? PhosphorIcons.microphone(PhosphorIconsStyle.fill) : PhosphorIcons.microphoneSlash(PhosphorIconsStyle.fill),
+                            color: Colors.white, size: 24),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 8),
-            Text(
-              _listening ? 'Listening...' : _error.isNotEmpty ? 'Error' : 'Tap mic to restart',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: _listening ? AppColors.error : theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500, fontSize: 11),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Transcript
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(12),
-              constraints: const BoxConstraints(minHeight: 50),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12)),
-              width: double.infinity,
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                _text.isNotEmpty ? _text : 'Say something like:\n"măsurătoare Radu slash întâlnire Radu slash ora 14 4 aprilie adresă strada Solstițiului 11 urgent"',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: _text.isNotEmpty ? null : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4), height: 1.3, fontSize: 13),
+                _listening ? 'Listening...' : _error.isNotEmpty ? _error : 'Tap mic to start',
+                style: TextStyle(fontSize: 11, color: _listening ? AppColors.error : theme.colorScheme.onSurfaceVariant),
               ),
             ),
-
-            // Parsed fields preview
-            if (parsed != null && !parsed.isEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: primaryColor.withValues(alpha: 0.15)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Parsed Fields', style: theme.textTheme.labelSmall?.copyWith(color: primaryColor, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    if (parsed.title != null) _ParsedField(icon: PhosphorIcons.textT(PhosphorIconsStyle.bold), label: 'Title', value: parsed.title!),
-                    if (parsed.description != null) _ParsedField(icon: PhosphorIcons.article(PhosphorIconsStyle.regular), label: 'Description', value: parsed.description!),
-                    if (parsed.dueDate != null) _ParsedField(icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular), label: 'Date', value: '${parsed.dueDate!.day}/${parsed.dueDate!.month}/${parsed.dueDate!.year}'),
-                    if (parsed.hour != null) _ParsedField(icon: PhosphorIcons.clock(PhosphorIconsStyle.regular), label: 'Time', value: '${parsed.hour}:${(parsed.minute ?? 0).toString().padLeft(2, '0')}'),
-                    if (parsed.priority != null) _ParsedField(icon: PhosphorIcons.flag(PhosphorIconsStyle.regular), label: 'Priority', value: parsed.priority!),
-                    if (parsed.locationAddress != null) _ParsedField(icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular), label: 'Address', value: [parsed.locationName, parsed.locationAddress].whereType<String>().where((s) => s.isNotEmpty).join(' - ')),
-                    if (parsed.assigneeName != null) _ParsedField(icon: PhosphorIcons.user(PhosphorIconsStyle.regular), label: 'Assign', value: parsed.assigneeName!),
-                  ],
-                ),
-              ),
-            ],
-
-            if (_error.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(_error, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.error), textAlign: TextAlign.center)),
-            ],
 
             const SizedBox(height: 16),
+
+            // ── Field Cards ──
+            _FieldCard(
+              field: VoiceField.title,
+              activeField: activeField,
+              icon: PhosphorIcons.textT(PhosphorIconsStyle.bold),
+              label: 'Title',
+              value: parsed?.title,
+              placeholder: 'Start speaking to set the title...',
+            ),
+            _FieldCard(
+              field: VoiceField.description,
+              activeField: activeField,
+              icon: PhosphorIcons.article(PhosphorIconsStyle.regular),
+              label: 'Description',
+              value: parsed?.description,
+              placeholder: 'Say "descriere" to switch here',
+            ),
+
+            // Time + Date in a row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(child: _FieldCard(
+                    field: VoiceField.time,
+                    activeField: activeField,
+                    icon: PhosphorIcons.clock(PhosphorIconsStyle.regular),
+                    label: 'Time',
+                    value: parsed?.hour != null ? '${parsed!.hour.toString().padLeft(2, '0')}:${(parsed.minute ?? 0).toString().padLeft(2, '0')}' : null,
+                    placeholder: '"time ora 14"',
+                    compact: true,
+                  )),
+                  Expanded(child: _FieldCard(
+                    field: VoiceField.date,
+                    activeField: activeField,
+                    icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
+                    label: 'Date',
+                    value: parsed?.dueDate != null ? '${parsed!.dueDate!.day}/${parsed.dueDate!.month}/${parsed.dueDate!.year}' : null,
+                    placeholder: '"date 4 aprilie"',
+                    compact: true,
+                  )),
+                ],
+              ),
+            ),
+
+            _FieldCard(
+              field: VoiceField.address,
+              activeField: activeField,
+              icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
+              label: 'Address',
+              value: parsed?.address,
+              placeholder: 'Say "adresă" to switch here',
+            ),
+
+            // Priority card with chips
+            _PriorityCard(
+              activeField: activeField,
+              currentPriority: parsed?.priority,
+            ),
+
+            // Assign card with user chips
+            _AssignCard(
+              activeField: activeField,
+              assignees: parsed?.assignees ?? [],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Raw transcript (collapsible)
+            if (_text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('RAW TRANSCRIPT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5), letterSpacing: 1)),
+                      const SizedBox(height: 4),
+                      Text(_text, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6), height: 1.3)),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 16),
+
+            // Action buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(children: [
@@ -468,7 +505,7 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     foregroundColor: theme.colorScheme.onSurfaceVariant,
                     side: BorderSide(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton.icon(
@@ -479,21 +516,10 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     backgroundColor: primaryColor,
                     disabledBackgroundColor: primaryColor.withValues(alpha: 0.3),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
                 )),
               ]),
             ),
-
-            if (!_listening && _error.isEmpty) ...[
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _start,
-                icon: Icon(PhosphorIcons.arrowClockwise(PhosphorIconsStyle.regular), size: 14),
-                label: const Text('Restart', style: TextStyle(fontSize: 12)),
-                style: TextButton.styleFrom(foregroundColor: primaryColor)),
-            ],
-
-            SizedBox(height: 16 + MediaQuery.of(context).padding.bottom),
           ],
         ),
       ),
@@ -501,23 +527,210 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
   }
 }
 
-class _ParsedField extends StatelessWidget {
-  const _ParsedField({required this.icon, required this.label, required this.value});
+// ── Field Card Widget ──
+class _FieldCard extends StatelessWidget {
+  const _FieldCard({
+    required this.field,
+    required this.activeField,
+    required this.icon,
+    required this.label,
+    this.value,
+    this.placeholder,
+    this.compact = false,
+  });
+
+  final VoiceField field;
+  final VoiceField activeField;
   final IconData icon;
   final String label;
-  final String value;
+  final String? value;
+  final String? placeholder;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+    final primaryColor = theme.colorScheme.primary;
+    final isActive = field == activeField;
+    final hasValue = value != null && value!.isNotEmpty;
+
+    return Container(
+      margin: compact ? const EdgeInsets.all(4) : const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: EdgeInsets.all(compact ? 10 : 12),
+      decoration: BoxDecoration(
+        color: isActive
+            ? primaryColor.withValues(alpha: 0.08)
+            : hasValue
+                ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive
+              ? primaryColor
+              : hasValue
+                  ? primaryColor.withValues(alpha: 0.2)
+                  : theme.dividerColor.withValues(alpha: 0.15),
+          width: isActive ? 1.5 : 1,
+        ),
+      ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 6),
-          Text('$label: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+          Icon(icon, size: compact ? 16 : 18, color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant),
+          SizedBox(width: compact ? 6 : 10),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$label:',
+                style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5,
+                  color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (hasValue)
+                Text(value!, style: TextStyle(fontSize: compact ? 13 : 14, fontWeight: FontWeight.w500, height: 1.3))
+              else
+                Text(placeholder ?? '', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+            ],
+          )),
+          if (isActive)
+            Container(
+              width: 8, height: 8,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: primaryColor),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Priority Card ──
+class _PriorityCard extends StatelessWidget {
+  const _PriorityCard({required this.activeField, this.currentPriority});
+  final VoiceField activeField;
+  final String? currentPriority;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final isActive = activeField == VoiceField.priority;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isActive ? primaryColor.withValues(alpha: 0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? primaryColor : currentPriority != null ? primaryColor.withValues(alpha: 0.2) : theme.dividerColor.withValues(alpha: 0.15),
+          width: isActive ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(PhosphorIcons.flag(PhosphorIconsStyle.regular), size: 18, color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Text('Priority:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant)),
+              const Spacer(),
+              if (isActive) Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: primaryColor)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: ['high', 'medium', 'low', 'none'].map((p) {
+              final selected = currentPriority == p;
+              final color = p == 'high' ? AppColors.priorityUrgent
+                  : p == 'medium' ? AppColors.priorityMedium
+                  : p == 'low' ? AppColors.priorityLow
+                  : theme.colorScheme.onSurfaceVariant;
+              return Expanded(child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: selected ? color.withValues(alpha: 0.15) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: selected ? color : theme.dividerColor.withValues(alpha: 0.2)),
+                ),
+                child: Center(child: Text(
+                  p[0].toUpperCase() + p.substring(1),
+                  style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w400, color: selected ? color : theme.colorScheme.onSurfaceVariant),
+                )),
+              ));
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Assign Card ──
+class _AssignCard extends StatelessWidget {
+  const _AssignCard({required this.activeField, required this.assignees});
+  final VoiceField activeField;
+  final List<String> assignees;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final isActive = activeField == VoiceField.assign;
+    final hasValue = assignees.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isActive ? primaryColor.withValues(alpha: 0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? primaryColor : hasValue ? primaryColor.withValues(alpha: 0.2) : theme.dividerColor.withValues(alpha: 0.15),
+          width: isActive ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(PhosphorIcons.users(PhosphorIconsStyle.regular), size: 18, color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Text('Assign:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant)),
+              const Spacer(),
+              if (isActive) Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: primaryColor)),
+            ],
+          ),
+          if (hasValue) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: assignees.map((name) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(PhosphorIcons.user(PhosphorIconsStyle.fill), size: 12, color: primaryColor),
+                    const SizedBox(width: 4),
+                    Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor)),
+                  ],
+                ),
+              )).toList(),
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Say "cc Radu" or "trimite și la Radu"', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+            ),
         ],
       ),
     );

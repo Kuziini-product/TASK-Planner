@@ -1,52 +1,50 @@
-/// VoiceTaskParser v2 – parses Romanian voice input into structured task data.
+/// VoiceTaskParser v3 – semantic keyword context switching.
 ///
-/// ## Parsing rules:
+/// The user speaks naturally. Keywords change the active field context.
+/// Keywords are stripped from final content.
 ///
-/// 1. **Slash separator** – "slash" splits the input into segments.
-///    - First segment (before first slash) = **title**
-///    - Middle segments (between slashes) = **description** (concatenated)
-///    - Last segment may contain metadata (date, time, address, priority)
+/// ## Active field contexts:
+///   title (default) → description → time → date → address → priority → assign
 ///
-/// 2. **Date** – detected anywhere: "4 aprilie", "20 iunie 2026"
-///    - If only date → no time. If only time → date = today.
-///
-/// 3. **Time** – "ora 14" → 14:00, "ora 9 și jumătate" → 9:30
-///
-/// 4. **Address** – triggered by "adresă" / "adresa" / "locație"
-///    - Everything after keyword until next keyword = address text
-///    - "Kuziini" → default Kuziini address
-///
-/// 5. **Priority** – "urgent" → high, "mediu" → medium, "low" → low
-///
-/// 6. **Assignee** – "arond" / "cc" / "avertizează" + name
-///
-/// 7. **Flexible order** – metadata can appear in any order, any segment.
+/// ## Keyword triggers (not saved in content):
+///   Description: "description", "descriere", "subiect"
+///   Time:        "time", "timp", "ora"
+///   Date:        "date", "data", "dată"
+///   Address:     "address", "adresă", "adresa", "locație", "locatie"
+///   Priority:    "priority", "praioriti", "prioritate"
+///   Assign:      "assign", "asign", "atribuie", "atribuie lui",
+///                "trimite și la", "trimite la", "zi-i și lui",
+///                "cc", "notifică", "notifica"
 ///
 /// ## Example:
-/// ```
-/// "măsurătoare Radu slash întâlnire Radu slash măsurătoare apartament
-///  ora 14 4 aprilie adresă strada Solstițiului 11 urgent"
-/// ```
+///   "Măsurătoare apartament Băneasa description discuție pentru mobilare
+///    bucătărie time ora 14 date 4 aprilie adresă strada Solstițiului 11
+///    București priority high trimite și la Radu"
+///
 /// Result:
-/// ```json
-/// { "title": "Măsurătoare Radu",
-///   "description": "Întâlnire Radu. Măsurătoare apartament",
-///   "date": "2026-04-04", "time": "14:00",
-///   "address": "Strada Solstițiului 11",
-///   "priority": "high" }
-/// ```
+///   title: "Măsurătoare apartament Băneasa"
+///   description: "Discuție pentru mobilare bucătărie"
+///   time: 14:00, date: 2026-04-04
+///   address: "Strada Solstițiului 11 București"
+///   priority: high
+///   assignees: ["Radu"]
 library;
 
+// ── Field enum ──
+enum VoiceField { title, description, time, date, address, priority, assign }
+
+// ── Result ──
 class VoiceTaskResult {
   final String? title;
   final String? description;
   final DateTime? dueDate;
   final int? hour;
   final int? minute;
-  final String? priority; // high, medium, low
-  final String? locationName;
-  final String? locationAddress;
-  final String? assigneeName;
+  final String? priority; // high, medium, low, none
+  final String? address;
+  final List<String> assignees;
+  /// Which field is currently being filled (for live UI).
+  final VoiceField activeField;
 
   const VoiceTaskResult({
     this.title,
@@ -55,9 +53,9 @@ class VoiceTaskResult {
     this.hour,
     this.minute,
     this.priority,
-    this.locationName,
-    this.locationAddress,
-    this.assigneeName,
+    this.address,
+    this.assignees = const [],
+    this.activeField = VoiceField.title,
   });
 
   bool get isEmpty =>
@@ -66,265 +64,224 @@ class VoiceTaskResult {
       dueDate == null &&
       hour == null &&
       priority == null &&
-      locationName == null &&
-      locationAddress == null &&
-      assigneeName == null;
+      address == null &&
+      assignees.isEmpty;
 
-  /// Convert to JSON-like map (for debugging / preview).
   Map<String, dynamic> toMap() => {
     if (title != null) 'title': title,
     if (description != null) 'description': description,
     if (dueDate != null) 'date': '${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}',
     if (hour != null) 'time': '${hour.toString().padLeft(2, '0')}:${(minute ?? 0).toString().padLeft(2, '0')}',
-    if (locationAddress != null) 'address': locationAddress,
+    if (address != null) 'address': address,
     if (priority != null) 'priority': priority,
-    if (assigneeName != null) 'assignee': assigneeName,
+    if (assignees.isNotEmpty) 'assignees': assignees,
   };
-
-  @override
-  String toString() => 'VoiceTaskResult(${toMap()})';
 }
 
+// ── Parser ──
 class VoiceTaskParser {
   VoiceTaskParser._();
 
-  // ── Month names (Romanian) ──
+  // ── Months ──
   static const _months = <String, int>{
     'ianuarie': 1, 'februarie': 2, 'martie': 3, 'aprilie': 4,
     'mai': 5, 'iunie': 6, 'iulie': 7, 'august': 8,
     'septembrie': 9, 'octombrie': 10, 'noiembrie': 11, 'decembrie': 12,
   };
 
-  // ── Priority mapping ──
-  // "urgent" → high (as per spec), "mediu" → medium, etc.
-  static const _priorityMap = <String, String>{
-    // → high
-    'urgent': 'high', 'urgentă': 'high', 'urgență': 'high',
-    'critic': 'high', 'critică': 'high', 'critical': 'high',
-    'important': 'high', 'importantă': 'high', 'high': 'high',
-    'mare': 'high', 'ridicat': 'high', 'ridicată': 'high',
-    // → medium
-    'mediu': 'medium', 'medie': 'medium', 'medium': 'medium',
+  // ── Priority values ──
+  static const _priorityValues = <String, String>{
+    'high': 'high', 'hai': 'high', 'urgent': 'high', 'urgentă': 'high',
+    'ridicat': 'high', 'ridicată': 'high', 'mare': 'high',
+    'medium': 'medium', 'mediu': 'medium', 'medie': 'medium',
     'normal': 'medium', 'normală': 'medium', 'moderat': 'medium',
-    // → low
-    'low': 'low', 'scăzut': 'low', 'scăzută': 'low',
-    'mic': 'low', 'mică': 'low', 'redus': 'low', 'redusă': 'low',
-    'opțional': 'low', 'optional': 'low',
+    'low': 'low', 'lou': 'low', 'scăzut': 'low', 'scăzută': 'low',
+    'mic': 'low', 'mică': 'low', 'redus': 'low',
+    'none': 'none', 'fără': 'none', 'niciuna': 'none',
   };
 
-  // ── Keyword triggers ──
-  static const _addressTriggers = ['adresă', 'adresa', 'locație', 'locația', 'locatie'];
-  static const _timeTriggers = ['ora'];
-  static const _assigneeTriggers = ['arond', 'cc', 'avertizează', 'avertizeaza', 'asignează', 'asigneaza', 'atribuie'];
+  // ── Multi-word keyword triggers (longer first for greedy match) ──
+  static const _contextTriggers = <String, VoiceField>{
+    // Assign (multi-word first)
+    'trimite și la': VoiceField.assign,
+    'trimite si la': VoiceField.assign,
+    'trimite la': VoiceField.assign,
+    'zi-i și lui': VoiceField.assign,
+    'zi-i si lui': VoiceField.assign,
+    'atribuie lui': VoiceField.assign,
+    'atribuie la': VoiceField.assign,
+    'assign': VoiceField.assign,
+    'asign': VoiceField.assign,
+    'atribuie': VoiceField.assign,
+    'notifică': VoiceField.assign,
+    'notifica': VoiceField.assign,
+    'cc': VoiceField.assign,
+    // Description
+    'description': VoiceField.description,
+    'descriere': VoiceField.description,
+    'subiect': VoiceField.description,
+    // Time
+    'time': VoiceField.time,
+    'timp': VoiceField.time,
+    // Date
+    'date': VoiceField.date,
+    'dată': VoiceField.date,
+    'data': VoiceField.date,
+    // Address
+    'address': VoiceField.address,
+    'adresă': VoiceField.address,
+    'adresa': VoiceField.address,
+    'locație': VoiceField.address,
+    'locatie': VoiceField.address,
+    'locația': VoiceField.address,
+    // Priority
+    'priority': VoiceField.priority,
+    'praioriti': VoiceField.priority,
+    'prioritate': VoiceField.priority,
+  };
 
-  /// Main entry point.
+  /// Parse the full transcript. Returns structured result with active field.
   static VoiceTaskResult parse(String raw) {
-    // ── Step 1: Split by "slash" ──
-    final normalized = _preNormalize(raw);
-    final segments = normalized.split(RegExp(r'\bslash\b'));
+    final text = _normalize(raw);
+    final words = text.split(RegExp(r'\s+'));
+    if (words.isEmpty || (words.length == 1 && words[0].isEmpty)) {
+      return const VoiceTaskResult();
+    }
 
-    String? title;
-    final descParts = <String>[];
-    DateTime? dueDate;
+    var activeField = VoiceField.title;
+    final buffers = <VoiceField, List<String>>{
+      for (final f in VoiceField.values) f: [],
+    };
+
+    int i = 0;
+    while (i < words.length) {
+      // Try to match a context trigger (greedy: longest match first)
+      final match = _matchContextTrigger(words, i);
+      if (match != null) {
+        activeField = match.field;
+        i += match.wordCount;
+        continue;
+      }
+
+      // "ora" inside time context or standalone → treated as time trigger + skip word
+      if (activeField == VoiceField.time && words[i] == 'ora') {
+        i++;
+        continue;
+      }
+
+      // Standalone "ora" anywhere → switch to time context
+      if (words[i] == 'ora') {
+        activeField = VoiceField.time;
+        i++;
+        continue;
+      }
+
+      // Add word to active buffer
+      buffers[activeField]!.add(words[i]);
+      i++;
+    }
+
+    // ── Post-process each field ──
+    final title = _joinAndCapitalize(buffers[VoiceField.title]!);
+    final description = _joinAndCapitalize(buffers[VoiceField.description]!);
+    final address = _joinAndCapitalize(buffers[VoiceField.address]!);
+
+    // Time
     int? hour;
     int? minute;
+    final timeWords = buffers[VoiceField.time]!;
+    if (timeWords.isNotEmpty) {
+      final parsed = _parseTime(timeWords);
+      if (parsed != null) { hour = parsed.hour; minute = parsed.minute; }
+    }
+
+    // Date
+    DateTime? dueDate;
+    final dateWords = buffers[VoiceField.date]!;
+    if (dateWords.isNotEmpty) {
+      dueDate = _parseDate(dateWords);
+    }
+
+    // Priority
     String? priority;
-    String? locationName;
-    String? locationAddress;
-    String? assigneeName;
-
-    for (int segIdx = 0; segIdx < segments.length; segIdx++) {
-      final segment = segments[segIdx].trim();
-      if (segment.isEmpty) continue;
-
-      // Extract metadata (date, time, address, priority, assignee) from this segment
-      final extracted = _extractMetadata(segment);
-
-      // Merge extracted metadata
-      if (extracted.dueDate != null) dueDate = extracted.dueDate;
-      if (extracted.hour != null) { hour = extracted.hour; minute = extracted.minute; }
-      if (extracted.priority != null) priority = extracted.priority;
-      if (extracted.locationAddress != null) locationAddress = extracted.locationAddress;
-      if (extracted.locationName != null) locationName = extracted.locationName;
-      if (extracted.assigneeName != null) assigneeName = extracted.assigneeName;
-
-      // The remaining text (after metadata removal)
-      final cleanText = extracted.remainingText.trim();
-      if (cleanText.isEmpty) continue;
-
-      if (segIdx == 0) {
-        // First segment = title
-        title = _capitalize(cleanText);
-      } else {
-        // Subsequent segments = description
-        descParts.add(_capitalize(cleanText));
+    final prioWords = buffers[VoiceField.priority]!;
+    if (prioWords.isNotEmpty) {
+      for (final w in prioWords) {
+        if (_priorityValues.containsKey(w)) {
+          priority = _priorityValues[w];
+          break;
+        }
       }
     }
 
-    // If no slash was used, try single-segment parsing
-    // (backwards compatible with simple inputs)
-    final description = descParts.isNotEmpty ? descParts.join('. ') : null;
-
-    // If only time and no date → use today
-    // (handled by caller, but we don't invent data)
+    // Assignees – split by "și", "si", ",", "and"
+    final assignees = _parseAssignees(buffers[VoiceField.assign]!);
 
     return VoiceTaskResult(
-      title: title?.isNotEmpty == true ? title : null,
-      description: description?.isNotEmpty == true ? description : null,
+      title: title,
+      description: description,
       dueDate: dueDate,
       hour: hour,
       minute: minute ?? 0,
       priority: priority,
-      locationName: locationName,
-      locationAddress: locationAddress,
-      assigneeName: assigneeName,
+      address: address,
+      assignees: assignees,
+      activeField: activeField,
     );
   }
 
-  // ── Pre-normalize: lowercase, strip punctuation, collapse spaces ──
-  static String _preNormalize(String text) {
+  // ── Helpers ──
+
+  static String _normalize(String text) {
     return text
         .toLowerCase()
-        .replaceAll(RegExp(r'[.,;!?]+'), ' ')
+        .replaceAll(RegExp(r'[.;!?]+'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
 
-  static String _capitalize(String s) {
-    if (s.isEmpty) return s;
+  static String? _joinAndCapitalize(List<String> words) {
+    if (words.isEmpty) return null;
+    final s = words.join(' ').trim();
+    if (s.isEmpty) return null;
     return s[0].toUpperCase() + s.substring(1);
   }
 
-  /// Extract all metadata from a text segment and return what's left.
-  static _ExtractedMetadata _extractMetadata(String segment) {
-    final words = segment.split(RegExp(r'\s+'));
-    final remaining = <String>[];
+  /// Try to match a context trigger starting at position [start].
+  /// Returns the matched field and word count, or null.
+  static _TriggerMatch? _matchContextTrigger(List<String> words, int start) {
+    // Sort triggers by word count descending (greedy match)
+    final sorted = _contextTriggers.entries.toList()
+      ..sort((a, b) => b.key.split(' ').length.compareTo(a.key.split(' ').length));
 
-    DateTime? dueDate;
-    int? hour;
-    int? minute;
-    String? priority;
-    String? locationName;
-    String? locationAddress;
-    String? assigneeName;
+    for (final entry in sorted) {
+      final triggerWords = entry.key.split(' ');
+      if (start + triggerWords.length > words.length) continue;
 
-    int i = 0;
-    while (i < words.length) {
-      final word = words[i];
-
-      // ── Time: "ora 14", "ora 9 și jumătate" ──
-      if (_timeTriggers.contains(word)) {
-        i++;
-        final parsed = _parseTime(words, i);
-        if (parsed != null) {
-          hour = parsed.hour;
-          minute = parsed.minute;
-          i = parsed.endIndex;
+      bool matched = true;
+      for (int j = 0; j < triggerWords.length; j++) {
+        if (words[start + j] != triggerWords[j]) {
+          matched = false;
+          break;
         }
-        continue;
       }
-
-      // ── Date: "4 aprilie", "20 iunie 2026" ──
-      // Check if current word is a day number followed by a month name
-      final dayNum = int.tryParse(word);
-      if (dayNum != null && dayNum >= 1 && dayNum <= 31 && i + 1 < words.length && _months.containsKey(words[i + 1])) {
-        final monthNum = _months[words[i + 1]]!;
-        i += 2;
-        int? year;
-        if (i < words.length) {
-          final y = int.tryParse(words[i]);
-          if (y != null && y >= 2024 && y <= 2030) { year = y; i++; }
-        }
-        year ??= DateTime.now().year;
-        final candidate = DateTime(year, monthNum, dayNum);
-        final now = DateTime.now();
-        dueDate = candidate.isBefore(DateTime(now.year, now.month, now.day))
-            ? DateTime(year + 1, monthNum, dayNum)
-            : candidate;
-        continue;
+      if (matched) {
+        return _TriggerMatch(entry.value, triggerWords.length);
       }
-
-      // ── Address: "adresă strada Solstițiului 11" ──
-      if (_addressTriggers.contains(word)) {
-        i++;
-        final addrParts = <String>[];
-        while (i < words.length) {
-          // Stop at other known triggers
-          if (_isKnownTrigger(words[i]) || _priorityMap.containsKey(words[i])) break;
-          addrParts.add(words[i]);
-          i++;
-        }
-        final addrText = addrParts.join(' ').trim();
-        if (addrText.toLowerCase().contains('kuziini') || addrText.toLowerCase().contains('kuzini')) {
-          locationName = 'Kuziini';
-          locationAddress = 'Bulevardul Unirii Nr 63';
-        } else {
-          locationAddress = _capitalize(addrText);
-        }
-        continue;
-      }
-
-      // ── Assignee: "arond Mădălin", "cc Mădălina" ──
-      if (_assigneeTriggers.contains(word)) {
-        i++;
-        final nameParts = <String>[];
-        int count = 0;
-        while (i < words.length && count < 3) {
-          if (_isKnownTrigger(words[i]) || _priorityMap.containsKey(words[i])) break;
-          nameParts.add(words[i]);
-          i++;
-          count++;
-        }
-        if (nameParts.isNotEmpty) {
-          assigneeName = nameParts.map(_capitalize).join(' ');
-        }
-        continue;
-      }
-
-      // ── Priority: "urgent" → high, "mediu" → medium ──
-      if (_priorityMap.containsKey(word)) {
-        priority = _priorityMap[word];
-        i++;
-        continue;
-      }
-
-      // ── Not metadata → keep as remaining text ──
-      remaining.add(word);
-      i++;
     }
-
-    return _ExtractedMetadata(
-      remainingText: remaining.join(' '),
-      dueDate: dueDate,
-      hour: hour,
-      minute: minute,
-      priority: priority,
-      locationName: locationName,
-      locationAddress: locationAddress,
-      assigneeName: assigneeName,
-    );
+    return null;
   }
 
-  /// Check if a word is a known trigger keyword.
-  static bool _isKnownTrigger(String word) {
-    return _timeTriggers.contains(word) ||
-        _addressTriggers.contains(word) ||
-        _assigneeTriggers.contains(word);
-  }
+  /// Parse time from buffer words. Handles: "14", "14 30", "10:30", "9 și jumătate"
+  static _TimeResult? _parseTime(List<String> words) {
+    int i = 0;
+    // Skip filler
+    while (i < words.length && ['la', 'de', 'pe', 'ora'].contains(words[i])) { i++; }
+    if (i >= words.length) return null;
 
-  /// Parse time from words starting at [start].
-  /// Handles: "14", "9 și jumătate", "15:30", "10 30"
-  static _TimeResult? _parseTime(List<String> words, int start) {
-    int i = start;
     int? h;
     int m = 0;
 
-    // Skip filler words
-    while (i < words.length && ['la', 'de', 'pe'].contains(words[i])) { i++; }
-
-    if (i >= words.length) return null;
-
-    // Try "15:30" format
     if (words[i].contains(':')) {
       final parts = words[i].split(':');
       h = int.tryParse(parts[0]);
@@ -334,19 +291,13 @@ class VoiceTaskParser {
       h = int.tryParse(words[i]);
       if (h != null) {
         i++;
-        // Check for minutes after hour
         if (i < words.length) {
           if (words[i] == 'și' || words[i] == 'si') {
             i++;
             if (i < words.length) {
-              if (words[i] == 'jumătate' || words[i] == 'jumatate' || words[i] == 'juma') {
-                m = 30; i++;
-              } else if (words[i] == 'un' && i + 1 < words.length && words[i + 1] == 'sfert') {
-                m = 15; i += 2;
-              } else {
-                final mins = int.tryParse(words[i]);
-                if (mins != null && mins >= 0 && mins <= 59) { m = mins; i++; }
-              }
+              if (['jumătate', 'jumatate', 'juma'].contains(words[i])) { m = 30; i++; }
+              else if (words[i] == 'un' && i + 1 < words.length && words[i + 1] == 'sfert') { m = 15; i += 2; }
+              else { final mins = int.tryParse(words[i]); if (mins != null && mins <= 59) { m = mins; i++; } }
             }
           } else {
             final mins = int.tryParse(words[i]);
@@ -356,40 +307,79 @@ class VoiceTaskParser {
       }
     }
 
-    if (h != null && h >= 0 && h <= 23) {
-      return _TimeResult(h, m, i);
+    return (h != null && h >= 0 && h <= 23) ? _TimeResult(h, m) : null;
+  }
+
+  /// Parse date from buffer words. Handles: "4 aprilie", "20 iunie 2026"
+  static DateTime? _parseDate(List<String> words) {
+    int? day;
+    int? month;
+    int? year;
+
+    for (int i = 0; i < words.length; i++) {
+      // Skip filler
+      if (['de', 'pe', 'la', 'în', 'in', 'din', 'lui'].contains(words[i])) continue;
+
+      final num = int.tryParse(words[i]);
+      if (num != null) {
+        if (day == null && num >= 1 && num <= 31) {
+          day = num;
+        } else if (num >= 2024 && num <= 2030) {
+          year = num;
+        }
+        continue;
+      }
+
+      if (_months.containsKey(words[i])) {
+        month = _months[words[i]];
+      }
     }
+
+    if (day != null && month != null) {
+      year ??= DateTime.now().year;
+      final candidate = DateTime(year, month, day);
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      return candidate.isBefore(todayDate)
+          ? DateTime(year + 1, month, day)
+          : candidate;
+    }
+
     return null;
+  }
+
+  /// Parse assignee names. Split by "și", "si", ",", "and".
+  static List<String> _parseAssignees(List<String> words) {
+    if (words.isEmpty) return [];
+
+    // Join and split by separators
+    final joined = words.join(' ');
+    final parts = joined.split(RegExp(r'\s*(?:și|si|,|and)\s*'));
+
+    final names = <String>[];
+    for (final part in parts) {
+      // Clean each name: remove "lui", "la" prefixes
+      var name = part.trim();
+      name = name.replaceAll(RegExp(r'^(lui|la|pe)\s+', caseSensitive: false), '');
+      name = name.trim();
+      if (name.isNotEmpty) {
+        names.add(name[0].toUpperCase() + name.substring(1));
+      }
+    }
+    return names;
   }
 }
 
-// ── Internal data classes ──
+// ── Internal ──
 
-class _ExtractedMetadata {
-  final String remainingText;
-  final DateTime? dueDate;
-  final int? hour;
-  final int? minute;
-  final String? priority;
-  final String? locationName;
-  final String? locationAddress;
-  final String? assigneeName;
-
-  _ExtractedMetadata({
-    required this.remainingText,
-    this.dueDate,
-    this.hour,
-    this.minute,
-    this.priority,
-    this.locationName,
-    this.locationAddress,
-    this.assigneeName,
-  });
+class _TriggerMatch {
+  final VoiceField field;
+  final int wordCount;
+  _TriggerMatch(this.field, this.wordCount);
 }
 
 class _TimeResult {
   final int hour;
   final int minute;
-  final int endIndex;
-  _TimeResult(this.hour, this.minute, this.endIndex);
+  _TimeResult(this.hour, this.minute);
 }

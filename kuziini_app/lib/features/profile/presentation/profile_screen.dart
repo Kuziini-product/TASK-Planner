@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import '../../../core/widgets/alerts_button.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -29,14 +30,8 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/images/kuziini_logo.png', height: 32, color: theme.colorScheme.onSurface),
-            const SizedBox(width: 12),
-            Text('Profile', style: GoogleFonts.montserrat(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
-          ],
-        ),
+        leading: const AlertsButton(),
+        title: Image.asset('assets/images/kuziini_logo.png', height: 32, color: theme.colorScheme.onSurface),
         actions: [
           IconButton(
             onPressed: () => context.push(AppRoutes.settings),

@@ -20,8 +20,8 @@ class MainShell extends ConsumerWidget {
     if (location.startsWith(AppRoutes.today)) return -1;
     if (location.startsWith(AppRoutes.calendar)) return 0;
     // Index 1 is the center FAB (no tab)
-    if (location.startsWith(AppRoutes.notifications)) return 2;
-    if (location.startsWith(AppRoutes.profile)) return 3;
+    if (location.startsWith(AppRoutes.notifications)) return -1;
+    if (location.startsWith(AppRoutes.profile)) return 2;
     return -1;
   }
 
@@ -59,8 +59,6 @@ class MainShell extends ConsumerWidget {
         // FAB action - handled separately
         context.push(AppRoutes.createTask);
       case 2:
-        context.go(AppRoutes.notifications);
-      case 3:
         context.go(AppRoutes.profile);
     }
   }
@@ -124,19 +122,11 @@ class MainShell extends ConsumerWidget {
                   ),
                 ),
                 _NavItem(
-                  icon: PhosphorIcons.bell(PhosphorIconsStyle.regular),
-                  activeIcon: PhosphorIcons.bell(PhosphorIconsStyle.fill),
-                  label: 'Alerts',
-                  isSelected: selectedIndex == 2,
-                  onTap: () => _onItemTapped(context, 2),
-                  badge: unreadCount.whenOrNull(data: (count) => count) ?? 0,
-                ),
-                _NavItem(
                   icon: PhosphorIcons.user(PhosphorIconsStyle.regular),
                   activeIcon: PhosphorIcons.user(PhosphorIconsStyle.fill),
                   label: 'Profile',
-                  isSelected: selectedIndex == 3,
-                  onTap: () => _onItemTapped(context, 3),
+                  isSelected: selectedIndex == 2,
+                  onTap: () => _onItemTapped(context, 2),
                 ),
               ],
             ),

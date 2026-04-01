@@ -27,12 +27,12 @@ final dailyTasksProvider =
 );
 
 class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
-  late final TaskRepository _repo;
+  late TaskRepository _repo;
   RealtimeChannel? _subscription;
 
   @override
   Future<List<TaskModel>> build() async {
-    _repo = ref.watch(taskRepositoryProvider);
+    _repo = ref.read(taskRepositoryProvider);
     final date = ref.watch(selectedDateProvider);
 
     // Set up real-time subscription

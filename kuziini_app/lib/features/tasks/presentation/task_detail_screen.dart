@@ -61,6 +61,59 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
+  Future<void> _handleEdit() async {
+    final profile = ref.read(currentUserProfileProvider).valueOrNull;
+    final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+    if (profile == null || task == null) return;
+
+    if (profile.isAdmin) {
+      final edited = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => CreateTaskScreen(existingTask: task),
+        ),
+      );
+      if (edited == true) {
+        ref.invalidate(taskDetailProvider(widget.taskId));
+        ref.invalidate(dailyTasksProvider);
+      }
+    } else {
+      final repo = ref.read(taskRepositoryProvider);
+      final hasPermission = await repo.hasEditPermission(widget.taskId, profile.id);
+
+      if (hasPermission) {
+        final edited = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => CreateTaskScreen(existingTask: task),
+          ),
+        );
+        if (edited == true) {
+          await repo.consumeEditPermission(widget.taskId, profile.id);
+          ref.invalidate(taskDetailProvider(widget.taskId));
+          ref.invalidate(dailyTasksProvider);
+        }
+      } else {
+        final notifRepo = NotificationRepository();
+        final adminIds = await notifRepo.fetchAdminUserIds();
+        for (final adminId in adminIds) {
+          await notifRepo.createNotification(
+            userId: adminId,
+            title: 'Edit Request',
+            body: '${profile.displayName} requests permission to edit "${task.title}"',
+            type: 'edit_request',
+            data: {
+              'task_id': widget.taskId,
+              'requester_id': profile.id,
+              'requester_name': profile.displayName,
+            },
+          );
+        }
+        if (mounted) {
+          context.showSnackBar('Edit request sent to admin for approval');
+        }
+      }
+    }
+  }
+
   Future<void> _updateStatus(TaskStatus status) async {
     try {
       final repo = ref.read(taskRepositoryProvider);
@@ -89,6 +142,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           Navigator.of(context).pop();
         },
         actions: [
+          // Edit button - visible directly
+          IconButton(
+            onPressed: () => _handleEdit(),
+            icon: Icon(PhosphorIcons.pencilSimple(PhosphorIconsStyle.regular)),
+            tooltip: 'Edit',
+          ),
           IconButton(
             onPressed: () {
               final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
@@ -111,59 +170,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             ],
             onSelected: (value) async {
               if (value == 'edit') {
-                final profile = ref.read(currentUserProfileProvider).valueOrNull;
-                final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
-                if (profile == null || task == null) return;
-
-                if (profile.isAdmin) {
-                  // Admin: navigate directly to edit
-                  final edited = await Navigator.of(context).push<bool>(
-                    MaterialPageRoute(
-                      builder: (_) => CreateTaskScreen(existingTask: task),
-                    ),
-                  );
-                  if (edited == true) {
-                    ref.invalidate(taskDetailProvider(widget.taskId));
-                    ref.invalidate(dailyTasksProvider);
-                  }
-                } else {
-                  // Non-admin: check permission or request
-                  final repo = ref.read(taskRepositoryProvider);
-                  final hasPermission = await repo.hasEditPermission(widget.taskId, profile.id);
-
-                  if (hasPermission) {
-                    final edited = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(
-                        builder: (_) => CreateTaskScreen(existingTask: task),
-                      ),
-                    );
-                    if (edited == true) {
-                      await repo.consumeEditPermission(widget.taskId, profile.id);
-                      ref.invalidate(taskDetailProvider(widget.taskId));
-                      ref.invalidate(dailyTasksProvider);
-                    }
-                  } else {
-                    // Send edit request to admins
-                    final notifRepo = NotificationRepository();
-                    final adminIds = await notifRepo.fetchAdminUserIds();
-                    for (final adminId in adminIds) {
-                      await notifRepo.createNotification(
-                        userId: adminId,
-                        title: 'Edit Request',
-                        body: '${profile.displayName} requests permission to edit "${task.title}"',
-                        type: 'edit_request',
-                        data: {
-                          'task_id': widget.taskId,
-                          'requester_id': profile.id,
-                          'requester_name': profile.displayName,
-                        },
-                      );
-                    }
-                    if (mounted) {
-                      context.showSnackBar('Edit request sent to admin for approval');
-                    }
-                  }
-                }
+                _handleEdit();
               } else if (value == 'reassign') {
                 final result = await showUserPicker(context);
                 if (result != null && mounted) {

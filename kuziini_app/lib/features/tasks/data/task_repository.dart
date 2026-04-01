@@ -520,19 +520,27 @@ class TaskRepository {
   // ── Statistics ──
 
   Future<Map<String, int>> getTaskStats({String? userId}) async {
-    var query = _supabase.client.from(AppConstants.tableTasks).select('status');
+    var query = _supabase.client.from(AppConstants.tableTasks).select('status, due_date');
     if (userId != null) {
       query = query.eq('created_by', userId);
     }
 
     final response = await query;
     final tasks = response as List;
+    final now = DateTime.now();
 
     int total = tasks.length;
     int done = tasks.where((t) => t['status'] == 'done').length;
     int inProgress = tasks.where((t) => t['status'] == 'in_progress').length;
     int todo = tasks.where((t) => t['status'] == 'todo').length;
     int review = tasks.where((t) => t['status'] == 'review').length;
+    int overdue = tasks.where((t) {
+      if (t['status'] == 'done' || t['status'] == 'archived') return false;
+      final dueDateStr = t['due_date'] as String?;
+      if (dueDateStr == null) return false;
+      final dueDate = DateTime.tryParse(dueDateStr);
+      return dueDate != null && dueDate.isBefore(now);
+    }).length;
 
     return {
       'total': total,
@@ -540,6 +548,7 @@ class TaskRepository {
       'in_progress': inProgress,
       'todo': todo,
       'review': review,
+      'overdue': overdue,
     };
   }
 }

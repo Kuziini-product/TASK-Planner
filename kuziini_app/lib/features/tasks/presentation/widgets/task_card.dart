@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -8,9 +9,10 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/kuziini_card.dart';
 import '../../data/models/task_model.dart';
+import '../../providers/tasks_provider.dart';
 import 'status_chip.dart';
 
-class TaskCard extends StatelessWidget {
+class TaskCard extends ConsumerWidget {
   const TaskCard({
     super.key,
     required this.task,
@@ -42,7 +44,7 @@ class TaskCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return KuziiniCard(
@@ -183,13 +185,18 @@ class TaskCard extends StatelessWidget {
             ),
           ],
 
-          // Bottom row: metadata (checklist, comments, attachments, assignee)
-          if (task.hasChecklist || task.hasComments || task.hasAttachments || task.isAssigned) ...[
-            AppSpacing.vGapSm,
-            Padding(
-              padding: const EdgeInsets.only(left: 30),
-              child: Row(
-                children: [
+          // Bottom row: metadata
+          AppSpacing.vGapSm,
+          Padding(
+            padding: const EdgeInsets.only(left: 30),
+            child: Row(
+              children: [
+                // Relocate button
+                GestureDetector(
+                  onTap: () => _showRelocate(context, ref),
+                  child: Icon(PhosphorIcons.calendarPlus(PhosphorIconsStyle.regular), size: 14, color: theme.colorScheme.onSurfaceVariant),
+                ),
+                AppSpacing.hGapMd,
                   // Checklist
                   if (task.hasChecklist) ...[
                     Icon(
@@ -259,7 +266,6 @@ class TaskCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
         ],
       ),
     )
@@ -273,5 +279,68 @@ class TaskCard extends StatelessWidget {
           duration: 300.ms,
           delay: Duration(milliseconds: 50 * animationIndex),
         );
+  }
+
+  void _showRelocate(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    DateTime? newDate = task.dueDate;
+    DateTime? newEndDate = task.endDate;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 12),
+                Text('Relocate Task', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular)),
+                  title: Text(newDate != null ? '${newDate!.day}/${newDate!.month}/${newDate!.year}' : 'Select date'),
+                  onTap: () async {
+                    final d = await showDatePicker(context: ctx, initialDate: newDate ?? DateTime.now(), firstDate: DateTime.now().subtract(const Duration(days: 365)), lastDate: DateTime.now().add(const Duration(days: 365 * 2)));
+                    if (d != null) setSheetState(() => newDate = d);
+                  },
+                  dense: true,
+                ),
+                ListTile(
+                  leading: Icon(PhosphorIcons.calendarDots(PhosphorIconsStyle.regular)),
+                  title: Text(newEndDate != null ? 'End: ${newEndDate!.day}/${newEndDate!.month}/${newEndDate!.year}' : 'Add end date'),
+                  trailing: newEndDate != null ? IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setSheetState(() => newEndDate = null)) : null,
+                  onTap: () async {
+                    final d = await showDatePicker(context: ctx, initialDate: newEndDate ?? newDate ?? DateTime.now(), firstDate: newDate ?? DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365 * 2)));
+                    if (d != null) setSheetState(() => newEndDate = d);
+                  },
+                  dense: true,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        final repo = ref.read(taskRepositoryProvider);
+                        final dateStr = newDate != null ? '${newDate!.year}-${newDate!.month.toString().padLeft(2, '0')}-${newDate!.day.toString().padLeft(2, '0')}' : null;
+                        final endDateStr = newEndDate != null ? '${newEndDate!.year}-${newEndDate!.month.toString().padLeft(2, '0')}-${newEndDate!.day.toString().padLeft(2, '0')}' : null;
+                        await repo.updateTask(task.id, {'due_date': dateStr, 'end_date': endDateStr});
+                        ref.invalidate(dailyTasksProvider);
+                      } catch (_) {}
+                    },
+                    child: const Text('Relocate'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

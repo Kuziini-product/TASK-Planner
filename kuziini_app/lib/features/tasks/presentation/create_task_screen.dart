@@ -97,19 +97,65 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   Future<void> _resolveAssignee(String name) async {
     try {
-      final result = await SupabaseService.instance.client
+      // First try exact match
+      var result = await SupabaseService.instance.client
           .from('profiles')
           .select('id, display_name')
           .ilike('display_name', '%$name%')
           .limit(1)
           .maybeSingle();
+
+      // If no match, try fuzzy: fetch all users and find closest match
+      if (result == null) {
+        final allUsers = await SupabaseService.instance.client
+            .from('profiles')
+            .select('id, display_name');
+
+        final spokenLower = name.toLowerCase().trim();
+        Map<String, dynamic>? bestMatch;
+        int bestScore = 0;
+
+        for (final user in allUsers) {
+          final displayName = (user['display_name'] as String? ?? '').toLowerCase();
+          // Check each word in display name
+          for (final part in displayName.split(' ')) {
+            final score = _similarityScore(spokenLower, part);
+            if (score > bestScore && score >= 50) {
+              bestScore = score;
+              bestMatch = user;
+            }
+          }
+        }
+        result = bestMatch;
+      }
+
       if (result != null && mounted) {
         setState(() {
-          _assigneeId = result['id'] as String;
+          _assigneeId = result!['id'] as String;
           _assigneeName = result['display_name'] as String;
         });
       }
     } catch (_) {}
+  }
+
+  /// Simple similarity score (0-100) between two strings.
+  /// Uses longest common subsequence ratio.
+  static int _similarityScore(String a, String b) {
+    if (a.isEmpty || b.isEmpty) return 0;
+    final m = a.length;
+    final n = b.length;
+    final dp = List.generate(m + 1, (_) => List.filled(n + 1, 0));
+    for (int i = 1; i <= m; i++) {
+      for (int j = 1; j <= n; j++) {
+        if (a[i - 1] == b[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = dp[i - 1][j] > dp[i][j - 1] ? dp[i - 1][j] : dp[i][j - 1];
+        }
+      }
+    }
+    final lcs = dp[m][n];
+    return ((2 * lcs * 100) ~/ (m + n));
   }
 
   @override

@@ -217,42 +217,35 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status chips + Priority
-          Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: TaskStatus.values
-                        .map(
-                          (status) => Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: StatusChip(
-                              status: status,
-                              isSelected: task.status == status,
-                              onTap: () => _updateStatus(status),
-                            ),
-                          ),
-                        )
-                        .toList(),
+          // Status chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ...TaskStatus.values.map(
+                  (status) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: StatusChip(
+                      status: status,
+                      isSelected: task.status == status,
+                      onTap: () => _updateStatus(status),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(PhosphorIcons.flag(PhosphorIconsStyle.regular), size: 16, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              PriorityBadge(priority: task.priority),
-            ],
+                const SizedBox(width: 8),
+                Icon(PhosphorIcons.flag(PhosphorIconsStyle.regular), size: 16, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                PriorityBadge(priority: task.priority),
+              ],
+            ),
           ).animate().fadeIn(duration: 300.ms),
 
-          const SizedBox(height: 20),
+          AppSpacing.vGapXl,
 
           // Title
           Text(
             task.title,
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
               decoration:
                   task.isCompleted ? TextDecoration.lineThrough : null,
             ),
@@ -260,7 +253,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
           // Description
           if (task.description != null && task.description!.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            AppSpacing.vGapMd,
             Text(
               task.description!,
               style: theme.textTheme.bodyLarge?.copyWith(
@@ -269,76 +262,96 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             ),
           ],
 
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
 
-          // Date + Time on same row
+          // Due Date + Time on same row
           if (task.dueDate != null || task.startTime != null)
-            Row(
-              children: [
-                if (task.dueDate != null) ...[
-                  Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular), size: 18, color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppDateUtils.formatFull(task.dueDate!),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: task.isOverdue ? AppColors.error : primaryColor,
-                      fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  if (task.dueDate != null) ...[
+                    Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular), size: 18,
+                      color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurfaceVariant),
+                    AppSpacing.hGapSm,
+                    Text('Due Date', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    AppSpacing.hGapMd,
+                    Text(
+                      AppDateUtils.formatFull(task.dueDate!),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: task.isOverdue ? AppColors.error : null,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
-                if (task.dueDate != null && task.startTime != null)
-                  const Spacer(),
-                if (task.startTime != null) ...[
-                  Icon(PhosphorIcons.clock(PhosphorIconsStyle.regular), size: 18, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Text(
-                    task.endTime != null
-                        ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                        : AppDateUtils.formatTime(task.startTime!),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  ],
+                  if (task.dueDate != null && task.startTime != null)
+                    const Spacer(),
+                  if (task.startTime != null) ...[
+                    Icon(PhosphorIcons.clock(PhosphorIconsStyle.regular), size: 18,
+                      color: theme.colorScheme.onSurfaceVariant),
+                    AppSpacing.hGapSm,
+                    Text('Time', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    AppSpacing.hGapMd,
+                    Text(
+                      task.endTime != null
+                          ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                          : AppDateUtils.formatTime(task.startTime!),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
 
-          if (task.dueDate != null || task.startTime != null)
-            const SizedBox(height: 16),
-
           // Location
-          if (task.hasLocation) ...[
-            InkWell(
-              onTap: () {
-                final url = task.locationMapUrl;
-                if (url != null) {
-                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                }
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(PhosphorIcons.mapPin(PhosphorIconsStyle.regular), size: 18, color: primaryColor),
-                    const SizedBox(width: 8),
-                    Expanded(
+          if (task.hasLocation)
+            _DetailRow(
+              icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
+              label: 'Location',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        final url = task.locationMapUrl;
+                        if (url != null) {
+                          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        }
+                      },
                       child: Text(
                         task.locationDisplay,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w500,
                           color: primaryColor,
+                          decoration: TextDecoration.underline,
+                          decorationColor: primaryColor,
                         ),
                       ),
                     ),
-                    if (task.locationMapUrl != null)
-                      Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
-                  ],
-                ),
+                  ),
+                  if (task.locationMapUrl != null)
+                    TextButton.icon(
+                      onPressed: () {
+                        final dirUrl = task.locationLat != null && task.locationLng != null
+                            ? 'https://www.google.com/maps/dir/?api=1&destination=${task.locationLat},${task.locationLng}'
+                            : task.locationAddress != null
+                                ? 'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(task.locationAddress!)}'
+                                : task.locationMapUrl!;
+                        launchUrl(Uri.parse(dirUrl), mode: LaunchMode.externalApplication);
+                      },
+                      icon: Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 14),
+                      label: const Text('Navigate'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        visualDensity: VisualDensity.compact,
+                        textStyle: theme.textTheme.labelSmall,
+                      ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-          ],
 
           // Assignee
           _DetailRow(

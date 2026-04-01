@@ -123,6 +123,7 @@ class VoiceTaskParser {
     // Time
     'time': VoiceField.time,
     'timp': VoiceField.time,
+    'ora': VoiceField.time,
     // Date
     'date': VoiceField.date,
     'dată': VoiceField.date,
@@ -160,19 +161,6 @@ class VoiceTaskParser {
       if (match != null) {
         activeField = match.field;
         i += match.wordCount;
-        continue;
-      }
-
-      // "ora" inside time context or standalone → treated as time trigger + skip word
-      if (activeField == VoiceField.time && words[i] == 'ora') {
-        i++;
-        continue;
-      }
-
-      // Standalone "ora" anywhere → switch to time context
-      if (words[i] == 'ora') {
-        activeField = VoiceField.time;
-        i++;
         continue;
       }
 

@@ -46,80 +46,15 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () {
               showDialog(
                 context: context,
-                builder: (dialogCtx) => AlertDialog(
-                  title: const Text('Choose Theme'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ...ThemeMode.values.map((mode) {
-                        final label = mode == ThemeMode.system
-                            ? 'System'
-                            : mode == ThemeMode.light
-                                ? 'Light'
-                                : 'Dark';
-                        final icon = mode == ThemeMode.system
-                            ? Icons.brightness_auto
-                            : mode == ThemeMode.light
-                                ? Icons.wb_sunny
-                                : Icons.dark_mode;
-                        return RadioListTile<ThemeMode>(
-                          title: Row(
-                            children: [
-                              Icon(icon, size: 18, color: theme.colorScheme.onSurface),
-                              const SizedBox(width: 8),
-                              Text(label),
-                            ],
-                          ),
-                          value: mode,
-                          groupValue: themeMode,
-                          activeColor: theme.colorScheme.primary,
-                          onChanged: (value) {
-                            if (value != null) {
-                              ref.read(themeModeProvider.notifier).setThemeMode(value);
-                              Navigator.pop(dialogCtx);
-                            }
-                          },
-                        );
-                      }),
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 4),
-                        child: Text('Quick Colors', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: accentColorOptions.map((option) {
-                          final isSelected = option.color.red == currentColor.red &&
-                              option.color.green == currentColor.green &&
-                              option.color.blue == currentColor.blue;
-                          return GestureDetector(
-                            onTap: () {
-                              ref.read(primaryColorProvider.notifier).setColor(option.color);
-                              Navigator.pop(dialogCtx);
-                            },
-                            child: Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                color: option.color,
-                                shape: BoxShape.circle,
-                                border: isSelected
-                                    ? Border.all(color: Colors.white, width: 2.5)
-                                    : null,
-                                boxShadow: isSelected
-                                    ? [BoxShadow(color: option.color.withValues(alpha: 0.5), blurRadius: 6)]
-                                    : null,
-                              ),
-                              child: isSelected
-                                  ? const Icon(Icons.check, color: Colors.white, size: 18)
-                                  : null,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
+                builder: (dialogCtx) => _ThemePickerDialog(
+                  currentThemeMode: themeMode,
+                  currentColor: currentColor,
+                  onThemeModeChanged: (mode) {
+                    ref.read(themeModeProvider.notifier).setThemeMode(mode);
+                  },
+                  onColorChanged: (color) {
+                    ref.read(primaryColorProvider.notifier).setColor(color);
+                  },
                 ),
               );
             },
@@ -553,6 +488,238 @@ class _AccentColorPickerState extends State<_AccentColorPicker> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Theme Picker Dialog ──
+
+class _ThemePickerDialog extends StatefulWidget {
+  const _ThemePickerDialog({
+    required this.currentThemeMode,
+    required this.currentColor,
+    required this.onThemeModeChanged,
+    required this.onColorChanged,
+  });
+
+  final ThemeMode currentThemeMode;
+  final Color currentColor;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+  final ValueChanged<Color> onColorChanged;
+
+  @override
+  State<_ThemePickerDialog> createState() => _ThemePickerDialogState();
+}
+
+class _ThemePickerDialogState extends State<_ThemePickerDialog> {
+  late ThemeMode _selectedMode;
+  late Color _selectedColor;
+  bool _isCustom = false;
+  int _selectedBaseIndex = 0;
+  double _intensity = 0.5;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMode = widget.currentThemeMode;
+    _selectedColor = widget.currentColor;
+    // Check if current color matches any preset exactly
+    _isCustom = !accentColorOptions.any((o) =>
+        o.color.red == _selectedColor.red &&
+        o.color.green == _selectedColor.green &&
+        o.color.blue == _selectedColor.blue);
+    _selectedBaseIndex = _findClosest(_selectedColor);
+  }
+
+  int _findClosest(Color color) {
+    int closest = 0;
+    double minDist = double.infinity;
+    for (int i = 0; i < accentColorOptions.length; i++) {
+      final c = accentColorOptions[i].color;
+      final d = ((c.red - color.red) * (c.red - color.red) +
+              (c.green - color.green) * (c.green - color.green) +
+              (c.blue - color.blue) * (c.blue - color.blue))
+          .toDouble();
+      if (d < minDist) { minDist = d; closest = i; }
+    }
+    return closest;
+  }
+
+  Color _adjustIntensity(Color base, double intensity) {
+    if (intensity <= 0.5) {
+      final t = 1.0 - (intensity * 2);
+      return Color.fromARGB(255,
+        (base.red + (255 - base.red) * t).round().clamp(0, 255),
+        (base.green + (255 - base.green) * t).round().clamp(0, 255),
+        (base.blue + (255 - base.blue) * t).round().clamp(0, 255));
+    } else {
+      final t = (intensity - 0.5) * 2;
+      return Color.fromARGB(255,
+        (base.red * (1 - t)).round().clamp(0, 255),
+        (base.green * (1 - t)).round().clamp(0, 255),
+        (base.blue * (1 - t)).round().clamp(0, 255));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('Choose Theme'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // System / Light / Dark
+            ...ThemeMode.values.map((mode) {
+              final label = mode == ThemeMode.system ? 'System'
+                  : mode == ThemeMode.light ? 'Light' : 'Dark';
+              final icon = mode == ThemeMode.system ? Icons.brightness_auto
+                  : mode == ThemeMode.light ? Icons.wb_sunny : Icons.dark_mode;
+              return RadioListTile<ThemeMode>(
+                title: Row(children: [
+                  Icon(icon, size: 18), const SizedBox(width: 8), Text(label),
+                ]),
+                value: mode,
+                groupValue: _selectedMode,
+                activeColor: theme.colorScheme.primary,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() { _selectedMode = value; _isCustom = false; });
+                    widget.onThemeModeChanged(value);
+                    Navigator.pop(context);
+                  }
+                },
+              );
+            }),
+
+            const Divider(),
+
+            // Custom option
+            RadioListTile<bool>(
+              title: Row(children: [
+                Icon(Icons.palette, size: 18, color: _selectedColor),
+                const SizedBox(width: 8),
+                const Text('Custom', style: TextStyle(fontWeight: FontWeight.w600)),
+              ]),
+              value: true,
+              groupValue: _isCustom,
+              activeColor: _selectedColor,
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              onChanged: (_) => setState(() => _isCustom = true),
+            ),
+
+            // Color picker (visible when Custom is selected)
+            if (_isCustom) ...[
+              const SizedBox(height: 12),
+
+              // Color circles
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(accentColorOptions.length, (i) {
+                  final option = accentColorOptions[i];
+                  final isSelected = i == _selectedBaseIndex;
+                  final displayColor = _adjustIntensity(option.color, _intensity);
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedBaseIndex = i);
+                      final color = _adjustIntensity(option.color, _intensity);
+                      setState(() => _selectedColor = color);
+                      widget.onColorChanged(color);
+                    },
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: displayColor,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: theme.colorScheme.onSurface, width: 2.5)
+                                : Border.all(color: Colors.black12, width: 1),
+                            boxShadow: isSelected
+                                ? [BoxShadow(color: displayColor.withValues(alpha: 0.4), blurRadius: 6)]
+                                : null,
+                          ),
+                          child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(option.name, style: TextStyle(fontSize: 7,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                          color: isSelected ? displayColor : Colors.grey)),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Intensity slider
+              Row(
+                children: [
+                  const Icon(Icons.wb_sunny, size: 14, color: Colors.grey),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: _selectedColor,
+                        thumbColor: _selectedColor,
+                        inactiveTrackColor: _selectedColor.withValues(alpha: 0.2),
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                      ),
+                      child: Slider(
+                        value: _intensity,
+                        min: 0.0, max: 1.0,
+                        onChanged: (v) {
+                          final color = _adjustIntensity(accentColorOptions[_selectedBaseIndex].color, v);
+                          setState(() { _intensity = v; _selectedColor = color; });
+                          widget.onColorChanged(color);
+                        },
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.dark_mode, size: 14, color: Colors.grey),
+                ],
+              ),
+
+              // Gradient preview
+              Container(
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  gradient: LinearGradient(
+                    colors: List.generate(11, (i) => _adjustIntensity(
+                      accentColorOptions[_selectedBaseIndex].color, i / 10.0)),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Apply button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _selectedColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Apply'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -23,6 +23,9 @@ const List<AccentColorOption> accentColorOptions = [
   AccentColorOption('Green', Color(0xFF4CAF50)),
   AccentColorOption('Amber', Color(0xFFFFC107)),
   AccentColorOption('Cyan', Color(0xFF00BCD4)),
+  AccentColorOption('Violet', Color(0xFF7C3AED)),
+  AccentColorOption('Emerald', Color(0xFF059669)),
+  AccentColorOption('Slate', Color(0xFF94A3B8)),
 ];
 
 // ── Theme Mode Provider ──

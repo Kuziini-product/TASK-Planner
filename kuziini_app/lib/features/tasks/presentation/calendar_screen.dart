@@ -435,22 +435,24 @@ class _MonthView extends ConsumerWidget {
         AppSpacing.vGapSm,
 
         // Calendar grid
-        tasksAsync.when(
-          data: (tasks) {
-            final tasksByDay = <int, List<TaskModel>>{};
-            for (final task in tasks) {
-              if (task.dueDate != null) {
-                tasksByDay.putIfAbsent(task.dueDate!.day, () => []).add(task);
+        Expanded(
+          child: tasksAsync.when(
+            data: (tasks) {
+              final tasksByDay = <int, List<TaskModel>>{};
+              for (final task in tasks) {
+                if (task.dueDate != null) {
+                  tasksByDay.putIfAbsent(task.dueDate!.day, () => []).add(task);
+                }
               }
-            }
-            return _CalendarGrid(
-              month: currentMonth,
-              tasksByDay: tasksByDay,
-              onDaySelected: (day) => ref.read(_calendarSelectedDayProvider.notifier).state = day,
+              return _CalendarGrid(
+                month: currentMonth,
+                tasksByDay: tasksByDay,
+                onDaySelected: (day) => ref.read(_calendarSelectedDayProvider.notifier).state = day,
             );
           },
-          loading: () => const SizedBox(height: 280, child: LoadingIndicator(size: 24)),
-          error: (_, __) => const SizedBox(height: 280, child: Center(child: Text('Failed to load tasks'))),
+            loading: () => const SizedBox(height: 280, child: LoadingIndicator(size: 24)),
+            error: (_, __) => const SizedBox(height: 280, child: Center(child: Text('Failed to load tasks'))),
+          ),
         ),
       ],
     );
@@ -742,16 +744,14 @@ class _CalendarGrid extends StatelessWidget {
       );
     }
 
-    return Expanded(
-      child: Padding(
-        padding: AppSpacing.paddingHorizontalLg,
-        child: GridView.count(
-          crossAxisCount: 7,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 0.8,
-          children: cells,
-        ),
+    return Padding(
+      padding: AppSpacing.paddingHorizontalLg,
+      child: GridView.count(
+        crossAxisCount: 7,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 0.8,
+        children: cells,
       ),
     );
   }

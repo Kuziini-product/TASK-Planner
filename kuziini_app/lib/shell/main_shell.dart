@@ -416,7 +416,7 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                 borderRadius: BorderRadius.circular(12)),
               width: double.infinity,
               child: Text(
-                _text.isNotEmpty ? _text : 'Say something like:\n"Adăugăm task nou livrare mobilă descriere livrare la client data 15 ianuarie ora 10 urgent"',
+                _text.isNotEmpty ? _text : 'Say something like:\n"măsurătoare Radu slash întâlnire Radu slash ora 14 4 aprilie adresă strada Solstițiului 11 urgent"',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: _text.isNotEmpty ? null : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4), height: 1.3, fontSize: 13),
               ),
@@ -441,9 +441,9 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     if (parsed.title != null) _ParsedField(icon: PhosphorIcons.textT(PhosphorIconsStyle.bold), label: 'Title', value: parsed.title!),
                     if (parsed.description != null) _ParsedField(icon: PhosphorIcons.article(PhosphorIconsStyle.regular), label: 'Description', value: parsed.description!),
                     if (parsed.dueDate != null) _ParsedField(icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular), label: 'Date', value: '${parsed.dueDate!.day}/${parsed.dueDate!.month}/${parsed.dueDate!.year}'),
-                    if (parsed.hour != null) _ParsedField(icon: PhosphorIcons.clock(PhosphorIconsStyle.regular), label: 'Time', value: '${parsed.hour}:${parsed.minute.toString().padLeft(2, '0')}'),
+                    if (parsed.hour != null) _ParsedField(icon: PhosphorIcons.clock(PhosphorIconsStyle.regular), label: 'Time', value: '${parsed.hour}:${(parsed.minute ?? 0).toString().padLeft(2, '0')}'),
                     if (parsed.priority != null) _ParsedField(icon: PhosphorIcons.flag(PhosphorIconsStyle.regular), label: 'Priority', value: parsed.priority!),
-                    if (parsed.locationName != null || parsed.locationAddress != null) _ParsedField(icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular), label: 'Location', value: [parsed.locationName, parsed.locationAddress].whereType<String>().join(' - ')),
+                    if (parsed.locationAddress != null) _ParsedField(icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular), label: 'Address', value: [parsed.locationName, parsed.locationAddress].whereType<String>().where((s) => s.isNotEmpty).join(' - ')),
                     if (parsed.assigneeName != null) _ParsedField(icon: PhosphorIcons.user(PhosphorIconsStyle.regular), label: 'Assign', value: parsed.assigneeName!),
                   ],
                 ),

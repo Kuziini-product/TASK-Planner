@@ -406,16 +406,16 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
               ),
             ),
             AppSpacing.vGapMd,
-            if (!kIsWeb)
-              ListTile(
-                leading: Icon(
-                    PhosphorIcons.camera(PhosphorIconsStyle.regular)),
-                title: const Text('Take Photo'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickImageFromCamera();
-                },
-              ),
+            ListTile(
+              leading: Icon(
+                  PhosphorIcons.camera(PhosphorIconsStyle.regular)),
+              title: const Text('Take Photo'),
+              subtitle: const Text('Use device camera'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImageFromCamera();
+              },
+            ),
             ListTile(
               leading:
                   Icon(PhosphorIcons.image(PhosphorIconsStyle.regular)),

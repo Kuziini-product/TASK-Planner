@@ -495,6 +495,11 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
     }
   }
 
+  void _downloadFile(TaskAttachment attachment) {
+    final url = _getFileUrl(attachment.filePath);
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
   void _showImageViewer(TaskAttachment attachment) {
     showDialog(
       context: context,
@@ -512,6 +517,14 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
               onPressed: () => Navigator.pop(ctx),
               icon: const Icon(Icons.close, color: Colors.white),
             ),
+            actions: [
+              IconButton(
+                onPressed: () => _downloadFile(attachment),
+                icon: const Icon(Icons.download, color: Colors.white),
+                tooltip: 'Download',
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: Center(
             child: InteractiveViewer(
@@ -854,6 +867,10 @@ class _DocumentList extends StatelessWidget {
                 attachment: doc,
                 onTap: () => onTap(doc),
                 onDelete: () => onDelete(doc),
+                onDownload: () {
+                  final url = _getFileUrl(doc.filePath);
+                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                },
               ))
           .toList(),
     );
@@ -865,11 +882,13 @@ class _DocumentTile extends StatelessWidget {
     required this.attachment,
     required this.onTap,
     required this.onDelete,
+    this.onDownload,
   });
 
   final TaskAttachment attachment;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onDownload;
 
   IconData _iconForExtension(String ext) {
     switch (ext.toLowerCase()) {
@@ -954,6 +973,17 @@ class _DocumentTile extends StatelessWidget {
               ),
             ),
             IconButton(
+              onPressed: onDownload ?? onTap,
+              icon: Icon(
+                PhosphorIcons.downloadSimple(PhosphorIconsStyle.regular),
+                size: 16,
+                color: AppColors.primary,
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              tooltip: 'Download',
+            ),
+            IconButton(
               onPressed: onDelete,
               icon: Icon(
                 PhosphorIcons.trash(PhosphorIconsStyle.regular),
@@ -961,8 +991,7 @@ class _DocumentTile extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               padding: EdgeInsets.zero,
-              constraints:
-                  const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
           ],
         ),

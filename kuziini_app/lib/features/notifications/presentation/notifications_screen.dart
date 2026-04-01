@@ -12,6 +12,7 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/kuziini_card.dart';
 import '../../../core/widgets/loading_indicator.dart';
+import '../../tasks/providers/tasks_provider.dart';
 import '../data/notification_repository.dart';
 import '../providers/notifications_provider.dart';
 
@@ -123,7 +124,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+class _NotificationTile extends ConsumerWidget {
   const _NotificationTile({
     required this.notification,
     required this.onTap,
@@ -148,6 +149,10 @@ class _NotificationTile extends StatelessWidget {
         return PhosphorIcons.clock(PhosphorIconsStyle.fill);
       case 'approval':
         return PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill);
+      case 'edit_request':
+        return PhosphorIcons.pencilSimple(PhosphorIconsStyle.fill);
+      case 'edit_approved':
+        return PhosphorIcons.checkCircle(PhosphorIconsStyle.fill);
       default:
         return PhosphorIcons.bell(PhosphorIconsStyle.fill);
     }
@@ -163,6 +168,10 @@ class _NotificationTile extends StatelessWidget {
         return AppColors.secondary;
       case 'task_due':
         return AppColors.warning;
+      case 'edit_request':
+        return AppColors.warning;
+      case 'edit_approved':
+        return AppColors.success;
       case 'approval':
         return Theme.of(context).colorScheme.primary;
       default:
@@ -171,7 +180,7 @@ class _NotificationTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     final iconColor = _iconColor(context);
@@ -241,6 +250,44 @@ class _NotificationTile extends StatelessWidget {
                       AppDateUtils.formatTimeAgo(notification.createdAt!),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  // Approve button for edit requests
+                  if (notification.type == 'edit_request' && !notification.isRead)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: SizedBox(
+                        height: 32,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            final taskId = notification.data?['task_id'] as String?;
+                            final requesterId = notification.data?['requester_id'] as String?;
+                            final requesterName = notification.data?['requester_name'] as String?;
+                            if (taskId == null || requesterId == null) return;
+
+                            try {
+                              final taskRepo = ref.read(taskRepositoryProvider);
+                              await taskRepo.grantEditPermission(taskId, requesterId);
+
+                              final notifRepo = NotificationRepository();
+                              await notifRepo.createNotification(
+                                userId: requesterId,
+                                title: 'Edit Approved',
+                                body: 'Your request to edit the task has been approved. You can now edit it once.',
+                                type: 'edit_approved',
+                                data: {'task_id': taskId},
+                              );
+
+                              ref.read(notificationsProvider.notifier).markAsRead(notification.id);
+                            } catch (_) {}
+                          },
+                          icon: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 14),
+                          label: const Text('Approve Edit', style: TextStyle(fontSize: 12)),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            backgroundColor: AppColors.success,
+                          ),
+                        ),
                       ),
                     ),
                 ],

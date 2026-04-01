@@ -13,10 +13,13 @@ import '../../../core/widgets/kuziini_button.dart';
 import '../../../core/widgets/kuziini_text_field.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_view.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../notifications/data/notification_repository.dart';
 import '../data/models/task_model.dart';
 import '../data/models/checklist_item.dart';
 import '../data/models/task_comment.dart';
 import '../providers/tasks_provider.dart';
+import 'create_task_screen.dart';
 import 'widgets/attachment_section.dart';
 import 'widgets/comment_section.dart';
 import 'widgets/priority_badge.dart';
@@ -107,7 +110,61 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
             ],
             onSelected: (value) async {
-              if (value == 'reassign') {
+              if (value == 'edit') {
+                final profile = ref.read(currentUserProfileProvider).valueOrNull;
+                final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+                if (profile == null || task == null) return;
+
+                if (profile.isAdmin) {
+                  // Admin: navigate directly to edit
+                  final edited = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => CreateTaskScreen(existingTask: task),
+                    ),
+                  );
+                  if (edited == true) {
+                    ref.invalidate(taskDetailProvider(widget.taskId));
+                    ref.invalidate(dailyTasksProvider);
+                  }
+                } else {
+                  // Non-admin: check permission or request
+                  final repo = ref.read(taskRepositoryProvider);
+                  final hasPermission = await repo.hasEditPermission(widget.taskId, profile.id);
+
+                  if (hasPermission) {
+                    final edited = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => CreateTaskScreen(existingTask: task),
+                      ),
+                    );
+                    if (edited == true) {
+                      await repo.consumeEditPermission(widget.taskId, profile.id);
+                      ref.invalidate(taskDetailProvider(widget.taskId));
+                      ref.invalidate(dailyTasksProvider);
+                    }
+                  } else {
+                    // Send edit request to admins
+                    final notifRepo = NotificationRepository();
+                    final adminIds = await notifRepo.fetchAdminUserIds();
+                    for (final adminId in adminIds) {
+                      await notifRepo.createNotification(
+                        userId: adminId,
+                        title: 'Edit Request',
+                        body: '${profile.displayName} requests permission to edit "${task.title}"',
+                        type: 'edit_request',
+                        data: {
+                          'task_id': widget.taskId,
+                          'requester_id': profile.id,
+                          'requester_name': profile.displayName,
+                        },
+                      );
+                    }
+                    if (mounted) {
+                      context.showSnackBar('Edit request sent to admin for approval');
+                    }
+                  }
+                }
+              } else if (value == 'reassign') {
                 final result = await showUserPicker(context);
                 if (result != null && mounted) {
                   try {
@@ -174,29 +231,25 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 top: BorderSide(color: theme.dividerColor),
               ),
             ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _updateStatus(
-                  task.isCompleted ? TaskStatus.todo : TaskStatus.done,
+            child: Row(
+              children: [
+                Expanded(
+                  child: KuziiniButton(
+                    label: task.isCompleted ? 'Reopen' : 'Mark Complete',
+                    onPressed: () => _updateStatus(
+                      task.isCompleted ? TaskStatus.todo : TaskStatus.done,
+                    ),
+                    icon: task.isCompleted
+                        ? PhosphorIcons.arrowCounterClockwise(
+                            PhosphorIconsStyle.bold)
+                        : PhosphorIcons.check(PhosphorIconsStyle.bold),
+                    variant: task.isCompleted
+                        ? KuziiniButtonVariant.secondary
+                        : KuziiniButtonVariant.primary,
+                    height: 44,
+                  ),
                 ),
-                icon: Icon(
-                  task.isCompleted
-                      ? PhosphorIcons.arrowCounterClockwise(PhosphorIconsStyle.bold)
-                      : PhosphorIcons.check(PhosphorIconsStyle.bold),
-                  size: 18,
-                ),
-                label: Text(
-                  task.isCompleted ? 'Reopen' : 'Mark Complete',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: task.isCompleted
-                      ? theme.colorScheme.onSurfaceVariant
-                      : theme.colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
+              ],
             ),
           ),
         ),
@@ -221,22 +274,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: [
-                ...TaskStatus.values.map(
-                  (status) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: StatusChip(
-                      status: status,
-                      isSelected: task.status == status,
-                      onTap: () => _updateStatus(status),
+              children: TaskStatus.values
+                  .map(
+                    (status) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: StatusChip(
+                        status: status,
+                        isSelected: task.status == status,
+                        onTap: () => _updateStatus(status),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(PhosphorIcons.flag(PhosphorIconsStyle.regular), size: 16, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                PriorityBadge(priority: task.priority),
-              ],
+                  )
+                  .toList(),
             ),
           ).animate().fadeIn(duration: 300.ms),
 
@@ -264,48 +313,40 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
           AppSpacing.vGapXl,
 
-          // Due Date + Time on same row
-          if (task.dueDate != null || task.startTime != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  if (task.dueDate != null) ...[
-                    Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular), size: 18,
-                      color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurfaceVariant),
-                    AppSpacing.hGapSm,
-                    Text('Due Date', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                    AppSpacing.hGapMd,
-                    Text(
-                      AppDateUtils.formatFull(task.dueDate!),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: task.isOverdue ? AppColors.error : null,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                  if (task.dueDate != null && task.startTime != null)
-                    const Spacer(),
-                  if (task.startTime != null) ...[
-                    Icon(PhosphorIcons.clock(PhosphorIconsStyle.regular), size: 18,
-                      color: theme.colorScheme.onSurfaceVariant),
-                    AppSpacing.hGapSm,
-                    Text('Time', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                    AppSpacing.hGapMd,
-                    Text(
-                      task.endTime != null
-                          ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                          : AppDateUtils.formatTime(task.startTime!),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
+          // Details section
+          _DetailRow(
+            icon: PhosphorIcons.flag(PhosphorIconsStyle.regular),
+            label: 'Priority',
+            child: PriorityBadge(priority: task.priority),
+          ),
+
+          if (task.dueDate != null)
+            _DetailRow(
+              icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
+              label: 'Due Date',
+              child: Text(
+                AppDateUtils.formatFull(task.dueDate!),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: task.isOverdue ? AppColors.error : null,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
 
-          // Location
+          if (task.startTime != null)
+            _DetailRow(
+              icon: PhosphorIcons.clock(PhosphorIconsStyle.regular),
+              label: 'Time',
+              child: Text(
+                task.endTime != null
+                    ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                    : AppDateUtils.formatTime(task.startTime!),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+
           if (task.hasLocation)
             _DetailRow(
               icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
@@ -353,7 +394,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
             ),
 
-          // Assignee
           _DetailRow(
             icon: PhosphorIcons.user(PhosphorIconsStyle.regular),
             label: 'Assignee',

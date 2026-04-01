@@ -19,9 +19,10 @@ import '../providers/tasks_provider.dart';
 import 'widgets/user_picker.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
-  const CreateTaskScreen({super.key, this.queryParams = const {}});
+  const CreateTaskScreen({super.key, this.queryParams = const {}, this.existingTask});
 
   final Map<String, String> queryParams;
+  final TaskModel? existingTask;
 
   @override
   ConsumerState<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -51,10 +52,44 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   double? _locationLat;
   double? _locationLng;
 
+  bool get _isEditMode => widget.existingTask != null;
+
   @override
   void initState() {
     super.initState();
-    _applyVoiceParams();
+    if (_isEditMode) {
+      _applyExistingTask();
+    } else {
+      _applyVoiceParams();
+    }
+  }
+
+  void _applyExistingTask() {
+    final task = widget.existingTask!;
+    _titleController.text = task.title;
+    _descriptionController.text = task.description ?? '';
+    _priority = task.priority;
+    _dueDate = task.dueDate;
+    if (task.startTime != null) {
+      final local = task.startTime!.toLocal();
+      _startTime = TimeOfDay(hour: local.hour, minute: local.minute);
+    }
+    if (task.endTime != null) {
+      final local = task.endTime!.toLocal();
+      _endTime = TimeOfDay(hour: local.hour, minute: local.minute);
+    }
+    if (task.locationName != null || task.locationAddress != null) {
+      _useDefaultLocation = false;
+      _locationNameController.text = task.locationName ?? '';
+      _locationAddressController.text = task.locationAddress ?? '';
+      if (task.locationUrl != null) _locationLinkController.text = task.locationUrl!;
+      _locationLat = task.locationLat;
+      _locationLng = task.locationLng;
+    }
+    if (task.assigneeId != null) {
+      _assigneeId = task.assigneeId;
+      _assigneeName = task.assigneeName;
+    }
   }
 
   void _applyVoiceParams() {
@@ -97,65 +132,19 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   Future<void> _resolveAssignee(String name) async {
     try {
-      // First try exact match
-      var result = await SupabaseService.instance.client
+      final result = await SupabaseService.instance.client
           .from('profiles')
           .select('id, display_name')
           .ilike('display_name', '%$name%')
           .limit(1)
           .maybeSingle();
-
-      // If no match, try fuzzy: fetch all users and find closest match
-      if (result == null) {
-        final allUsers = await SupabaseService.instance.client
-            .from('profiles')
-            .select('id, display_name');
-
-        final spokenLower = name.toLowerCase().trim();
-        Map<String, dynamic>? bestMatch;
-        int bestScore = 0;
-
-        for (final user in allUsers) {
-          final displayName = (user['display_name'] as String? ?? '').toLowerCase();
-          // Check each word in display name
-          for (final part in displayName.split(' ')) {
-            final score = _similarityScore(spokenLower, part);
-            if (score > bestScore && score >= 50) {
-              bestScore = score;
-              bestMatch = user;
-            }
-          }
-        }
-        result = bestMatch;
-      }
-
       if (result != null && mounted) {
         setState(() {
-          _assigneeId = result!['id'] as String;
+          _assigneeId = result['id'] as String;
           _assigneeName = result['display_name'] as String;
         });
       }
     } catch (_) {}
-  }
-
-  /// Simple similarity score (0-100) between two strings.
-  /// Uses longest common subsequence ratio.
-  static int _similarityScore(String a, String b) {
-    if (a.isEmpty || b.isEmpty) return 0;
-    final m = a.length;
-    final n = b.length;
-    final dp = List.generate(m + 1, (_) => List.filled(n + 1, 0));
-    for (int i = 1; i <= m; i++) {
-      for (int j = 1; j <= n; j++) {
-        if (a[i - 1] == b[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1] + 1;
-        } else {
-          dp[i][j] = dp[i - 1][j] > dp[i][j - 1] ? dp[i - 1][j] : dp[i][j - 1];
-        }
-      }
-    }
-    final lcs = dp[m][n];
-    return ((2 * lcs * 100) ~/ (m + n));
   }
 
   @override
@@ -484,49 +473,77 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         locLng = _locationLng;
       }
 
-      final task = TaskModel(
-        id: '',
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim().nullIfEmpty,
-        priority: _priority,
-        createdBy: userId,
-        dueDate: _dueDate,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        labels: _labels,
-        locationName: locName,
-        locationAddress: locAddress,
-        locationUrl: locUrl,
-        locationLat: locLat,
-        locationLng: locLng,
-      );
-
       final repo = ref.read(taskRepositoryProvider);
-      final createdTask = await repo.createTask(task);
 
-      // Assign task if an assignee was selected
-      if (_assigneeId != null) {
-        await SupabaseService.instance.client.from('task_assignees').insert({
-          'task_id': createdTask.id,
-          'user_id': _assigneeId,
-          'assigned_by': userId,
-        });
-      }
+      if (_isEditMode) {
+        // ── Edit mode: update existing task ──
+        final updateData = <String, dynamic>{
+          'title': _titleController.text.trim(),
+          'description': _descriptionController.text.trim().nullIfEmpty,
+          'priority': _priority.name,
+          'due_date': _dueDate?.toIso8601String(),
+          'start_time': startDateTime?.toIso8601String(),
+          'end_time': endDateTime?.toIso8601String(),
+          'location_name': locName,
+          'location_address': locAddress,
+          'location_url': locUrl,
+          'location_lat': locLat,
+          'location_lng': locLng,
+        };
 
-      // Add checklist items using the server-assigned task ID
-      for (int i = 0; i < _checklistItems.length; i++) {
-        await repo.addChecklistItem(
-          taskId: createdTask.id,
-          title: _checklistItems[i],
-          sortOrder: i,
+        await repo.updateTask(widget.existingTask!.id, updateData);
+        ref.invalidate(dailyTasksProvider);
+        ref.invalidate(taskDetailProvider(widget.existingTask!.id));
+
+        if (mounted) {
+          Navigator.of(context).pop(true);
+          context.showSnackBar('Task updated successfully');
+        }
+      } else {
+        // ── Create mode ──
+        final task = TaskModel(
+          id: '',
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim().nullIfEmpty,
+          priority: _priority,
+          createdBy: userId,
+          dueDate: _dueDate,
+          startTime: startDateTime,
+          endTime: endDateTime,
+          labels: _labels,
+          locationName: locName,
+          locationAddress: locAddress,
+          locationUrl: locUrl,
+          locationLat: locLat,
+          locationLng: locLng,
         );
-      }
 
-      ref.invalidate(dailyTasksProvider);
+        final createdTask = await repo.createTask(task);
 
-      if (mounted) {
-        Navigator.of(context).pop();
-        context.showSnackBar('Task created successfully');
+        // Assign task if an assignee was selected
+        if (_assigneeId != null) {
+          await SupabaseService.instance.client.from('task_assignees').insert({
+            'task_id': createdTask.id,
+            'user_id': _assigneeId,
+            'assigned_by': userId,
+          });
+        }
+
+        // Add checklist items using the server-assigned task ID
+        for (int i = 0; i < _checklistItems.length; i++) {
+          await repo.addChecklistItem(
+            taskId: createdTask.id,
+            title: _checklistItems[i],
+            sortOrder: i,
+          );
+        }
+
+        ref.invalidate(dailyTasksProvider);
+
+        if (mounted) {
+          Navigator.of(context).pop();
+          context.showSnackBar('Task created successfully');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -545,7 +562,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     return Scaffold(
       appBar: KuziiniAppBar(
         showBackButton: true,
-        title: 'New Task',
+        title: _isEditMode ? 'Edit Task' : 'New Task',
         actions: [
           TextButton(
             onPressed: _isSubmitting ? null : _submit,
@@ -556,7 +573,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Text(
-                    'Create',
+                    _isEditMode ? 'Save' : 'Create',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: primaryColor,
@@ -849,10 +866,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
               // Create button
               KuziiniButton(
-                label: 'Create Task',
+                label: _isEditMode ? 'Save Changes' : 'Create Task',
                 onPressed: _submit,
                 isLoading: _isSubmitting,
-                icon: PhosphorIcons.plus(PhosphorIconsStyle.bold),
+                icon: _isEditMode
+                    ? PhosphorIcons.floppyDisk(PhosphorIconsStyle.bold)
+                    : PhosphorIcons.plus(PhosphorIconsStyle.bold),
               ),
 
               const SizedBox(height: 40),

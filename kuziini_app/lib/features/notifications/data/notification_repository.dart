@@ -124,4 +124,29 @@ class NotificationRepository {
   Future<void> deleteNotification(String notificationId) async {
     await _supabase.delete(AppConstants.tableNotifications, id: notificationId);
   }
+
+  Future<void> createNotification({
+    required String userId,
+    required String title,
+    required String body,
+    String? type,
+    Map<String, dynamic>? data,
+  }) async {
+    await _supabase.client.from(AppConstants.tableNotifications).insert({
+      'user_id': userId,
+      'title': title,
+      'body': body,
+      'type': type,
+      'data': data,
+      'is_read': false,
+    });
+  }
+
+  Future<List<String>> fetchAdminUserIds() async {
+    final response = await _supabase.client
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin');
+    return (response as List).map((r) => r['id'] as String).toList();
+  }
 }

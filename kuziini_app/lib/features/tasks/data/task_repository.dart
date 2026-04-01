@@ -164,6 +164,37 @@ class TaskRepository {
     await _supabase.delete(AppConstants.tableTasks, id: taskId);
   }
 
+  // ── Edit Permissions ──
+
+  Future<bool> hasEditPermission(String taskId, String userId) async {
+    final response = await _supabase.client
+        .from('edit_permissions')
+        .select('id')
+        .eq('task_id', taskId)
+        .eq('user_id', userId)
+        .eq('is_used', false)
+        .maybeSingle();
+    return response != null;
+  }
+
+  Future<void> consumeEditPermission(String taskId, String userId) async {
+    await _supabase.client
+        .from('edit_permissions')
+        .update({'is_used': true, 'used_at': DateTime.now().toIso8601String()})
+        .eq('task_id', taskId)
+        .eq('user_id', userId)
+        .eq('is_used', false);
+  }
+
+  Future<void> grantEditPermission(String taskId, String userId) async {
+    final adminId = _supabase.currentUserId!;
+    await _supabase.client.from('edit_permissions').insert({
+      'task_id': taskId,
+      'user_id': userId,
+      'granted_by': adminId,
+    });
+  }
+
   Future<void> assignTask(String taskId, String assigneeId) async {
     final userId = _supabase.currentUserId;
     await _supabase.insert('task_assignees', {

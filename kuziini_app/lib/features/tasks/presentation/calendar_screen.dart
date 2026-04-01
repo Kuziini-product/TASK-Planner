@@ -478,7 +478,12 @@ class _TaskListForDay extends ConsumerWidget {
   }
 }
 
-// ── Calendar Grid (Month) ──
+// ── Calendar Grid (Month) with timeline bars ──
+// Each day cell shows task bars proportional to duration on a 8:00–19:00 axis.
+
+const _dayStartHour = 8;
+const _dayEndHour = 19;
+const _totalMinutes = (_dayEndHour - _dayStartHour) * 60; // 660 min
 
 class _CalendarGrid extends StatelessWidget {
   const _CalendarGrid({
@@ -509,41 +514,97 @@ class _CalendarGrid extends StatelessWidget {
       final date = DateTime(month.year, month.month, day);
       final isToday = AppDateUtils.isToday(date);
       final tasks = tasksByDay[day] ?? [];
-      final hasTasks = tasks.isNotEmpty;
 
       cells.add(
         GestureDetector(
           onTap: () => onDaySelected(date),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.all(2),
+          child: Container(
+            margin: const EdgeInsets.all(1),
             decoration: BoxDecoration(
-              color: isToday ? primaryColor : hasTasks ? primaryColor.withValues(alpha: 0.06) : null,
-              borderRadius: BorderRadius.circular(8),
-              border: isToday ? null : hasTasks ? Border.all(color: primaryColor.withValues(alpha: 0.15)) : null,
+              color: isToday ? primaryColor.withValues(alpha: 0.08) : null,
+              borderRadius: BorderRadius.circular(6),
+              border: isToday ? Border.all(color: primaryColor.withValues(alpha: 0.4), width: 1.5) : null,
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '$day',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isToday ? Colors.white : theme.colorScheme.onSurface,
-                    fontWeight: isToday ? FontWeight.w700 : null,
+                // Day number
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '$day',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                      color: isToday ? primaryColor : theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
-                if (hasTasks)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: tasks.take(3).map((t) => Container(
-                      width: 4, height: 4,
-                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isToday ? Colors.white.withValues(alpha: 0.8) : _priorityColor(context, t.priority),
-                      ),
-                    )).toList(),
+                // Task timeline bars
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final cellWidth = constraints.maxWidth;
+                        if (tasks.isEmpty) return const SizedBox();
+
+                        // Sort tasks by start time
+                        final sorted = tasks.where((t) => t.startTime != null).toList()
+                          ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
+
+                        // Also include tasks without start time
+                        final noTime = tasks.where((t) => t.startTime == null).toList();
+
+                        final bars = <Widget>[];
+
+                        // Position bars for scheduled tasks
+                        for (final task in sorted) {
+                          final startMin = _minutesSinceStart(task.startTime!);
+                          final endMin = task.endTime != null
+                              ? _minutesSinceStart(task.endTime!)
+                              : startMin + 60; // default 1h
+
+                          final left = (startMin / _totalMinutes * cellWidth).clamp(0.0, cellWidth);
+                          final width = ((endMin - startMin) / _totalMinutes * cellWidth).clamp(2.0, cellWidth - left);
+
+                          bars.add(
+                            Positioned(
+                              left: left,
+                              top: bars.length * 4.0, // stack vertically
+                              child: Container(
+                                width: width,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: _priorityColor(context, task.priority),
+                                  borderRadius: BorderRadius.circular(1.5),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Small dots for unscheduled tasks
+                        for (int i = 0; i < noTime.length && i < 3; i++) {
+                          bars.add(
+                            Positioned(
+                              left: 1 + i * 5.0,
+                              bottom: 1,
+                              child: Container(
+                                width: 3, height: 3,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _priorityColor(context, noTime[i].priority),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Stack(clipBehavior: Clip.none, children: bars);
+                      },
+                    ),
                   ),
+                ),
               ],
             ),
           ),
@@ -557,10 +618,17 @@ class _CalendarGrid extends StatelessWidget {
         crossAxisCount: 7,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.1,
+        childAspectRatio: 0.85,
         children: cells,
       ),
     ).animate().fadeIn(duration: 300.ms);
+  }
+
+  /// Minutes from 8:00 start
+  double _minutesSinceStart(DateTime time) {
+    final local = time.toLocal();
+    final mins = (local.hour - _dayStartHour) * 60 + local.minute;
+    return mins.clamp(0, _totalMinutes).toDouble();
   }
 
   Color _priorityColor(BuildContext context, TaskPriority priority) {
@@ -569,7 +637,7 @@ class _CalendarGrid extends StatelessWidget {
       case TaskPriority.high: return AppColors.priorityHigh;
       case TaskPriority.medium: return AppColors.priorityMedium;
       case TaskPriority.low: return AppColors.priorityLow;
-      case TaskPriority.none: return Theme.of(context).colorScheme.primaryContainer;
+      case TaskPriority.none: return Theme.of(context).colorScheme.primary;
     }
   }
 }

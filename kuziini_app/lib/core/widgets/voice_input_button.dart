@@ -33,6 +33,7 @@ class VoiceInputButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     if (mini) {
       return SizedBox(
         width: size, height: size,
@@ -40,7 +41,7 @@ class VoiceInputButton extends StatelessWidget {
           onPressed: () => _openSheet(context),
           padding: EdgeInsets.zero,
           constraints: BoxConstraints(minWidth: size, minHeight: size),
-          icon: Icon(PhosphorIcons.microphone(PhosphorIconsStyle.regular), size: 18, color: AppColors.primary),
+          icon: Icon(PhosphorIcons.microphone(PhosphorIconsStyle.regular), size: 18, color: primaryColor),
           tooltip: 'Voice input',
         ),
       );
@@ -48,7 +49,7 @@ class VoiceInputButton extends StatelessWidget {
     return SizedBox(
       width: size, height: size,
       child: Material(
-        color: AppColors.primary, shape: const CircleBorder(), elevation: 2,
+        color: primaryColor, shape: const CircleBorder(), elevation: 2,
         child: InkWell(
           onTap: () => _openSheet(context),
           customBorder: const CircleBorder(),
@@ -150,6 +151,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with SingleTickerProviderState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -175,7 +177,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with SingleTickerProviderState
               animation: _pulseAnim,
               builder: (context, _) => Container(
                 width: 80, height: 80,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: (_listening ? AppColors.error : AppColors.primary).withValues(alpha: 0.1)),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: (_listening ? AppColors.error : primaryColor).withValues(alpha: 0.1)),
                 child: Center(
                   child: Transform.scale(
                     scale: _listening ? _pulseAnim.value : 1.0,
@@ -183,7 +185,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with SingleTickerProviderState
                       width: 56, height: 56,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _listening ? AppColors.error : AppColors.primary,
+                        color: _listening ? AppColors.error : primaryColor,
                         boxShadow: _listening ? [BoxShadow(color: AppColors.error.withValues(alpha: 0.4), blurRadius: 16, spreadRadius: 2)] : null,
                       ),
                       child: Icon(
@@ -245,8 +247,8 @@ class _VoiceSheetState extends State<_VoiceSheet> with SingleTickerProviderState
                   icon: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18),
                   label: const Text('Confirm'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
+                    backgroundColor: primaryColor,
+                    disabledBackgroundColor: primaryColor.withValues(alpha: 0.3),
                     shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusMd),
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
                 )),
@@ -259,7 +261,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with SingleTickerProviderState
                 onPressed: _start,
                 icon: Icon(PhosphorIcons.arrowClockwise(PhosphorIconsStyle.regular), size: 16),
                 label: const Text('Restart'),
-                style: TextButton.styleFrom(foregroundColor: AppColors.primary)),
+                style: TextButton.styleFrom(foregroundColor: primaryColor)),
             ],
 
             SizedBox(height: AppSpacing.xl + MediaQuery.of(context).padding.bottom),

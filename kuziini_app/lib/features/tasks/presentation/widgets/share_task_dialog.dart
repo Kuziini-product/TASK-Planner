@@ -104,6 +104,7 @@ class _ShareTaskSheetState extends State<_ShareTaskSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return SafeArea(
       child: Padding(
@@ -138,7 +139,7 @@ class _ShareTaskSheetState extends State<_ShareTaskSheet> {
               value: _includeDetails,
               onChanged: (v) => setState(() => _includeDetails = v ?? true),
               title: const Text('Share title & description'),
-              activeColor: AppColors.primary,
+              activeColor: primaryColor,
               controlAffinity: ListTileControlAffinity.leading,
               dense: true,
               contentPadding: EdgeInsets.zero,
@@ -151,7 +152,7 @@ class _ShareTaskSheetState extends State<_ShareTaskSheet> {
                 onChanged: (v) =>
                     setState(() => _includeLocation = v ?? true),
                 title: const Text('Share location'),
-                activeColor: AppColors.primary,
+                activeColor: primaryColor,
                 controlAffinity: ListTileControlAffinity.leading,
                 dense: true,
                 contentPadding: EdgeInsets.zero,
@@ -164,7 +165,7 @@ class _ShareTaskSheetState extends State<_ShareTaskSheet> {
                 onChanged: (v) =>
                     setState(() => _includeComments = v ?? false),
                 title: const Text('Share comments/messages'),
-                activeColor: AppColors.primary,
+                activeColor: primaryColor,
                 controlAffinity: ListTileControlAffinity.leading,
                 dense: true,
                 contentPadding: EdgeInsets.zero,

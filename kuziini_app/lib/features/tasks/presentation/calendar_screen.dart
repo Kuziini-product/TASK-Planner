@@ -220,6 +220,7 @@ class _CalendarGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
     final startWeekday = firstDay.weekday; // 1 = Monday
@@ -248,13 +249,13 @@ class _CalendarGrid extends StatelessWidget {
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.primary
+                  ? primaryColor
                   : isToday
-                      ? AppColors.primary.withValues(alpha: 0.08)
+                      ? primaryColor.withValues(alpha: 0.08)
                       : null,
               borderRadius: BorderRadius.circular(8),
               border: isToday && !isSelected
-                  ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
+                  ? Border.all(color: primaryColor.withValues(alpha: 0.3))
                   : null,
             ),
             child: Column(
@@ -284,7 +285,7 @@ class _CalendarGrid extends StatelessWidget {
                                 shape: BoxShape.circle,
                                 color: isSelected
                                     ? Colors.white.withValues(alpha: 0.8)
-                                    : _priorityColor(t.priority),
+                                    : _priorityColor(context, t.priority),
                               ),
                             ))
                         .toList(),
@@ -308,7 +309,7 @@ class _CalendarGrid extends StatelessWidget {
     ).animate().fadeIn(duration: 300.ms);
   }
 
-  Color _priorityColor(TaskPriority priority) {
+  Color _priorityColor(BuildContext context, TaskPriority priority) {
     switch (priority) {
       case TaskPriority.urgent:
         return AppColors.priorityUrgent;
@@ -319,7 +320,7 @@ class _CalendarGrid extends StatelessWidget {
       case TaskPriority.low:
         return AppColors.priorityLow;
       case TaskPriority.none:
-        return AppColors.primaryLight;
+        return Theme.of(context).colorScheme.primaryContainer;
     }
   }
 }

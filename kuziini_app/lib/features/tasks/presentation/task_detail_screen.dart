@@ -206,6 +206,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     AsyncValue<List<ChecklistItem>> checklistAsync,
   ) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return SingleChildScrollView(
       padding: AppSpacing.paddingLg,
@@ -307,9 +308,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                         task.locationDisplay,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w500,
-                          color: AppColors.primary,
+                          color: primaryColor,
                           decoration: TextDecoration.underline,
-                          decorationColor: AppColors.primary,
+                          decorationColor: primaryColor,
                         ),
                       ),
                     ),
@@ -627,7 +628,7 @@ class _ChecklistItemTile extends StatelessWidget {
           Checkbox(
             value: item.isCompleted,
             onChanged: (value) => onToggle(value ?? false),
-            activeColor: AppColors.primary,
+            activeColor: theme.colorScheme.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             visualDensity: VisualDensity.compact,
           ),

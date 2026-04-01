@@ -57,7 +57,7 @@ class DailyProgress extends StatelessWidget {
                   strokeWidth: strokeWidth,
                   strokeCap: StrokeCap.round,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    _getProgressColor(value),
+                    _getProgressColor(context, value),
                   ),
                 );
               },
@@ -82,11 +82,11 @@ class DailyProgress extends StatelessWidget {
     );
   }
 
-  Color _getProgressColor(double value) {
+  Color _getProgressColor(BuildContext context, double value) {
     if (value >= 1.0) return AppColors.success;
-    if (value >= 0.7) return AppColors.primaryLight;
+    if (value >= 0.7) return Theme.of(context).colorScheme.primaryContainer;
     if (value >= 0.4) return AppColors.warning;
-    return AppColors.primary;
+    return Theme.of(context).colorScheme.primary;
   }
 }
 
@@ -132,7 +132,7 @@ class LinearDailyProgress extends StatelessWidget {
                 backgroundColor:
                     theme.colorScheme.outline.withValues(alpha: 0.15),
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  value >= 1.0 ? AppColors.success : AppColors.primary,
+                  value >= 1.0 ? AppColors.success : Theme.of(context).colorScheme.primary,
                 ),
               );
             },

@@ -69,7 +69,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppColors.primary,
+                  primary: Theme.of(context).colorScheme.primary,
                 ),
           ),
           child: child!,
@@ -172,7 +172,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Icon(Icons.location_on, color: AppColors.primary),
+                      Icon(Icons.location_on, color: Theme.of(ctx).colorScheme.primary),
                       const SizedBox(width: 8),
                       Text('Set Location', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                     ],
@@ -191,24 +191,24 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
+                        color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        border: Border.all(color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.store, color: AppColors.primary, size: 20),
+                          Icon(Icons.store, color: Theme.of(ctx).colorScheme.primary, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Kuziini', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                Text('Kuziini', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(ctx).colorScheme.primary)),
                                 Text('Bulevardul Unirii Nr 63', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                               ],
                             ),
                           ),
-                          Icon(Icons.chevron_right, color: AppColors.primary, size: 20),
+                          Icon(Icons.chevron_right, color: Theme.of(ctx).colorScheme.primary, size: 20),
                         ],
                       ),
                     ),
@@ -284,7 +284,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       icon: const Icon(Icons.check, size: 18),
                       label: const Text('Confirm Location'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Theme.of(ctx).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -426,6 +426,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
       appBar: KuziiniAppBar(
@@ -444,7 +445,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     'Create',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                      color: primaryColor,
                     ),
                   ),
           ),
@@ -769,6 +770,7 @@ class _LocationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return InkWell(
       onTap: onTap,
@@ -777,12 +779,12 @@ class _LocationTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: _hasLocation
-              ? AppColors.primary.withValues(alpha: 0.06)
+              ? primaryColor.withValues(alpha: 0.06)
               : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _hasLocation
-                ? AppColors.primary.withValues(alpha: 0.2)
+                ? primaryColor.withValues(alpha: 0.2)
                 : theme.dividerColor.withValues(alpha: 0.3),
           ),
         ),
@@ -790,7 +792,7 @@ class _LocationTile extends StatelessWidget {
           children: [
             Icon(
               Icons.location_on,
-              color: _hasLocation ? AppColors.primary : theme.colorScheme.onSurfaceVariant,
+              color: _hasLocation ? primaryColor : theme.colorScheme.onSurfaceVariant,
               size: 22,
             ),
             const SizedBox(width: 10),
@@ -801,7 +803,7 @@ class _LocationTile extends StatelessWidget {
                       children: [
                         if (locationName.isNotEmpty)
                           Text(locationName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
-                            color: AppColors.primary)),
+                            color: primaryColor)),
                         if (locationAddress.isNotEmpty)
                           Text(locationAddress, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                         if (locationLink.isNotEmpty)
@@ -859,7 +861,7 @@ class _OptionTile extends StatelessWidget {
               icon,
               size: 20,
               color: isActive
-                  ? AppColors.primary
+                  ? theme.colorScheme.primary
                   : theme.colorScheme.onSurfaceVariant,
             ),
             AppSpacing.hGapMd,

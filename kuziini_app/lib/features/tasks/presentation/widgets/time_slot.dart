@@ -29,6 +29,7 @@ class TimeSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return SizedBox(
       height: tasks.isEmpty
@@ -46,7 +47,7 @@ class TimeSlot extends StatelessWidget {
                 _timeLabel,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: isCurrentHour
-                      ? AppColors.primary
+                      ? primaryColor
                       : theme.colorScheme.onSurfaceVariant,
                   fontWeight:
                       isCurrentHour ? FontWeight.w700 : FontWeight.w500,
@@ -68,7 +69,7 @@ class TimeSlot extends StatelessWidget {
                   height: 1,
                   margin: const EdgeInsets.only(top: 8),
                   color: isCurrentHour
-                      ? AppColors.primary.withValues(alpha: 0.4)
+                      ? primaryColor.withValues(alpha: 0.4)
                       : theme.dividerTheme.color?.withValues(alpha: 0.5) ??
                           AppColors.dividerLight,
                 ),
@@ -79,7 +80,7 @@ class TimeSlot extends StatelessWidget {
                     height: 2,
                     margin: const EdgeInsets.only(top: 0),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: primaryColor,
                       borderRadius: AppSpacing.borderRadiusFull,
                     ),
                   ),

@@ -16,11 +16,12 @@ class QuickAddFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return FloatingActionButton(
       heroTag: 'quick_add_fab',
       onPressed: onPressed ?? () => context.push(AppRoutes.createTask),
       elevation: 4,
-      backgroundColor: AppColors.primary,
+      backgroundColor: primaryColor,
       child: Icon(
         PhosphorIcons.plus(PhosphorIconsStyle.bold),
         color: Colors.white,
@@ -85,6 +86,7 @@ class _ExpandableFabState extends State<ExpandableFab>
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -104,7 +106,7 @@ class _ExpandableFabState extends State<ExpandableFab>
           _MiniAction(
             label: 'New Task',
             icon: PhosphorIcons.notepad(PhosphorIconsStyle.fill),
-            color: AppColors.primary,
+            color: primaryColor,
             onTap: () {
               _toggle();
               (widget.onCreateTask ??
@@ -118,7 +120,7 @@ class _ExpandableFabState extends State<ExpandableFab>
         FloatingActionButton(
           heroTag: 'expandable_fab',
           onPressed: _toggle,
-          backgroundColor: AppColors.primary,
+          backgroundColor: primaryColor,
           child: AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {

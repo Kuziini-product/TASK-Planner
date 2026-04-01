@@ -196,7 +196,7 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.location_on, color: AppColors.primary, size: 24),
+              Icon(Icons.location_on, color: Theme.of(context).colorScheme.primary, size: 24),
               const SizedBox(width: 8),
               const Text('Share Location'),
             ],
@@ -1080,7 +1080,7 @@ class _DocumentTile extends StatelessWidget {
               icon: Icon(
                 PhosphorIcons.downloadSimple(PhosphorIconsStyle.regular),
                 size: 16,
-                color: AppColors.primary,
+                color: theme.colorScheme.primary,
               ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

@@ -85,6 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
     final isLoading = authState.isLoading;
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
       body: SafeArea(
@@ -104,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: primaryColor,
                           borderRadius: AppSpacing.borderRadiusLg,
                         ),
                         child: const Center(
@@ -130,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         'Kuziini',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       ).animate().fadeIn(duration: 500.ms, delay: 200.ms),
                       AppSpacing.vGapXs,

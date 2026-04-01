@@ -18,6 +18,7 @@ class AdminDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final statsAsync = ref.watch(adminStatsProvider);
 
     return Scaffold(
@@ -65,7 +66,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                         value: '${stats['totalTasks'] ?? 0}',
                         icon:
                             PhosphorIcons.listChecks(PhosphorIconsStyle.fill),
-                        color: AppColors.primary,
+                        color: primaryColor,
                         animationDelay: 200.ms,
                       ),
                       AppSpacing.hGapMd,
@@ -124,7 +125,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               icon: PhosphorIcons.usersThree(PhosphorIconsStyle.regular),
               label: 'Manage Users',
               subtitle: 'View and manage team members',
-              color: AppColors.primary,
+              color: primaryColor,
               onTap: () => context.push(AppRoutes.userApproval),
             ).animate().fadeIn(duration: 300.ms, delay: 550.ms),
 

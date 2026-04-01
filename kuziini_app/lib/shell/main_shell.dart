@@ -43,6 +43,7 @@ class MainShell extends ConsumerWidget {
     final selectedIndex = _calculateSelectedIndex(context);
     final unreadCount = ref.watch(unreadCountProvider);
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
       body: child,
@@ -84,11 +85,11 @@ class MainShell extends ConsumerWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: primaryColor,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
+                          color: primaryColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -146,7 +147,7 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = isSelected
-        ? AppColors.primary
+        ? theme.colorScheme.primary
         : theme.bottomNavigationBarTheme.unselectedItemColor ??
             theme.colorScheme.onSurfaceVariant;
 

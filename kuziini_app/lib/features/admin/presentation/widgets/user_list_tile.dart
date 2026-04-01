@@ -27,6 +27,7 @@ class UserListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -45,7 +46,7 @@ class UserListTile extends StatelessWidget {
               // Avatar
               CircleAvatar(
                 radius: 20,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                backgroundColor: primaryColor.withValues(alpha: 0.1),
                 backgroundImage: user.avatarUrl != null
                     ? NetworkImage(user.avatarUrl!)
                     : null,
@@ -55,7 +56,7 @@ class UserListTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       )
                     : null,
@@ -171,7 +172,7 @@ class _RoleBadge extends StatelessWidget {
       case 'admin':
         color = AppColors.priorityUrgent;
       case 'member':
-        color = AppColors.primary;
+        color = Theme.of(context).colorScheme.primary;
       case 'viewer':
         color = AppColors.secondary;
       default:

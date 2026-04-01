@@ -62,6 +62,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final selectedDate = ref.watch(selectedDateProvider);
     final tasksAsync = ref.watch(dailyTasksProvider);
     final profile = ref.watch(currentUserProfileProvider);
@@ -70,7 +71,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () => ref.read(dailyTasksProvider.notifier).refresh(),
-        color: AppColors.primary,
+        color: primaryColor,
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
@@ -84,7 +85,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                     'Kuziini',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: primaryColor,
                     ),
                   ),
                 ],
@@ -277,6 +278,7 @@ class _CompactDayHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final isToday = AppDateUtils.isToday(date);
     final greeting = _getGreeting();
 
@@ -307,7 +309,7 @@ class _CompactDayHeader extends StatelessWidget {
                       Icon(
                         PhosphorIcons.calendarBlank(PhosphorIconsStyle.regular),
                         size: 14,
-                        color: AppColors.primary,
+                        color: primaryColor,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -315,7 +317,7 @@ class _CompactDayHeader extends StatelessWidget {
                             ? 'Today, ${AppDateUtils.formatDate(date)}'
                             : AppDateUtils.formatDate(date),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.primary,
+                          color: primaryColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -325,7 +327,7 @@ class _CompactDayHeader extends StatelessWidget {
                             ? PhosphorIcons.caretUp(PhosphorIconsStyle.bold)
                             : PhosphorIcons.caretDown(PhosphorIconsStyle.bold),
                         size: 12,
-                        color: AppColors.primary,
+                        color: primaryColor,
                       ),
                       const Spacer(),
                       if (totalTasks > 0) ...[
@@ -374,7 +376,7 @@ class _CompactDayHeader extends StatelessWidget {
                   CircularProgressIndicator(
                     value: progress,
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                    color: AppColors.primary,
+                    color: primaryColor,
                     strokeWidth: 3.5,
                   ),
                   Text(
@@ -435,6 +437,7 @@ class _DateSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return Container(
       height: 76,
@@ -459,13 +462,13 @@ class _DateSelector extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary
+                    ? primaryColor
                     : isToday
-                        ? AppColors.primary.withValues(alpha: 0.08)
+                        ? primaryColor.withValues(alpha: 0.08)
                         : Colors.transparent,
                 borderRadius: AppSpacing.borderRadiusMd,
                 border: isToday && !isSelected
-                    ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
+                    ? Border.all(color: primaryColor.withValues(alpha: 0.3))
                     : null,
               ),
               child: Column(
@@ -516,6 +519,7 @@ class _TimeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final now = DateTime.now();
     final isCurrentHour = hour != null && hour == now.hour;
 
@@ -527,7 +531,7 @@ class _TimeHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: isCurrentHour
-                  ? AppColors.primary.withValues(alpha: 0.12)
+                  ? primaryColor.withValues(alpha: 0.12)
                   : theme.colorScheme.surfaceContainerHighest,
               borderRadius: AppSpacing.borderRadiusFull,
             ),
@@ -535,7 +539,7 @@ class _TimeHeader extends StatelessWidget {
               title,
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: isCurrentHour ? AppColors.primary : theme.colorScheme.onSurfaceVariant,
+                color: isCurrentHour ? primaryColor : theme.colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
@@ -555,7 +559,7 @@ class _TimeHeader extends StatelessWidget {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: primaryColor,
                 shape: BoxShape.circle,
               ),
             ),
@@ -576,7 +580,7 @@ class _TimeHeader extends StatelessWidget {
               height: 1,
               indent: 8,
               color: isCurrentHour
-                  ? AppColors.primary.withValues(alpha: 0.3)
+                  ? primaryColor.withValues(alpha: 0.3)
                   : theme.dividerColor.withValues(alpha: 0.3),
             ),
           ),

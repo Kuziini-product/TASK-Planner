@@ -21,6 +21,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final profileAsync = ref.watch(profileProvider);
     final statsAsync = ref.watch(taskStatsProvider);
 
@@ -68,7 +69,7 @@ class ProfileScreen extends ConsumerWidget {
                           children: [
                             CircleAvatar(
                               radius: 48,
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                              backgroundColor: primaryColor.withValues(alpha: 0.1),
                               backgroundImage: profile.avatarUrl != null
                                   ? NetworkImage(profile.avatarUrl!)
                                   : null,
@@ -78,7 +79,7 @@ class ProfileScreen extends ConsumerWidget {
                                       style: TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
+                                        color: primaryColor,
                                       ),
                                     )
                                   : null,
@@ -89,7 +90,7 @@ class ProfileScreen extends ConsumerWidget {
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary,
+                                  color: primaryColor,
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: theme.scaffoldBackgroundColor,
@@ -126,13 +127,13 @@ class ProfileScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
+                          color: primaryColor.withValues(alpha: 0.08),
                           borderRadius: AppSpacing.borderRadiusFull,
                         ),
                         child: Text(
                           profile.role.toUpperCase(),
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppColors.primary,
+                            color: primaryColor,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
                           ),

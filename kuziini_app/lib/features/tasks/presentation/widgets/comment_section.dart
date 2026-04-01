@@ -99,6 +99,7 @@ class _CommentSectionState extends ConsumerState<CommentSection> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
     final commentsAsync = ref.watch(taskCommentsProvider(widget.taskId));
     final currentUserId = SupabaseService.instance.currentUserId;
@@ -126,13 +127,13 @@ class _CommentSectionState extends ConsumerState<CommentSection> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
+                          color: primaryColor.withValues(alpha: 0.1),
                           borderRadius: AppSpacing.borderRadiusFull,
                         ),
                         child: Text(
                           '${comments.length}',
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppColors.primary,
+                            color: primaryColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -373,6 +374,7 @@ class _SendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -380,13 +382,13 @@ class _SendButton extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         color: isEnabled
-            ? AppColors.primary
-            : AppColors.primary.withValues(alpha: 0.3),
+            ? primaryColor
+            : primaryColor.withValues(alpha: 0.3),
         shape: BoxShape.circle,
         boxShadow: isEnabled
             ? [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.3),
+                  color: primaryColor.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -488,6 +490,7 @@ class _CommentBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
     final userColor = getUserColor(comment.userId);
     final initials = _getInitials(comment.userName);
@@ -575,7 +578,7 @@ class _CommentBubble extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: isCurrentUser
-                          ? AppColors.primary
+                          ? primaryColor
                           : (isDark
                               ? AppColors.surfaceVariantDark
                               : Colors.white),
@@ -598,7 +601,7 @@ class _CommentBubble extends StatelessWidget {
                       boxShadow: [
                         BoxShadow(
                           color: (isCurrentUser
-                                  ? AppColors.primary
+                                  ? primaryColor
                                   : Colors.black)
                               .withValues(alpha: 0.08),
                           blurRadius: 6,
@@ -668,7 +671,7 @@ class _CommentBubble extends StatelessWidget {
         : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
     final linkColor = isCurrentUser
         ? Colors.white.withValues(alpha: 0.9)
-        : AppColors.primary;
+        : Theme.of(context).colorScheme.primary;
 
     // Check if it's a location message
     final isLocation = content.startsWith('\u{1F4CD}');

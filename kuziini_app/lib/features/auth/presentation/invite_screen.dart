@@ -99,6 +99,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     if (_isValidating) {
       return const Scaffold(
@@ -161,7 +162,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                   Icon(
                     PhosphorIcons.envelopeOpen(PhosphorIconsStyle.light),
                     size: 56,
-                    color: AppColors.primary,
+                    color: primaryColor,
                   ).animate().fadeIn(duration: 500.ms).scale(
                         begin: const Offset(0.5, 0.5),
                         duration: 500.ms,

@@ -20,6 +20,7 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final notificationsAsync = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -37,7 +38,7 @@ class NotificationsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () =>
             ref.read(notificationsProvider.notifier).refresh(),
-        color: AppColors.primary,
+        color: primaryColor,
         child: notificationsAsync.when(
           data: (notifications) {
             if (notifications.isEmpty) {
@@ -143,7 +144,7 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
-  Color get _iconColor {
+  Color _iconColor(BuildContext context) {
     switch (notification.type) {
       case 'task_assigned':
         return AppColors.info;
@@ -154,15 +155,17 @@ class _NotificationTile extends StatelessWidget {
       case 'task_due':
         return AppColors.warning;
       case 'approval':
-        return AppColors.primary;
+        return Theme.of(context).colorScheme.primary;
       default:
-        return AppColors.primaryLight;
+        return Theme.of(context).colorScheme.primaryContainer;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final iconColor = _iconColor(context);
 
     return Dismissible(
       key: Key(notification.id),
@@ -197,10 +200,10 @@ class _NotificationTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _iconColor.withValues(alpha: 0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(_icon, size: 18, color: _iconColor),
+              child: Icon(_icon, size: 18, color: iconColor),
             ),
             AppSpacing.hGapMd,
             Expanded(
@@ -239,8 +242,8 @@ class _NotificationTile extends StatelessWidget {
                 width: 8,
                 height: 8,
                 margin: const EdgeInsets.only(top: 4),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
               ),

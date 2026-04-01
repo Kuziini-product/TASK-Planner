@@ -111,11 +111,10 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                   ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
                 },
                 onCompletedTap: () {
-                  // Show only completed - set filter to all and scroll
-                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.done;
                 },
                 onRemainingTap: () {
-                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.myTasks;
+                  ref.read(taskFilterProvider.notifier).state = TaskFilterType.inProgress;
                 },
               ),
             ),

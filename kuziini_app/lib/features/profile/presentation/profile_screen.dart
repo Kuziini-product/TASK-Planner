@@ -163,7 +163,7 @@ class ProfileScreen extends ConsumerWidget {
                         value: '${stats['done'] ?? 0}',
                         color: AppColors.success,
                         onTap: () {
-                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.done;
                           context.go(AppRoutes.today);
                         },
                       ),
@@ -173,7 +173,7 @@ class ProfileScreen extends ConsumerWidget {
                         value: '${stats['in_progress'] ?? 0}',
                         color: AppColors.warning,
                         onTap: () {
-                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.myTasks;
+                          ref.read(taskFilterProvider.notifier).state = TaskFilterType.inProgress;
                           context.go(AppRoutes.today);
                         },
                       ),

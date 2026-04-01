@@ -67,6 +67,12 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
         return _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
       case TaskFilterType.overdue:
         return _repo.fetchOverdueTasks();
+      case TaskFilterType.done:
+        final all = await _repo.fetchTasksByDate(date);
+        return all.where((t) => t.isCompleted).toList();
+      case TaskFilterType.inProgress:
+        final all = await _repo.fetchTasksByDate(date);
+        return all.where((t) => t.status == TaskStatus.in_progress).toList();
       case TaskFilterType.all:
         return _repo.fetchTasksByDate(date);
     }
@@ -158,7 +164,7 @@ final upcomingTasksProvider = FutureProvider<List<TaskModel>>((ref) async {
 
 // ── Task Filters ──
 
-enum TaskFilterType { all, myTasks, assignedToMe, overdue }
+enum TaskFilterType { all, myTasks, assignedToMe, overdue, done, inProgress }
 
 final taskFilterProvider = StateProvider<TaskFilterType>((ref) {
   return TaskFilterType.all;

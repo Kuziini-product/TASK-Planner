@@ -48,6 +48,22 @@ class TaskFilters extends ConsumerWidget {
             onTap: () => ref.read(taskFilterProvider.notifier).state =
                 TaskFilterType.overdue,
           ),
+          AppSpacing.hGapSm,
+          _FilterChip(
+            label: 'Done',
+            isSelected: currentFilter == TaskFilterType.done,
+            color: AppColors.success,
+            onTap: () => ref.read(taskFilterProvider.notifier).state =
+                currentFilter == TaskFilterType.done ? TaskFilterType.all : TaskFilterType.done,
+          ),
+          AppSpacing.hGapSm,
+          _FilterChip(
+            label: 'In Progress',
+            isSelected: currentFilter == TaskFilterType.inProgress,
+            color: AppColors.warning,
+            onTap: () => ref.read(taskFilterProvider.notifier).state =
+                currentFilter == TaskFilterType.inProgress ? TaskFilterType.all : TaskFilterType.inProgress,
+          ),
 
           AppSpacing.hGapLg,
 

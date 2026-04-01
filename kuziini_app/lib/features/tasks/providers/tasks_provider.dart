@@ -37,6 +37,7 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     _repo = ref.read(taskRepositoryProvider);
     final date = ref.watch(selectedDateProvider);
     final filter = ref.watch(taskFilterProvider);
+    final teamUser = ref.watch(selectedTeamUserProvider);
 
     // Set up real-time subscription
     _subscription?.unsubscribe();
@@ -52,11 +53,18 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       }
     });
 
-    return _fetchFiltered(date, filter);
+    return _fetchFiltered(date, filter, teamUser);
   }
 
-  Future<List<TaskModel>> _fetchFiltered(DateTime date, TaskFilterType filter) async {
+  Future<List<TaskModel>> _fetchFiltered(DateTime date, TaskFilterType filter, String? teamUserId) async {
     final userId = SupabaseService.instance.currentUserId;
+
+    // If viewing a specific team member's tasks
+    if (teamUserId != null) {
+      final tasks = await _repo.fetchTasksByDate(date);
+      // Filter by tasks created by or assigned to the team member
+      return tasks.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId).toList();
+    }
 
     switch (filter) {
       case TaskFilterType.assignedToMe:
@@ -81,7 +89,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
   Future<void> _refreshTasks() async {
     final date = ref.read(selectedDateProvider);
     final filter = ref.read(taskFilterProvider);
-    state = await AsyncValue.guard(() => _fetchFiltered(date, filter));
+    final teamUser = ref.read(selectedTeamUserProvider);
+    state = await AsyncValue.guard(() => _fetchFiltered(date, filter, teamUser));
   }
 
   Future<void> refresh() async {
@@ -94,7 +103,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       await _repo.updateTaskStatus(taskId, TaskStatus.done);
       final date = ref.read(selectedDateProvider);
       final filter = ref.read(taskFilterProvider);
-      return _fetchFiltered(date, filter);
+      final teamUser = ref.read(selectedTeamUserProvider);
+      return _fetchFiltered(date, filter, teamUser);
     });
   }
 
@@ -103,7 +113,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       await _repo.updateTaskStatus(taskId, status);
       final date = ref.read(selectedDateProvider);
       final filter = ref.read(taskFilterProvider);
-      return _fetchFiltered(date, filter);
+      final teamUser = ref.read(selectedTeamUserProvider);
+      return _fetchFiltered(date, filter, teamUser);
     });
   }
 }
@@ -175,6 +186,12 @@ final taskPriorityFilterProvider = StateProvider<TaskPriority?>((ref) {
 });
 
 final taskStatusFilterProvider = StateProvider<TaskStatus?>((ref) {
+  return null;
+});
+
+/// Selected team member ID for admin/manager view.
+/// null = show all team tasks, non-null = filter by specific user.
+final selectedTeamUserProvider = StateProvider<String?>((ref) {
   return null;
 });
 

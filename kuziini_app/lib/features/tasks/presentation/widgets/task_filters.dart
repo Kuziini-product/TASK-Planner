@@ -4,18 +4,144 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
+import '../../../auth/domain/auth_state.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/task_model.dart';
 import '../../providers/tasks_provider.dart';
+import 'user_picker.dart';
 
 class TaskFilters extends ConsumerWidget {
   const TaskFilters({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(currentUserProfileProvider).valueOrNull;
+    final isAdminOrManager = profile?.isAdmin == true || profile?.isManager == true;
+
+    return Column(
+      children: [
+        // Team row (admin/manager only)
+        if (isAdminOrManager) _TeamFilterRow(),
+
+        // Standard filters row
+        _StandardFilterRow(),
+      ],
+    );
+  }
+}
+
+// ── Team Filter Row (Admin/Manager) ──
+
+class _TeamFilterRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final selectedUser = ref.watch(selectedTeamUserProvider);
+    final usersAsync = ref.watch(activeUsersProvider);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          // "Me" button
+          _TeamChip(
+            label: 'Me',
+            isSelected: selectedUser == null,
+            onTap: () => ref.read(selectedTeamUserProvider.notifier).state = null,
+          ),
+          const SizedBox(width: 6),
+
+          // "All Team" button
+          _TeamChip(
+            label: 'All Team',
+            icon: PhosphorIcons.users(PhosphorIconsStyle.regular),
+            isSelected: selectedUser == 'all',
+            onTap: () => ref.read(selectedTeamUserProvider.notifier).state =
+                selectedUser == 'all' ? null : 'all',
+          ),
+          const SizedBox(width: 6),
+
+          // Individual team members
+          ...usersAsync.when(
+            data: (users) {
+              final currentUserId = ref.read(currentUserProfileProvider).valueOrNull?.id;
+              final otherUsers = users.where((u) => u.id != currentUserId).toList();
+              return otherUsers.map((user) => Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _TeamChip(
+                  label: user.displayName.split(' ').first,
+                  isSelected: selectedUser == user.id,
+                  onTap: () => ref.read(selectedTeamUserProvider.notifier).state =
+                      selectedUser == user.id ? null : user.id,
+                ),
+              ));
+            },
+            loading: () => [const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))],
+            error: (_, __) => <Widget>[],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamChip extends StatelessWidget {
+  const _TeamChip({required this.label, required this.isSelected, required this.onTap, this.icon});
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? primaryColor : theme.dividerColor.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Standard Filter Row ──
+
+class _StandardFilterRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentFilter = ref.watch(taskFilterProvider);
     final priorityFilter = ref.watch(taskPriorityFilterProvider);
 
-    // Check if a "more" filter is active
     final isMoreActive = currentFilter == TaskFilterType.assignedToMe ||
         currentFilter == TaskFilterType.overdue ||
         currentFilter == TaskFilterType.done ||
@@ -28,16 +154,11 @@ class TaskFilters extends ConsumerWidget {
         moreLabel = priorityFilter.label;
       } else {
         switch (currentFilter) {
-          case TaskFilterType.assignedToMe:
-            moreLabel = 'Assigned to Me';
-          case TaskFilterType.overdue:
-            moreLabel = 'Overdue';
-          case TaskFilterType.done:
-            moreLabel = 'Done';
-          case TaskFilterType.inProgress:
-            moreLabel = 'In Progress';
-          default:
-            break;
+          case TaskFilterType.assignedToMe: moreLabel = 'Assigned to Me';
+          case TaskFilterType.overdue: moreLabel = 'Overdue';
+          case TaskFilterType.done: moreLabel = 'Done';
+          case TaskFilterType.inProgress: moreLabel = 'In Progress';
+          default: break;
         }
       }
     }
@@ -77,12 +198,7 @@ class TaskFilters extends ConsumerWidget {
 }
 
 class _MoreFilterChip extends ConsumerWidget {
-  const _MoreFilterChip({
-    required this.label,
-    required this.isActive,
-    required this.currentFilter,
-    this.priorityFilter,
-  });
+  const _MoreFilterChip({required this.label, required this.isActive, required this.currentFilter, this.priorityFilter});
 
   final String label;
   final bool isActive;
@@ -98,27 +214,13 @@ class _MoreFilterChip extends ConsumerWidget {
       onTap: () {
         showModalBottomSheet(
           context: context,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
           builder: (ctx) => _MoreFiltersSheet(
             currentFilter: currentFilter,
             priorityFilter: priorityFilter,
-            onFilterChanged: (filter) {
-              ref.read(taskFilterProvider.notifier).state = filter;
-              ref.read(taskPriorityFilterProvider.notifier).state = null;
-              Navigator.pop(ctx);
-            },
-            onPriorityChanged: (priority) {
-              ref.read(taskPriorityFilterProvider.notifier).state = priority;
-              ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
-              Navigator.pop(ctx);
-            },
-            onClear: () {
-              ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
-              ref.read(taskPriorityFilterProvider.notifier).state = null;
-              Navigator.pop(ctx);
-            },
+            onFilterChanged: (filter) { ref.read(taskFilterProvider.notifier).state = filter; ref.read(taskPriorityFilterProvider.notifier).state = null; Navigator.pop(ctx); },
+            onPriorityChanged: (priority) { ref.read(taskPriorityFilterProvider.notifier).state = priority; ref.read(taskFilterProvider.notifier).state = TaskFilterType.all; Navigator.pop(ctx); },
+            onClear: () { ref.read(taskFilterProvider.notifier).state = TaskFilterType.all; ref.read(taskPriorityFilterProvider.notifier).state = null; Navigator.pop(ctx); },
           ),
         );
       },
@@ -126,30 +228,16 @@ class _MoreFilterChip extends ConsumerWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isActive
-              ? primaryColor.withValues(alpha: 0.12)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: isActive ? primaryColor.withValues(alpha: 0.12) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: AppSpacing.borderRadiusFull,
-          border: Border.all(
-            color: isActive ? primaryColor.withValues(alpha: 0.5) : Colors.transparent,
-          ),
+          border: Border.all(color: isActive ? primaryColor.withValues(alpha: 0.5) : Colors.transparent),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
+            Text(label, style: theme.textTheme.labelMedium?.copyWith(color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant, fontWeight: isActive ? FontWeight.w600 : FontWeight.w500)),
             const SizedBox(width: 4),
-            Icon(
-              PhosphorIcons.caretDown(PhosphorIconsStyle.bold),
-              size: 12,
-              color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant,
-            ),
+            Icon(PhosphorIcons.caretDown(PhosphorIconsStyle.bold), size: 12, color: isActive ? primaryColor : theme.colorScheme.onSurfaceVariant),
           ],
         ),
       ),
@@ -158,13 +246,7 @@ class _MoreFilterChip extends ConsumerWidget {
 }
 
 class _MoreFiltersSheet extends StatelessWidget {
-  const _MoreFiltersSheet({
-    required this.currentFilter,
-    this.priorityFilter,
-    required this.onFilterChanged,
-    required this.onPriorityChanged,
-    required this.onClear,
-  });
+  const _MoreFiltersSheet({required this.currentFilter, this.priorityFilter, required this.onFilterChanged, required this.onPriorityChanged, required this.onClear});
 
   final TaskFilterType currentFilter;
   final TaskPriority? priorityFilter;
@@ -182,114 +264,41 @@ class _MoreFiltersSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             Text('Filter Tasks', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
-
-            // Status filters
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('STATUS', style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  )),
-                  const SizedBox(height: 8),
-                  _FilterOption(
-                    label: 'Assigned to Me',
-                    isSelected: currentFilter == TaskFilterType.assignedToMe,
-                    onTap: () => onFilterChanged(TaskFilterType.assignedToMe),
-                  ),
-                  _FilterOption(
-                    label: 'In Progress',
-                    color: AppColors.warning,
-                    isSelected: currentFilter == TaskFilterType.inProgress,
-                    onTap: () => onFilterChanged(TaskFilterType.inProgress),
-                  ),
-                  _FilterOption(
-                    label: 'Done',
-                    color: AppColors.success,
-                    isSelected: currentFilter == TaskFilterType.done,
-                    onTap: () => onFilterChanged(TaskFilterType.done),
-                  ),
-                  _FilterOption(
-                    label: 'Overdue',
-                    color: AppColors.error,
-                    isSelected: currentFilter == TaskFilterType.overdue,
-                    onTap: () => onFilterChanged(TaskFilterType.overdue),
-                  ),
-                ],
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('STATUS', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                const SizedBox(height: 8),
+                _FilterOption(label: 'Assigned to Me', isSelected: currentFilter == TaskFilterType.assignedToMe, onTap: () => onFilterChanged(TaskFilterType.assignedToMe)),
+                _FilterOption(label: 'In Progress', color: AppColors.warning, isSelected: currentFilter == TaskFilterType.inProgress, onTap: () => onFilterChanged(TaskFilterType.inProgress)),
+                _FilterOption(label: 'Done', color: AppColors.success, isSelected: currentFilter == TaskFilterType.done, onTap: () => onFilterChanged(TaskFilterType.done)),
+                _FilterOption(label: 'Overdue', color: AppColors.error, isSelected: currentFilter == TaskFilterType.overdue, onTap: () => onFilterChanged(TaskFilterType.overdue)),
+              ]),
             ),
-
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 12),
-
-            // Priority filters
+            const SizedBox(height: 12), const Divider(), const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('PRIORITY', style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  )),
-                  const SizedBox(height: 8),
-                  _FilterOption(
-                    label: 'Urgent',
-                    color: AppColors.priorityUrgent,
-                    isSelected: priorityFilter == TaskPriority.urgent,
-                    onTap: () => onPriorityChanged(TaskPriority.urgent),
-                  ),
-                  _FilterOption(
-                    label: 'High',
-                    color: AppColors.priorityHigh,
-                    isSelected: priorityFilter == TaskPriority.high,
-                    onTap: () => onPriorityChanged(TaskPriority.high),
-                  ),
-                  _FilterOption(
-                    label: 'Medium',
-                    color: AppColors.priorityMedium,
-                    isSelected: priorityFilter == TaskPriority.medium,
-                    onTap: () => onPriorityChanged(TaskPriority.medium),
-                  ),
-                  _FilterOption(
-                    label: 'Low',
-                    color: AppColors.priorityLow,
-                    isSelected: priorityFilter == TaskPriority.low,
-                    onTap: () => onPriorityChanged(TaskPriority.low),
-                  ),
-                ],
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('PRIORITY', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                const SizedBox(height: 8),
+                _FilterOption(label: 'Urgent', color: AppColors.priorityUrgent, isSelected: priorityFilter == TaskPriority.urgent, onTap: () => onPriorityChanged(TaskPriority.urgent)),
+                _FilterOption(label: 'High', color: AppColors.priorityHigh, isSelected: priorityFilter == TaskPriority.high, onTap: () => onPriorityChanged(TaskPriority.high)),
+                _FilterOption(label: 'Medium', color: AppColors.priorityMedium, isSelected: priorityFilter == TaskPriority.medium, onTap: () => onPriorityChanged(TaskPriority.medium)),
+                _FilterOption(label: 'Low', color: AppColors.priorityLow, isSelected: priorityFilter == TaskPriority.low, onTap: () => onPriorityChanged(TaskPriority.low)),
+              ]),
             ),
-
             const SizedBox(height: 16),
-
-            // Clear button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: onClear,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.onSurfaceVariant,
-                    side: BorderSide(color: theme.dividerColor),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.onSurfaceVariant, side: BorderSide(color: theme.dividerColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: const Text('Clear Filters'),
                 ),
               ),
@@ -302,12 +311,7 @@ class _MoreFiltersSheet extends StatelessWidget {
 }
 
 class _FilterOption extends StatelessWidget {
-  const _FilterOption({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.color,
-  });
+  const _FilterOption({required this.label, required this.isSelected, required this.onTap, this.color});
 
   final String label;
   final bool isSelected;
@@ -326,25 +330,10 @@ class _FilterOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child: Row(
           children: [
-            Container(
-              width: 10, height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: effectiveColor,
-              ),
-            ),
+            Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: effectiveColor)),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? effectiveColor : null,
-                ),
-              ),
-            ),
-            if (isSelected)
-              Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18, color: effectiveColor),
+            Expanded(child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? effectiveColor : null))),
+            if (isSelected) Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18, color: effectiveColor),
           ],
         ),
       ),
@@ -353,11 +342,7 @@ class _FilterOption extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
 
   final String label;
   final bool isSelected;
@@ -374,22 +359,13 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected
-              ? chipColor.withValues(alpha: 0.12)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: isSelected ? chipColor.withValues(alpha: 0.12) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: AppSpacing.borderRadiusFull,
-          border: Border.all(
-            color: isSelected
-                ? chipColor.withValues(alpha: 0.5)
-                : Colors.transparent,
-          ),
+          border: Border.all(color: isSelected ? chipColor.withValues(alpha: 0.5) : Colors.transparent),
         ),
         child: Text(
           label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: isSelected ? chipColor : theme.colorScheme.onSurfaceVariant,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
+          style: theme.textTheme.labelMedium?.copyWith(color: isSelected ? chipColor : theme.colorScheme.onSurfaceVariant, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500),
         ),
       ),
     );

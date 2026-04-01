@@ -46,31 +46,79 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
+                builder: (dialogCtx) => AlertDialog(
                   title: const Text('Choose Theme'),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: ThemeMode.values.map((mode) {
-                      final label = mode == ThemeMode.system
-                          ? 'System'
-                          : mode == ThemeMode.light
-                              ? 'Light'
-                              : 'Dark';
-                      return RadioListTile<ThemeMode>(
-                        title: Text(label),
-                        value: mode,
-                        groupValue: themeMode,
-                        activeColor: theme.colorScheme.primary,
-                        onChanged: (value) {
-                          if (value != null) {
-                            ref
-                                .read(themeModeProvider.notifier)
-                                .setThemeMode(value);
-                            Navigator.pop(context);
-                          }
-                        },
-                      );
-                    }).toList(),
+                    children: [
+                      ...ThemeMode.values.map((mode) {
+                        final label = mode == ThemeMode.system
+                            ? 'System'
+                            : mode == ThemeMode.light
+                                ? 'Light'
+                                : 'Dark';
+                        final icon = mode == ThemeMode.system
+                            ? Icons.brightness_auto
+                            : mode == ThemeMode.light
+                                ? Icons.wb_sunny
+                                : Icons.dark_mode;
+                        return RadioListTile<ThemeMode>(
+                          title: Row(
+                            children: [
+                              Icon(icon, size: 18, color: theme.colorScheme.onSurface),
+                              const SizedBox(width: 8),
+                              Text(label),
+                            ],
+                          ),
+                          value: mode,
+                          groupValue: themeMode,
+                          activeColor: theme.colorScheme.primary,
+                          onChanged: (value) {
+                            if (value != null) {
+                              ref.read(themeModeProvider.notifier).setThemeMode(value);
+                              Navigator.pop(dialogCtx);
+                            }
+                          },
+                        );
+                      }),
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 4),
+                        child: Text('Quick Colors', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: accentColorOptions.map((option) {
+                          final isSelected = option.color.red == currentColor.red &&
+                              option.color.green == currentColor.green &&
+                              option.color.blue == currentColor.blue;
+                          return GestureDetector(
+                            onTap: () {
+                              ref.read(primaryColorProvider.notifier).setColor(option.color);
+                              Navigator.pop(dialogCtx);
+                            },
+                            child: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: option.color,
+                                shape: BoxShape.circle,
+                                border: isSelected
+                                    ? Border.all(color: Colors.white, width: 2.5)
+                                    : null,
+                                boxShadow: isSelected
+                                    ? [BoxShadow(color: option.color.withValues(alpha: 0.5), blurRadius: 6)]
+                                    : null,
+                              ),
+                              child: isSelected
+                                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                  : null,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
                 ),
               );

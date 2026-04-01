@@ -420,20 +420,22 @@ class TaskRepository {
     final fileExt = fileName.split('.').last;
     final storagePath = 'tasks/$taskId/${_uuid.v4()}.$fileExt';
 
-    final fileUrl = await _supabase.uploadFile(
+    await _supabase.uploadFile(
       AppConstants.bucketAttachments,
       storagePath,
       fileBytes,
     );
+
+    final mimeType = _getMimeType(fileExt);
 
     final attachment = TaskAttachment(
       id: _uuid.v4(),
       taskId: taskId,
       uploadedBy: userId,
       fileName: fileName,
-      fileUrl: fileUrl,
-      fileType: fileExt,
-      fileSizeBytes: fileBytes.length,
+      filePath: storagePath,
+      fileSize: fileBytes.length,
+      mimeType: mimeType,
     );
 
     final response = await _supabase.insert(
@@ -445,13 +447,28 @@ class TaskRepository {
 
   Future<void> deleteAttachment(TaskAttachment attachment) async {
     try {
-      final uri = Uri.parse(attachment.fileUrl);
-      final path = uri.pathSegments.skip(1).join('/');
-      await _supabase.deleteFile(AppConstants.bucketAttachments, path);
+      await _supabase.deleteFile(AppConstants.bucketAttachments, attachment.filePath);
     } catch (e) {
       debugPrint('Failed to delete file from storage: $e');
     }
     await _supabase.delete(AppConstants.tableTaskAttachments, id: attachment.id);
+  }
+
+  String _getMimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'jpg': case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      case 'gif': return 'image/gif';
+      case 'webp': return 'image/webp';
+      case 'pdf': return 'application/pdf';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls': return 'application/vnd.ms-excel';
+      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'txt': return 'text/plain';
+      case 'csv': return 'text/csv';
+      default: return 'application/octet-stream';
+    }
   }
 
   // ── Search ──

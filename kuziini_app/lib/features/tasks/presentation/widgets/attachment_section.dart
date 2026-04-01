@@ -27,6 +27,12 @@ class AttachmentSection extends ConsumerStatefulWidget {
   ConsumerState<AttachmentSection> createState() => _AttachmentSectionState();
 }
 
+String _getFileUrl(String filePath) {
+  return SupabaseService.instance.client.storage
+      .from(AppConstants.bucketAttachments)
+      .getPublicUrl(filePath);
+}
+
 class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
   bool _isUploading = false;
 
@@ -466,14 +472,14 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
     } else {
       // Open document via signed URL
       try {
-        final uri = Uri.parse(attachment.fileUrl);
+        final uri = Uri.parse(_getFileUrl(attachment.filePath));
         final storagePath = uri.pathSegments
             .skipWhile((s) => s != 'object')
             .skip(2) // skip 'object' and 'public'/'sign'
             .join('/');
 
         // For public URLs, just launch directly
-        final url = Uri.parse(attachment.fileUrl);
+        final url = Uri.parse(_getFileUrl(attachment.filePath));
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);
         } else {
@@ -512,7 +518,7 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
               minScale: 0.5,
               maxScale: 4.0,
               child: Image.network(
-                attachment.fileUrl,
+                _getFileUrl(attachment.filePath),
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
@@ -777,7 +783,7 @@ class _PhotoThumbnail extends StatelessWidget {
           ClipRRect(
             borderRadius: AppSpacing.borderRadiusSm,
             child: Image.network(
-              attachment.thumbnailUrl ?? attachment.fileUrl,
+              attachment.thumbnailUrl ?? _getFileUrl(attachment.filePath),
               fit: BoxFit.cover,
               loadingBuilder: (context, child, progress) {
                 if (progress == null) return child;

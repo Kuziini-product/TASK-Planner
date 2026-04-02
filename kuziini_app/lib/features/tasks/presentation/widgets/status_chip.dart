@@ -51,10 +51,6 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isSelected
-        ? _color.withValues(alpha: 0.15)
-        : Colors.transparent;
-
     if (compact) {
       return Icon(_icon, size: 20, color: _color);
     }
@@ -63,26 +59,26 @@ class StatusChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: isSelected ? _color : _color.withValues(alpha: 0.08),
           borderRadius: AppSpacing.borderRadiusFull,
           border: Border.all(
-            color: isSelected ? _color : _color.withValues(alpha: 0.3),
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? _color : _color.withValues(alpha: 0.4),
+            width: isSelected ? 2 : 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_icon, size: 14, color: _color),
-            const SizedBox(width: 4),
+            Icon(_icon, size: 15, color: isSelected ? Colors.white : _color),
+            const SizedBox(width: 5),
             Text(
               status.label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: _color,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : _color,
               ),
             ),
           ],

@@ -295,7 +295,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               const PopupMenuItem(value: 'reassign', child: Text('Reassign')),
-              const PopupMenuItem(value: 'archive', child: Text('Archive')),
               const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
               const PopupMenuItem(
                 value: 'delete',
@@ -445,17 +444,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
             ),
 
-          // Status chips (no ToDo, no Archived - archive moved to edit menu)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done]
-                  .map((status) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: StatusChip(status: status, isSelected: task.status == status, onTap: () => _updateStatus(status)),
-                      ))
-                  .toList(),
-            ),
+          // Status chips - centered, with archived
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done, TaskStatus.archived]
+                .map((status) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: StatusChip(status: status, isSelected: task.status == status, onTap: () => _updateStatus(status)),
+                    ))
+                .toList(),
           ),
 
           const SizedBox(height: 16),

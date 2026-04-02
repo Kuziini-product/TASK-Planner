@@ -9,17 +9,13 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/extensions.dart';
-import '../../../core/widgets/kuziini_app_bar.dart';
-import '../../../core/widgets/kuziini_button.dart';
-import '../../../core/widgets/kuziini_text_field.dart';
 import '../../../core/widgets/voice_input_button.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/data/notification_repository.dart';
 import '../data/models/task_model.dart';
-import '../data/models/checklist_item.dart';
-import '../data/models/task_comment.dart';
+import '../data/models/task_attachment.dart';
 import '../providers/tasks_provider.dart';
 import 'create_task_screen.dart';
 import 'widgets/attachment_section.dart';
@@ -39,29 +35,6 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
-  final _checklistController = TextEditingController();
-
-  @override
-  void dispose() {
-    _checklistController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _addChecklistItem() async {
-    final title = _checklistController.text.trim();
-    if (title.isEmpty) return;
-
-    try {
-      final repo = ref.read(taskRepositoryProvider);
-      await repo.addChecklistItem(taskId: widget.taskId, title: title);
-      _checklistController.clear();
-      ref.invalidate(taskChecklistProvider(widget.taskId));
-    } catch (e) {
-      if (mounted) {
-        context.showSnackBar('Failed to add checklist item', isError: true);
-      }
-    }
-  }
 
   Future<void> _handleEdit() async {
     final profile = ref.read(currentUserProfileProvider).valueOrNull;
@@ -280,7 +253,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final taskAsync = ref.watch(taskDetailProvider(widget.taskId));
-    final checklistAsync = ref.watch(taskChecklistProvider(widget.taskId));
+    final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
@@ -322,6 +295,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               const PopupMenuItem(value: 'reassign', child: Text('Reassign')),
+              const PopupMenuItem(value: 'archive', child: Text('Archive')),
               const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
               const PopupMenuItem(
                 value: 'delete',
@@ -352,6 +326,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     }
                   }
                 }
+              } else if (value == 'archive') {
+                _updateStatus(TaskStatus.archived);
+                if (mounted) context.showSnackBar('Task archived');
               } else if (value == 'delete') {
                 final confirmed = await context.showConfirmDialog(
                   title: 'Delete Task',
@@ -379,411 +356,226 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         ],
       ),
       body: taskAsync.when(
-        data: (task) => _buildContent(
-            context, task, checklistAsync),
+        data: (task) => _buildContent(context, task),
         loading: () => const LoadingIndicator(message: 'Loading task...'),
         error: (error, _) => ErrorView(
           message: error.toString(),
-          onRetry: () =>
-              ref.invalidate(taskDetailProvider(widget.taskId)),
+          onRetry: () => ref.invalidate(taskDetailProvider(widget.taskId)),
         ),
       ),
       bottomNavigationBar: taskAsync.whenOrNull(
-        data: (task) => SafeArea(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              border: Border(
-                top: BorderSide(color: theme.dividerColor),
-              ),
-            ),
-            child: Row(
+        data: (task) {
+          // Priority color bar at bottom
+          Color prioColor;
+          switch (task.priority) {
+            case TaskPriority.urgent: prioColor = AppColors.priorityUrgent;
+            case TaskPriority.high: prioColor = AppColors.priorityHigh;
+            case TaskPriority.medium: prioColor = AppColors.priorityMedium;
+            case TaskPriority.low: prioColor = AppColors.priorityLow;
+            case TaskPriority.none: prioColor = theme.dividerColor;
+          }
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: KuziiniButton(
-                    label: task.isCompleted ? 'Reopen' : 'Mark Complete',
-                    onPressed: () => _updateStatus(
-                      task.isCompleted ? TaskStatus.todo : TaskStatus.done,
+                // Mark complete
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => _updateStatus(task.isCompleted ? TaskStatus.todo : TaskStatus.done),
+                      icon: Icon(task.isCompleted ? PhosphorIcons.arrowCounterClockwise(PhosphorIconsStyle.bold) : PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18),
+                      label: Text(task.isCompleted ? 'Reopen' : 'Mark Complete', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(foregroundColor: task.isCompleted ? theme.colorScheme.onSurfaceVariant : primaryColor),
                     ),
-                    icon: task.isCompleted
-                        ? PhosphorIcons.arrowCounterClockwise(
-                            PhosphorIconsStyle.bold)
-                        : PhosphorIcons.check(PhosphorIconsStyle.bold),
-                    variant: task.isCompleted
-                        ? KuziiniButtonVariant.secondary
-                        : KuziiniButtonVariant.primary,
-                    height: 44,
                   ),
                 ),
+                // Priority bar
+                Container(height: 6, color: prioColor),
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    TaskModel task,
-    AsyncValue<List<ChecklistItem>> checklistAsync,
-  ) {
+  Widget _buildContent(BuildContext context, TaskModel task) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final attachmentsAsync = ref.watch(taskAttachmentsProvider(widget.taskId));
+    final commentsAsync = ref.watch(taskCommentsProvider(widget.taskId));
+    final attachCount = attachmentsAsync.valueOrNull?.length ?? 0;
+    final commentCount = commentsAsync.valueOrNull?.length ?? task.commentCount;
 
     return SingleChildScrollView(
       padding: AppSpacing.paddingLg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: TaskStatus.values
-                  .map(
-                    (status) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: StatusChip(
-                        status: status,
-                        isSelected: task.status == status,
-                        onTap: () => _updateStatus(status),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ).animate().fadeIn(duration: 300.ms),
-
-          AppSpacing.vGapXl,
-
-          // Title
-          Text(
-            task.title,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              decoration:
-                  task.isCompleted ? TextDecoration.lineThrough : null,
-            ),
-          ).animate().fadeIn(duration: 300.ms, delay: 100.ms),
-
-          // Description
-          if (task.description != null && task.description!.isNotEmpty) ...[
-            AppSpacing.vGapMd,
-            Text(
-              task.description!,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-
-          AppSpacing.vGapXl,
-
-          // Details section
-          _DetailRow(
-            icon: PhosphorIcons.flag(PhosphorIconsStyle.regular),
-            label: 'Priority',
-            child: PriorityBadge(priority: task.priority),
-          ),
-
-          if (task.dueDate != null)
-            _DetailRow(
-              icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
-              label: 'Due Date',
-              child: Text(
-                AppDateUtils.formatFull(task.dueDate!),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: task.isOverdue ? AppColors.error : null,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-
-          if (task.startTime != null)
-            _DetailRow(
-              icon: PhosphorIcons.clock(PhosphorIconsStyle.regular),
-              label: 'Time',
-              child: Text(
-                task.endTime != null
-                    ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                    : AppDateUtils.formatTime(task.startTime!),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-
-          if (task.hasLocation)
-            _DetailRow(
-              icon: PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
-              label: 'Location',
+          // Date + Time at top
+          if (task.dueDate != null || task.startTime != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        final url = task.locationMapUrl;
-                        if (url != null) {
-                          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      child: Text(
-                        task.locationDisplay,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: primaryColor,
-                          decoration: TextDecoration.underline,
-                          decorationColor: primaryColor,
-                        ),
-                      ),
+                  if (task.dueDate != null) ...[
+                    Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular), size: 16, color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Text(
+                      task.isMultiDay
+                          ? '${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}'
+                          : AppDateUtils.formatFull(task.dueDate!),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: task.isOverdue ? AppColors.error : primaryColor),
                     ),
-                  ),
-                  if (task.locationMapUrl != null)
-                    TextButton.icon(
-                      onPressed: () {
-                        final dirUrl = task.locationLat != null && task.locationLng != null
-                            ? 'https://www.google.com/maps/dir/?api=1&destination=${task.locationLat},${task.locationLng}'
-                            : task.locationAddress != null
-                                ? 'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(task.locationAddress!)}'
-                                : task.locationMapUrl!;
-                        launchUrl(Uri.parse(dirUrl), mode: LaunchMode.externalApplication);
-                      },
-                      icon: Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 14),
-                      label: const Text('Navigate'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        visualDensity: VisualDensity.compact,
-                        textStyle: theme.textTheme.labelSmall,
-                      ),
+                  ],
+                  if (task.dueDate != null && task.startTime != null) const Spacer(),
+                  if (task.startTime != null) ...[
+                    Icon(PhosphorIcons.clock(PhosphorIconsStyle.regular), size: 16, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Text(
+                      task.endTime != null
+                          ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                          : AppDateUtils.formatTime(task.startTime!),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
+                  ],
                 ],
               ),
             ),
 
+          // Status chips (no ToDo, no Archived - archive moved to edit menu)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done]
+                  .map((status) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: StatusChip(status: status, isSelected: task.status == status, onTap: () => _updateStatus(status)),
+                      ))
+                  .toList(),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Title
+          Text(task.title, style: theme.textTheme.headlineSmall?.copyWith(
+            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+          )),
+
+          // Expandable Description
+          if (task.description != null && task.description!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _ExpandableCard(
+              icon: PhosphorIcons.article(PhosphorIconsStyle.regular),
+              title: 'Description',
+              child: Text(task.description!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // Location
+          if (task.hasLocation)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GestureDetector(
+                onTap: () {
+                  final url = task.locationMapUrl;
+                  if (url != null) launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                },
+                child: Row(
+                  children: [
+                    Icon(PhosphorIcons.mapPin(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(task.locationDisplay, style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500, fontSize: 13))),
+                    if (task.locationMapUrl != null)
+                      Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.regular), size: 14, color: primaryColor),
+                  ],
+                ),
+              ),
+            ),
+
+          // Assignee
           _DetailRow(
             icon: PhosphorIcons.user(PhosphorIconsStyle.regular),
             label: 'Assignee',
             child: task.isAssigned
-                ? Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor:
-                            theme.colorScheme.primary.withValues(alpha: 0.1),
-                        child: Text(
-                          (task.assigneeName ?? 'U')[0].toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                      AppSpacing.hGapSm,
-                      Expanded(
-                        child: Text(
-                          task.assigneeName ?? 'Unknown',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () async {
-                          final result = await showUserPicker(context);
-                          if (result != null && mounted) {
-                            try {
-                              await ref
-                                  .read(taskRepositoryProvider)
-                                  .reassignTask(widget.taskId, result.userId);
-                              ref.invalidate(
-                                  taskDetailProvider(widget.taskId));
-                              ref.invalidate(
-                                  taskAssigneesProvider(widget.taskId));
-                              ref.invalidate(dailyTasksProvider);
-                              if (mounted) {
-                                context.showSnackBar(
-                                    'Task reassigned to ${result.userName}');
-                              }
-                            } catch (e) {
-                              if (mounted) {
-                                context.showSnackBar(
-                                    'Failed to reassign', isError: true);
-                              }
-                            }
-                          }
-                        },
-                        icon: Icon(
-                          PhosphorIcons.arrowsClockwise(
-                              PhosphorIconsStyle.regular),
-                          size: 14,
-                        ),
-                        label: const Text('Reassign'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          visualDensity: VisualDensity.compact,
-                          textStyle: theme.textTheme.labelSmall,
-                        ),
-                      ),
-                    ],
-                  )
+                ? Row(children: [
+                    CircleAvatar(radius: 12, backgroundColor: primaryColor.withValues(alpha: 0.1),
+                      child: Text((task.assigneeName ?? 'U')[0].toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: primaryColor))),
+                    AppSpacing.hGapSm,
+                    Expanded(child: Text(task.assigneeName ?? 'Unknown', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final result = await showUserPicker(context);
+                        if (result != null && mounted) {
+                          try {
+                            await ref.read(taskRepositoryProvider).reassignTask(widget.taskId, result.userId);
+                            ref.invalidate(taskDetailProvider(widget.taskId));
+                            ref.invalidate(taskAssigneesProvider(widget.taskId));
+                            ref.invalidate(dailyTasksProvider);
+                            if (mounted) context.showSnackBar('Task reassigned to ${result.userName}');
+                          } catch (e) { if (mounted) context.showSnackBar('Failed to reassign', isError: true); }
+                        }
+                      },
+                      icon: Icon(PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.regular), size: 14),
+                      label: const Text('Reassign'),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), visualDensity: VisualDensity.compact, textStyle: theme.textTheme.labelSmall),
+                    ),
+                  ])
                 : TextButton.icon(
                     onPressed: () async {
                       final result = await showUserPicker(context);
                       if (result != null && mounted) {
                         try {
-                          await ref
-                              .read(taskRepositoryProvider)
-                              .assignTask(widget.taskId, result.userId);
+                          await ref.read(taskRepositoryProvider).assignTask(widget.taskId, result.userId);
                           ref.invalidate(taskDetailProvider(widget.taskId));
-                          ref.invalidate(
-                              taskAssigneesProvider(widget.taskId));
+                          ref.invalidate(taskAssigneesProvider(widget.taskId));
                           ref.invalidate(dailyTasksProvider);
-                          if (mounted) {
-                            context.showSnackBar(
-                                'Task assigned to ${result.userName}');
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            context.showSnackBar(
-                                'Failed to assign task', isError: true);
-                          }
-                        }
+                          if (mounted) context.showSnackBar('Task assigned to ${result.userName}');
+                        } catch (e) { if (mounted) context.showSnackBar('Failed to assign task', isError: true); }
                       }
                     },
-                    icon: Icon(
-                      PhosphorIcons.userPlus(PhosphorIconsStyle.regular),
-                      size: 14,
-                    ),
+                    icon: Icon(PhosphorIcons.userPlus(PhosphorIconsStyle.regular), size: 14),
                     label: const Text('Assign'),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      textStyle: theme.textTheme.labelSmall,
-                    ),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, textStyle: theme.textTheme.labelSmall),
                   ),
           ),
 
-          if (task.labels.isNotEmpty) ...[
-            AppSpacing.vGapLg,
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: task.labels
-                  .map((label) => Chip(
-                        label: Text(label),
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ))
-                  .toList(),
-            ),
-          ],
-
-          AppSpacing.vGapXl,
+          const SizedBox(height: 8),
           const Divider(),
-          AppSpacing.vGapLg,
+          const SizedBox(height: 8),
 
-          // Checklist
-          Row(
-            children: [
-              Icon(PhosphorIcons.checkSquare(PhosphorIconsStyle.regular),
-                  size: 20),
-              AppSpacing.hGapSm,
-              Text('Checklist', style: theme.textTheme.titleSmall),
-            ],
-          ),
-          AppSpacing.vGapMd,
-
-          checklistAsync.when(
-            data: (items) => Column(
-              children: [
-                ...items.map((item) => _ChecklistItemTile(
-                      item: item,
-                      onToggle: (value) async {
-                        await ref
-                            .read(taskRepositoryProvider)
-                            .toggleChecklistItem(item.id, value);
-                        ref.invalidate(
-                            taskChecklistProvider(widget.taskId));
-                      },
-                      onDelete: () async {
-                        await ref
-                            .read(taskRepositoryProvider)
-                            .deleteChecklistItem(item.id);
-                        ref.invalidate(
-                            taskChecklistProvider(widget.taskId));
-                      },
-                    )),
-                // Add item field
-                Row(
-                  children: [
-                    Expanded(
-                      child: KuziiniTextField(
-                        controller: _checklistController,
-                        hint: 'Add checklist item...',
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _addChecklistItem(),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _addChecklistItem,
-                      icon: Icon(
-                          PhosphorIcons.plus(PhosphorIconsStyle.bold),
-                          size: 18),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            loading: () => const LoadingIndicator(size: 24),
-            error: (_, __) =>
-                const Text('Failed to load checklist'),
+          // Expandable Attachments with count
+          _ExpandableCard(
+            icon: PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
+            title: 'Attachments',
+            badge: attachCount,
+            child: AttachmentSection(taskId: widget.taskId),
           ),
 
-          AppSpacing.vGapXl,
-          const Divider(),
-          AppSpacing.vGapLg,
+          const SizedBox(height: 8),
 
-          // Attachments
-          AttachmentSection(taskId: widget.taskId),
+          // Expandable Comments with count
+          _ExpandableCard(
+            icon: PhosphorIcons.chatCircle(PhosphorIconsStyle.regular),
+            title: 'Comments',
+            badge: commentCount,
+            child: CommentSection(taskId: widget.taskId),
+          ),
 
-          AppSpacing.vGapXl,
-          const Divider(),
-          AppSpacing.vGapLg,
-
-          // Comments (chat-style)
-          CommentSection(taskId: widget.taskId),
-
-          AppSpacing.vGapXxl,
+          const SizedBox(height: 16),
 
           // Activity info
           if (task.createdAt != null) ...[
-            const Divider(),
-            AppSpacing.vGapMd,
-            Text(
-              'Created ${AppDateUtils.formatTimeAgo(task.createdAt!)}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            Text('Created ${AppDateUtils.formatTimeAgo(task.createdAt!)}', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             if (task.updatedAt != null)
-              Text(
-                'Updated ${AppDateUtils.formatTimeAgo(task.updatedAt!)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+              Text('Updated ${AppDateUtils.formatTimeAgo(task.updatedAt!)}', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             if (task.completedAt != null)
-              Text(
-                'Completed ${AppDateUtils.formatTimeAgo(task.completedAt!)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.success,
-                ),
-              ),
+              Text('Completed ${AppDateUtils.formatTimeAgo(task.completedAt!)}', style: theme.textTheme.bodySmall?.copyWith(color: AppColors.success)),
           ],
 
           const SizedBox(height: 40),
@@ -830,56 +622,65 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _ChecklistItemTile extends StatelessWidget {
-  const _ChecklistItemTile({
-    required this.item,
-    required this.onToggle,
-    required this.onDelete,
-  });
+// ── Expandable Card ──
 
-  final ChecklistItem item;
-  final ValueChanged<bool> onToggle;
-  final VoidCallback onDelete;
+class _ExpandableCard extends StatefulWidget {
+  const _ExpandableCard({required this.icon, required this.title, required this.child, this.badge = 0});
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final int badge;
+
+  @override
+  State<_ExpandableCard> createState() => _ExpandableCardState();
+}
+
+class _ExpandableCardState extends State<_ExpandableCard> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Checkbox(
-            value: item.isCompleted,
-            onChanged: (value) => onToggle(value ?? false),
-            activeColor: theme.colorScheme.primary,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-          Expanded(
-            child: Text(
-              item.title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                decoration:
-                    item.isCompleted ? TextDecoration.lineThrough : null,
-                color: item.isCompleted
-                    ? theme.colorScheme.onSurfaceVariant
-                    : null,
-              ),
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(widget.icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Text(widget.title, style: theme.textTheme.titleSmall),
+                if (widget.badge > 0) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('${widget.badge}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+                  ),
+                ],
+                const Spacer(),
+                Icon(
+                  _expanded ? PhosphorIcons.caretUp(PhosphorIconsStyle.bold) : PhosphorIcons.caretDown(PhosphorIconsStyle.bold),
+                  size: 16, color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
             ),
           ),
-          IconButton(
-            onPressed: onDelete,
-            icon: Icon(
-              PhosphorIcons.x(PhosphorIconsStyle.regular),
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: widget.child,
           ),
-        ],
-      ),
+      ],
     );
   }
 }

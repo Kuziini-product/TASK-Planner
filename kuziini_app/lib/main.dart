@@ -33,8 +33,9 @@ Future<void> main() async {
     anonKey: 'sb_publishable_NL-mjZSt61BZdmH2cKjImw_lOhXODIK',
   );
 
-  // Initialize notification service
+  // Initialize notification service + request permission
   await NotificationService.instance.initialize();
+  await NotificationService.instance.requestPermission();
 
   runApp(
     const ProviderScope(

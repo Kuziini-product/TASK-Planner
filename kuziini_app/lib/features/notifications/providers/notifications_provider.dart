@@ -79,6 +79,7 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
 }
 
 final unreadCountProvider = FutureProvider<int>((ref) async {
-  final repo = ref.watch(notificationRepositoryProvider);
-  return repo.getUnreadCount();
+  // Auto-refresh when notifications change
+  final notifications = ref.watch(notificationsProvider);
+  return notifications.valueOrNull?.where((n) => !n.isRead).length ?? 0;
 });

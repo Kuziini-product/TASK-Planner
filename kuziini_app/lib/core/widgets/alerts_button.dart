@@ -14,31 +14,36 @@ class AlertsButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadCountProvider);
-    final badge = unreadCount.whenOrNull(data: (count) => count) ?? 0;
+    final badge = unreadCount.valueOrNull ?? 0;
 
     return IconButton(
       onPressed: () => context.go(AppRoutes.notifications),
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
-          Icon(PhosphorIcons.bell(PhosphorIconsStyle.regular)),
+          Icon(badge > 0
+              ? PhosphorIcons.bellRinging(PhosphorIconsStyle.fill)
+              : PhosphorIcons.bell(PhosphorIconsStyle.regular),
+            color: badge > 0 ? AppColors.error : null,
+          ),
           if (badge > 0)
             Positioned(
-              top: -4,
-              right: -6,
+              top: -6,
+              right: -8,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                constraints: const BoxConstraints(minWidth: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                constraints: const BoxConstraints(minWidth: 18),
                 decoration: BoxDecoration(
                   color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 1.5),
                 ),
                 child: Text(
                   badge > 99 ? '99+' : '$badge',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
                   ),
                   textAlign: TextAlign.center,
                 ),

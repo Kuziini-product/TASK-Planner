@@ -51,226 +51,112 @@ class TaskCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    return KuziiniCard(
+    return GestureDetector(
       onTap: onTap ?? () => context.push('/task/${task.id}'),
-      leftAccentColor: task.priority != TaskPriority.none ? _accentColor : null,
-      padding: const EdgeInsets.all(14),
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top row: status icon, title, time/date on right
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  if (onStatusChanged != null) {
-                    onStatusChanged!(
-                      task.isCompleted ? TaskStatus.todo : TaskStatus.done,
-                    );
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2, right: 10),
-                  child: StatusChip(status: task.status, compact: true),
-                ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border(
+            left: BorderSide(
+              color: task.priority != TaskPriority.none ? _accentColor : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Relocate button (left)
+            GestureDetector(
+              onTap: () => _showRelocate(context, ref),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(PhosphorIcons.calendarPlus(PhosphorIconsStyle.regular), size: 16, color: theme.colorScheme.onSurfaceVariant),
               ),
-              Expanded(
-                child: Text(
-                  task.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    decoration:
-                        task.isCompleted ? TextDecoration.lineThrough : null,
-                    color: task.isCompleted
-                        ? theme.colorScheme.onSurfaceVariant
-                        : null,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+            ),
+            // Status
+            GestureDetector(
+              onTap: () {
+                if (onStatusChanged != null) {
+                  onStatusChanged!(task.isCompleted ? TaskStatus.todo : TaskStatus.done);
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: StatusChip(status: task.status, compact: true),
               ),
-              // Time/date on the right
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            ),
+            // Title + time
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (task.isMultiDay) ...[
-                    // Multi-day: show date range
-                    Text(
-                      '${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.primary,
-                      ),
+                  Text(
+                    task.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                      color: task.isCompleted ? theme.colorScheme.onSurfaceVariant : null,
                     ),
-                    Text(
-                      '${task.endDate!.difference(task.dueDate!).inDays + 1} days',
-                      style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ] else ...[
-                    if (task.startTime != null)
-                      Text(
-                        task.endTime != null
-                            ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                            : AppDateUtils.formatTime(task.startTime!),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: task.isOverdue
-                              ? AppColors.error
-                              : theme.colorScheme.primary,
-                        ),
-                      ),
-                    if (task.dueDate != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          AppDateUtils.getRelativeDateLabel(task.dueDate!),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: task.isOverdue
-                                ? AppColors.error
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                  ],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    children: [
+                      if (task.isMultiDay)
+                        Text('${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}',
+                          style: TextStyle(fontSize: 10, color: theme.colorScheme.primary, fontWeight: FontWeight.w500))
+                      else if (task.startTime != null)
+                        Text(
+                          task.endTime != null
+                              ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                              : AppDateUtils.formatTime(task.startTime!),
+                          style: TextStyle(fontSize: 10, color: task.isOverdue ? AppColors.error : theme.colorScheme.primary, fontWeight: FontWeight.w500),
+                        )
+                      else if (task.dueDate != null)
+                        Text(AppDateUtils.getRelativeDateLabel(task.dueDate!),
+                          style: TextStyle(fontSize: 10, color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurfaceVariant)),
+                      // Indicators
+                      if (task.hasChecklist) ...[
+                        const SizedBox(width: 8),
+                        Icon(PhosphorIcons.checkSquare(PhosphorIconsStyle.regular), size: 11, color: theme.colorScheme.onSurfaceVariant),
+                        Text(' ${task.checklistCompleted}/${task.checklistTotal}', style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                      if (task.hasComments) ...[
+                        const SizedBox(width: 6),
+                        Icon(PhosphorIcons.chatCircle(PhosphorIconsStyle.regular), size: 11, color: theme.colorScheme.onSurfaceVariant),
+                        Text(' ${task.commentCount}', style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                    ],
+                  ),
                 ],
+              ),
+            ),
+            // Location (right)
+            if (task.hasLocation) ...[
+              const SizedBox(width: 6),
+              Icon(PhosphorIcons.mapPin(PhosphorIconsStyle.regular), size: 12, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 3),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 80),
+                child: Text(task.locationDisplay, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
-          ),
-
-          // Description preview
-          if (task.description != null && task.description!.isNotEmpty) ...[
-            AppSpacing.vGapXs,
-            Padding(
-              padding: const EdgeInsets.only(left: 30),
-              child: Text(
-                task.description!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            // Assignee
+            if (task.isAssigned) ...[
+              const SizedBox(width: 6),
+              CircleAvatar(
+                radius: 10,
+                backgroundColor: _accentColor.withValues(alpha: 0.15),
+                child: Text((task.assigneeName ?? 'U')[0].toUpperCase(),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: _accentColor)),
               ),
-            ),
+            ],
           ],
-
-          // Location preview
-          if (task.hasLocation) ...[
-            AppSpacing.vGapXs,
-            Padding(
-              padding: const EdgeInsets.only(left: 30),
-              child: Row(
-                children: [
-                  Icon(
-                    PhosphorIcons.mapPin(PhosphorIconsStyle.regular),
-                    size: 12,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      task.locationDisplay,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Bottom row: metadata
-          AppSpacing.vGapSm,
-          Padding(
-            padding: const EdgeInsets.only(left: 30),
-            child: Row(
-              children: [
-                // Relocate button
-                GestureDetector(
-                  onTap: () => _showRelocate(context, ref),
-                  child: Icon(PhosphorIcons.calendarPlus(PhosphorIconsStyle.regular), size: 14, color: theme.colorScheme.onSurfaceVariant),
-                ),
-                AppSpacing.hGapMd,
-                  // Checklist
-                  if (task.hasChecklist) ...[
-                    Icon(
-                      PhosphorIcons.checkSquare(PhosphorIconsStyle.regular),
-                      size: 13,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${task.checklistCompleted}/${task.checklistTotal}',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    AppSpacing.hGapMd,
-                  ],
-
-                  // Comments
-                  if (task.hasComments) ...[
-                    Icon(
-                      PhosphorIcons.chatCircle(PhosphorIconsStyle.regular),
-                      size: 13,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${task.commentCount}',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    AppSpacing.hGapMd,
-                  ],
-
-                  // Attachments
-                  if (task.hasAttachments) ...[
-                    Icon(
-                      PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
-                      size: 13,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${task.attachmentCount}',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-
-                  const Spacer(),
-
-                  // Assignee avatar
-                  if (task.isAssigned)
-                    CircleAvatar(
-                      radius: 10,
-                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      child: Text(
-                        (task.assigneeName ?? 'U')[0].toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
+        ),
       ),
     )
         .animate()

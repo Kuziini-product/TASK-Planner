@@ -317,24 +317,32 @@ class _WeekView extends ConsumerWidget {
                 );
               }).toList();
 
-              return ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+              return Stack(
                 children: [
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Image.asset(
-                      'assets/images/kuziini_logo.png',
-                      height: 40,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                  // Background logo watermark - centered, fills the space
+                  Positioned.fill(
+                    child: Center(
+                      child: Image.asset(
+                        'assets/images/kuziini_logo_portrait.png',
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.contain,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  if (weekTasks.isEmpty)
-                    Center(child: Padding(
-                      padding: const EdgeInsets.only(top: 40),
-                      child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
-                    )),
-                  ...taskWidgets,
+                  // Task list on top
+                  ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    children: [
+                      if (weekTasks.isEmpty)
+                        Center(child: Padding(
+                          padding: const EdgeInsets.only(top: 80),
+                          child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                        )),
+                      ...taskWidgets,
+                    ],
+                  ),
                 ],
               );
             },

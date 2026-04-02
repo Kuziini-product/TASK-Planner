@@ -249,10 +249,69 @@ class _WeekView extends ConsumerWidget {
                 return da.compareTo(db);
               });
 
+              final taskWidgets = weekTasks.map((task) {
+                final color = _priorityColorStatic(context, task.priority);
+                final dayLabel = task.dueDate != null
+                    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1]
+                    : '';
+                final timeStr = task.startTime != null
+                    ? AppDateUtils.formatTime(task.startTime!)
+                    : '';
+
+                return GestureDetector(
+                  onTap: () => context.push('/task/${task.id}'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color,
+                            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4)],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                task.title,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (dayLabel.isNotEmpty || timeStr.isNotEmpty)
+                                Text(
+                                  [dayLabel, timeStr].where((s) => s.isNotEmpty).join(' \u00B7 '),
+                                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            task.priority.label,
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList();
+
               return ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  // Kuziini logo centered
                   const SizedBox(height: 16),
                   Center(
                     child: Image.asset(
@@ -262,75 +321,12 @@ class _WeekView extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   if (weekTasks.isEmpty)
                     Center(child: Padding(
                       padding: const EdgeInsets.only(top: 40),
                       child: Text('No tasks this week', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
-                    ))
-                  else
-                    ...weekTasks.map((task) {
-                      final color = _priorityColorStatic(context, task.priority);
-                      final dayLabel = task.dueDate != null
-                          ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1]
-                          : '';
-                      final timeStr = task.startTime != null
-                          ? AppDateUtils.formatTime(task.startTime!)
-                          : '';
-
-                      return GestureDetector(
-                        onTap: () => context.push('/task/${task.id}'),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: Row(
-                            children: [
-                              // Color dot
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: color,
-                                  boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4)],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Task info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      task.title,
-                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (dayLabel.isNotEmpty || timeStr.isNotEmpty)
-                                      Text(
-                                        [dayLabel, timeStr].where((s) => s.isNotEmpty).join(' · '),
-                                        style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              // Priority label
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  task.priority.label,
-                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
+                    )),
+                  ...taskWidgets,
                 ],
               );
             },

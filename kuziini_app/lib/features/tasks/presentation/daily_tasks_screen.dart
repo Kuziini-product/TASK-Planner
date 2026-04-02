@@ -71,19 +71,18 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
     final progress = ref.watch(dailyProgressProvider);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Logo watermark background
-          Positioned.fill(
-            child: Center(
-              child: Image.asset(
-                'assets/images/kuziini_logo_portrait.png',
-                fit: BoxFit.contain,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
-              ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/kuziini_logo_portrait.png'),
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurface.withValues(alpha: 0.07),
+              BlendMode.srcIn,
             ),
           ),
-          RefreshIndicator(
+        ),
+        child: RefreshIndicator(
         onRefresh: () => ref.read(dailyTasksProvider.notifier).refresh(),
         color: primaryColor,
         child: CustomScrollView(
@@ -242,7 +241,6 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
           ],
         ),
       ),
-        ],
       ),
       // FAB removed – use bottom nav (+) button instead
     );

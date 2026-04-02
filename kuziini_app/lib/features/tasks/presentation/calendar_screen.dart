@@ -715,16 +715,14 @@ class _CalendarGrid extends StatelessWidget {
       );
     }
 
-    return Expanded(
-      child: Padding(
-        padding: AppSpacing.paddingHorizontalLg,
-        child: GridView.count(
-          crossAxisCount: 7,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 0.9,
-          children: cells,
-        ),
+    return Padding(
+      padding: AppSpacing.paddingHorizontalLg,
+      child: GridView.count(
+        crossAxisCount: 7,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 0.9,
+        children: cells,
       ),
     );
   }

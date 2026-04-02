@@ -7,7 +7,9 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../notifications/data/notification_repository.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
@@ -557,6 +559,21 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             'user_id': _assigneeId,
             'assigned_by': userId,
           });
+          // Notify assignee
+          try {
+            final notifRepo = NotificationRepository();
+            await notifRepo.createNotification(
+              userId: _assigneeId!,
+              title: 'New Task Assigned',
+              body: _titleController.text.trim(),
+              type: 'task_assigned',
+              data: {'task_id': createdTask.id},
+            );
+            NotificationService.instance.notifyTaskEvent(
+              title: 'Task Assigned',
+              body: _titleController.text.trim(),
+            );
+          } catch (_) {}
         }
 
         // Add checklist items using the server-assigned task ID

@@ -13,8 +13,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../notifications/data/notification_repository.dart';
 import '../../data/models/task_attachment.dart';
 import '../../providers/tasks_provider.dart';
 
@@ -177,6 +179,24 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
       if (mounted) {
         context.showSnackBar('File uploaded successfully');
       }
+      // Send notification to task owner
+      try {
+        final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+        if (task != null && task.createdBy != userId) {
+          final notifRepo = NotificationRepository();
+          await notifRepo.createNotification(
+            userId: task.createdBy,
+            title: 'New Attachment',
+            body: fileName,
+            type: 'task_attachment',
+            data: {'task_id': widget.taskId},
+          );
+          NotificationService.instance.notifyTaskEvent(
+            title: 'New Attachment on "${task.title}"',
+            body: fileName,
+          );
+        }
+      } catch (_) {}
     } catch (e) {
       if (mounted) {
         context.showSnackBar('Upload failed: $e', isError: true);

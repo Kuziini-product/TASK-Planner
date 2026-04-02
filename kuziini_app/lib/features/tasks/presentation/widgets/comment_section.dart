@@ -6,8 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../notifications/data/notification_repository.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/widgets/voice_input_button.dart';
 import '../../data/models/task_comment.dart';
@@ -87,6 +89,26 @@ class _CommentSectionState extends ConsumerState<CommentSection> {
       );
       _controller.clear();
       ref.invalidate(taskCommentsProvider(widget.taskId));
+
+      // Send notification to task owner
+      try {
+        final task = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+        if (task != null && task.createdBy != userId) {
+          final notifRepo = NotificationRepository();
+          await notifRepo.createNotification(
+            userId: task.createdBy,
+            title: 'New Comment',
+            body: content.length > 100 ? '${content.substring(0, 100)}...' : content,
+            type: 'task_comment',
+            data: {'task_id': widget.taskId},
+          );
+          // Browser push notification
+          NotificationService.instance.notifyTaskEvent(
+            title: 'New Comment on "${task.title}"',
+            body: content.length > 80 ? '${content.substring(0, 80)}...' : content,
+          );
+        }
+      } catch (_) {}
     } catch (e) {
       if (mounted) {
         context.showSnackBar('Failed to send comment', isError: true);

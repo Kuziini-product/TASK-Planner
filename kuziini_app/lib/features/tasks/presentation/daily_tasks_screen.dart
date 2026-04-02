@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/services/notification_service.dart';
 import '../../../core/widgets/alerts_button.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -37,6 +38,15 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    // Start task reminders (15 min before alert)
+    _startReminders();
+  }
+
+  void _startReminders() {
+    NotificationService.instance.startTaskReminders(() async {
+      final tasks = ref.read(dailyTasksProvider).valueOrNull ?? [];
+      return tasks;
+    });
   }
 
   @override

@@ -16,8 +16,8 @@ abstract final class AppDateUtils {
   static String formatShortDay(DateTime date) => _shortDayFormat.format(date);
   static String formatDate(DateTime date) => _dateFormat.format(date);
   static String formatShortDate(DateTime date) => _shortDateFormat.format(date);
-  static String formatTime(DateTime date) => _timeFormat.format(date);
-  static String formatTime24(DateTime date) => _time24Format.format(date);
+  static String formatTime(DateTime date) => _timeFormat.format(date.toLocal());
+  static String formatTime24(DateTime date) => _time24Format.format(date.toLocal());
   static String formatMonthYear(DateTime date) => _monthYearFormat.format(date);
   static String formatFull(DateTime date) => _fullFormat.format(date);
   static String formatIso(DateTime date) => _isoFormat.format(date);

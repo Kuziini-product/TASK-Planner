@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_util' as js_util;
 import 'package:flutter/foundation.dart';
 
@@ -89,6 +90,93 @@ class NotificationService {
     required String body,
   }) async {
     await showLocalNotification(title: title, body: body, id: DateTime.now().millisecondsSinceEpoch % 100000);
+  }
+
+  // ── Task Reminder System ──
+  Timer? _reminderTimer;
+  final Set<String> _notifiedTaskIds = {};
+
+  /// Start checking for upcoming tasks every 60 seconds.
+  void startTaskReminders(Future<List<dynamic>> Function() fetchTasks) {
+    _reminderTimer?.cancel();
+    _reminderTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
+      try {
+        final tasks = await fetchTasks();
+        final now = DateTime.now();
+
+        for (final task in tasks) {
+          if (task.startTime == null) continue;
+          final startLocal = task.startTime!.toLocal();
+          final diff = startLocal.difference(now).inMinutes;
+
+          // Alert 15 minutes before
+          if (diff > 0 && diff <= 15 && !_notifiedTaskIds.contains(task.id)) {
+            _notifiedTaskIds.add(task.id);
+            // Play sound
+            _playAlertSound();
+            // Show notification
+            await showLocalNotification(
+              title: '\u{23F0} Task in $diff min',
+              body: task.title,
+              id: task.id.hashCode,
+            );
+          }
+        }
+
+        // Clean old entries
+        _notifiedTaskIds.removeWhere((id) => _notifiedTaskIds.length > 100);
+      } catch (_) {}
+    });
+  }
+
+  void stopTaskReminders() {
+    _reminderTimer?.cancel();
+    _reminderTimer = null;
+  }
+
+  /// Play alert sound using Web Audio API.
+  void _playAlertSound() {
+    if (!kIsWeb) return;
+    try {
+      // Create a short beep using AudioContext
+      final audioCtx = js_util.callConstructor(
+        js_util.getProperty(js_util.globalThis, 'AudioContext') ??
+            js_util.getProperty(js_util.globalThis, 'webkitAudioContext'),
+        [],
+      );
+      final oscillator = js_util.callMethod(audioCtx, 'createOscillator', []);
+      final gainNode = js_util.callMethod(audioCtx, 'createGain', []);
+
+      // Connect oscillator -> gain -> output
+      js_util.callMethod(oscillator, 'connect', [gainNode]);
+      js_util.callMethod(gainNode, 'connect', [js_util.getProperty(audioCtx, 'destination')]);
+
+      // Set tone
+      js_util.setProperty(js_util.getProperty(oscillator, 'frequency'), 'value', 880);
+      js_util.setProperty(js_util.getProperty(gainNode, 'gain'), 'value', 0.3);
+
+      // Play for 200ms
+      js_util.callMethod(oscillator, 'start', []);
+      final currentTime = js_util.getProperty<num>(audioCtx, 'currentTime');
+      js_util.callMethod(oscillator, 'stop', [currentTime.toDouble() + 0.2]);
+
+      // Second beep after 300ms
+      Future.delayed(const Duration(milliseconds: 300), () {
+        try {
+          final osc2 = js_util.callMethod(audioCtx, 'createOscillator', []);
+          final gain2 = js_util.callMethod(audioCtx, 'createGain', []);
+          js_util.callMethod(osc2, 'connect', [gain2]);
+          js_util.callMethod(gain2, 'connect', [js_util.getProperty(audioCtx, 'destination')]);
+          js_util.setProperty(js_util.getProperty(osc2, 'frequency'), 'value', 1100);
+          js_util.setProperty(js_util.getProperty(gain2, 'gain'), 'value', 0.3);
+          js_util.callMethod(osc2, 'start', []);
+          final ct2 = js_util.getProperty<num>(audioCtx, 'currentTime');
+          js_util.callMethod(osc2, 'stop', [ct2.toDouble() + 0.2]);
+        } catch (_) {}
+      });
+    } catch (e) {
+      debugPrint('Alert sound failed: $e');
+    }
   }
 
   Future<void> cancelAllNotifications() async {}

@@ -8,7 +8,6 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/constants/app_colors.dart';
 import '../core/router/app_router.dart';
 import '../core/services/voice_task_parser.dart';
-import '../features/notifications/providers/notifications_provider.dart';
 
 class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.child});
@@ -66,7 +65,6 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = _calculateSelectedIndex(context);
-    final unreadCount = ref.watch(unreadCountProvider);
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 

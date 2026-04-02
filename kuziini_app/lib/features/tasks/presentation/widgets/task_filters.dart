@@ -4,7 +4,6 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
-import '../../../auth/domain/auth_state.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/task_model.dart';
 import '../../providers/leave_provider.dart';
@@ -43,7 +42,6 @@ class _TeamFilterRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
     final selectedUser = ref.watch(selectedTeamUserProvider);
     final usersAsync = ref.watch(activeUsersProvider);
 

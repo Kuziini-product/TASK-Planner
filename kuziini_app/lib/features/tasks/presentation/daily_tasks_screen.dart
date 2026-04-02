@@ -71,7 +71,18 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
     final progress = ref.watch(dailyProgressProvider);
 
     return Scaffold(
-      body: RefreshIndicator(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/kuziini_logo_portrait.png'),
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurface.withValues(alpha: 0.07),
+              BlendMode.srcIn,
+            ),
+          ),
+        ),
+        child: RefreshIndicator(
         onRefresh: () => ref.read(dailyTasksProvider.notifier).refresh(),
         color: primaryColor,
         child: CustomScrollView(
@@ -229,6 +240,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
+      ),
       ),
       // FAB removed – use bottom nav (+) button instead
     );

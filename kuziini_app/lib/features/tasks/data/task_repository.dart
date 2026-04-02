@@ -529,13 +529,17 @@ class TaskRepository {
     final tasks = response as List;
     final now = DateTime.now();
 
-    int total = tasks.length;
-    int done = tasks.where((t) => t['status'] == 'done').length;
-    int inProgress = tasks.where((t) => t['status'] == 'in_progress').length;
-    int todo = tasks.where((t) => t['status'] == 'todo').length;
-    int review = tasks.where((t) => t['status'] == 'review').length;
-    int overdue = tasks.where((t) {
-      if (t['status'] == 'done' || t['status'] == 'archived') return false;
+    // Exclude archived from total count
+    final activeTasks = tasks.where((t) => t['status'] != 'archived').toList();
+    int archived = tasks.where((t) => t['status'] == 'archived').length;
+
+    int total = activeTasks.length;
+    int done = activeTasks.where((t) => t['status'] == 'done').length;
+    int inProgress = activeTasks.where((t) => t['status'] == 'in_progress').length;
+    int todo = activeTasks.where((t) => t['status'] == 'todo').length;
+    int review = activeTasks.where((t) => t['status'] == 'review').length;
+    int overdue = activeTasks.where((t) {
+      if (t['status'] == 'done') return false;
       final dueDateStr = t['due_date'] as String?;
       if (dueDateStr == null) return false;
       final dueDate = DateTime.tryParse(dueDateStr);
@@ -549,6 +553,7 @@ class TaskRepository {
       'todo': todo,
       'review': review,
       'overdue': overdue,
+      'archived': archived,
     };
   }
 }

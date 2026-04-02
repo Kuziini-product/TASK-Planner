@@ -62,31 +62,34 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     // If viewing team tasks
     if (teamUserId != null) {
       final tasks = await _repo.fetchTasksByDate(date);
+      final nonArchived = tasks.where((t) => !t.isArchived).toList();
       if (teamUserId == 'all') {
-        // Show all team tasks (no filter)
-        return tasks;
+        return nonArchived;
       }
-      // Filter by specific team member
-      return tasks.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId).toList();
+      return nonArchived.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId).toList();
     }
 
     switch (filter) {
       case TaskFilterType.assignedToMe:
         if (userId == null) return [];
-        return _repo.fetchTasksAssignedTo(userId, date: date);
+        final tasks = await _repo.fetchTasksAssignedTo(userId, date: date);
+        return tasks.where((t) => !t.isArchived).toList();
       case TaskFilterType.myTasks:
         if (userId == null) return [];
-        return _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
+        final tasks = await _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
+        return tasks.where((t) => !t.isArchived).toList();
       case TaskFilterType.overdue:
-        return _repo.fetchOverdueTasks();
+        final tasks = await _repo.fetchOverdueTasks();
+        return tasks.where((t) => !t.isArchived).toList();
       case TaskFilterType.done:
         final all = await _repo.fetchTasksByDate(date);
-        return all.where((t) => t.isCompleted).toList();
+        return all.where((t) => t.isCompleted && !t.isArchived).toList();
       case TaskFilterType.inProgress:
         final all = await _repo.fetchTasksByDate(date);
         return all.where((t) => t.status == TaskStatus.in_progress).toList();
       case TaskFilterType.all:
-        return _repo.fetchTasksByDate(date);
+        final tasks = await _repo.fetchTasksByDate(date);
+        return tasks.where((t) => !t.isArchived).toList();
     }
   }
 

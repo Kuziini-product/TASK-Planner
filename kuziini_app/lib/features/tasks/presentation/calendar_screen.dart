@@ -26,9 +26,11 @@ final _calendarMonthProvider = StateProvider<DateTime>((ref) {
 
 final _calendarSelectedDayProvider = StateProvider<DateTime?>((ref) => null);
 
-// Range selection for multi-day task creation
-final _rangeStartProvider = StateProvider<DateTime?>((ref) => null);
-final _rangeEndProvider = StateProvider<DateTime?>((ref) => null);
+// Navigation reference date (used by Day and Week views)
+final _calendarRefDateProvider = StateProvider<DateTime>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+});
 
 // ── Main Screen ──
 
@@ -58,6 +60,7 @@ class CalendarScreen extends ConsumerWidget {
             onPressed: () {
               final now = DateTime.now();
               ref.read(_calendarMonthProvider.notifier).state = DateTime(now.year, now.month, 1);
+              ref.read(_calendarRefDateProvider.notifier).state = DateTime(now.year, now.month, now.day);
             },
             child: const Text('Today'),
           ),
@@ -127,39 +130,29 @@ class _DayView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final day = ref.watch(_calendarRefDateProvider);
 
     return Column(
       children: [
-        // Day navigation
         Padding(
           padding: AppSpacing.paddingHorizontalLg,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                onPressed: () {
-                  final prev = today.subtract(const Duration(days: 1));
-                  ref.read(_calendarMonthProvider.notifier).state = DateTime(prev.year, prev.month, 1);
-                },
+                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = day.subtract(const Duration(days: 1)),
                 icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
               ),
-              Text(AppDateUtils.formatFull(today), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              Text(AppDateUtils.formatFull(day), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
               IconButton(
-                onPressed: () {
-                  final next = today.add(const Duration(days: 1));
-                  ref.read(_calendarMonthProvider.notifier).state = DateTime(next.year, next.month, 1);
-                },
+                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = day.add(const Duration(days: 1)),
                 icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
               ),
             ],
           ),
         ),
         const Divider(),
-        // Show today's tasks
-        Expanded(child: _TaskListForDay(day: today)),
+        Expanded(child: _TaskListForDay(day: day)),
       ],
     );
   }
@@ -174,8 +167,9 @@ class _WeekView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final refDate = ref.watch(_calendarRefDateProvider);
+    // Calculate week start (Monday) from ref date
+    final weekStart = refDate.subtract(Duration(days: refDate.weekday - 1));
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
 
     final firstDay = days.first;
@@ -185,11 +179,25 @@ class _WeekView extends ConsumerWidget {
 
     return Column(
       children: [
+        // Week navigation with arrows
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            '${AppDateUtils.formatDate(firstDay)} – ${AppDateUtils.formatDate(lastDay)}',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = refDate.subtract(const Duration(days: 7)),
+                icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
+              ),
+              Text(
+                '${AppDateUtils.formatDate(firstDay)} – ${AppDateUtils.formatDate(lastDay)}',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              IconButton(
+                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = refDate.add(const Duration(days: 7)),
+                icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
+              ),
+            ],
           ),
         ),
         // Day selector row

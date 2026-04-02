@@ -224,10 +224,12 @@ final taskStatsProvider = FutureProvider<Map<String, int>>((ref) async {
   return repo.getTaskStats();
 });
 
-// ── Calendar Tasks ──
+// ── Calendar Tasks (auto-refresh when daily tasks change via realtime) ──
 
 final calendarTasksProvider = FutureProvider.family<List<TaskModel>,
     ({DateTime from, DateTime to})>((ref, range) async {
+  // Watch dailyTasksProvider to auto-refresh when realtime updates arrive
+  ref.watch(dailyTasksProvider);
   final repo = ref.watch(taskRepositoryProvider);
   return repo.fetchTasks(
     fromDate: range.from,

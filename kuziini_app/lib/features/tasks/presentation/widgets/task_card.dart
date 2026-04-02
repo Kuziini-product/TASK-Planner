@@ -124,6 +124,11 @@ class TaskCard extends ConsumerWidget {
                         Icon(PhosphorIcons.checkSquare(PhosphorIconsStyle.regular), size: 11, color: theme.colorScheme.onSurfaceVariant),
                         Text(' ${task.checklistCompleted}/${task.checklistTotal}', style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
                       ],
+                      if (task.hasAttachments) ...[
+                        const SizedBox(width: 6),
+                        Icon(PhosphorIcons.paperclip(PhosphorIconsStyle.regular), size: 11, color: theme.colorScheme.onSurfaceVariant),
+                        Text(' ${task.attachmentCount}', style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
+                      ],
                       if (task.hasComments) ...[
                         const SizedBox(width: 6),
                         Icon(PhosphorIcons.chatCircle(PhosphorIconsStyle.regular), size: 11, color: theme.colorScheme.onSurfaceVariant),

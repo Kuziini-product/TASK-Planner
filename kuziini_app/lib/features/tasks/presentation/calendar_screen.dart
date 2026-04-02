@@ -327,7 +327,7 @@ class _WeekView extends ConsumerWidget {
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.contain,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
                       ),
                     ),
                   ),
@@ -418,14 +418,15 @@ class _MonthView extends ConsumerWidget {
 
         AppSpacing.vGapSm,
 
-        // Calendar grid
+        // Calendar grid + logo + task list below
         Expanded(
           child: tasksAsync.when(
             data: (tasks) {
               final tasksByDay = <int, List<TaskModel>>{};
+              final allMonthTasks = <TaskModel>[];
+              final seen = <String>{};
               for (final task in tasks) {
                 if (task.dueDate != null) {
-                  // For multi-day tasks, add to all days in range
                   if (task.endDate != null) {
                     final start = task.dueDate!;
                     final end = task.endDate!;
@@ -437,16 +438,95 @@ class _MonthView extends ConsumerWidget {
                   } else {
                     tasksByDay.putIfAbsent(task.dueDate!.day, () => []).add(task);
                   }
+                  if (!seen.contains(task.id)) {
+                    allMonthTasks.add(task);
+                    seen.add(task.id);
+                  }
                 }
               }
-              return _CalendarGrid(
-                month: currentMonth,
-                tasksByDay: tasksByDay,
-                onDaySelected: (day) => ref.read(_calendarSelectedDayProvider.notifier).state = day,
-            );
-          },
-            loading: () => const SizedBox(height: 280, child: LoadingIndicator(size: 24)),
-            error: (_, __) => const SizedBox(height: 280, child: Center(child: Text('Failed to load tasks'))),
+              // Sort by priority then date
+              allMonthTasks.sort((a, b) {
+                final pa = a.priority.index;
+                final pb = b.priority.index;
+                if (pa != pb) return pa.compareTo(pb);
+                final da = a.startTime ?? a.dueDate ?? DateTime(2099);
+                final db = b.startTime ?? b.dueDate ?? DateTime(2099);
+                return da.compareTo(db);
+              });
+
+              final taskWidgets = allMonthTasks.map((task) {
+                final color = _priorityColorStatic(context, task.priority);
+                final dateStr = task.dueDate != null ? '${task.dueDate!.day}/${task.dueDate!.month}' : '';
+                final timeStr = task.startTime != null ? AppDateUtils.formatTime(task.startTime!) : '';
+
+                return GestureDetector(
+                  onTap: () => context.push('/task/${task.id}'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10, height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle, color: color,
+                            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4)],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(task.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              if (dateStr.isNotEmpty || timeStr.isNotEmpty)
+                                Text([dateStr, timeStr].where((s) => s.isNotEmpty).join(' \u00B7 '), style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                          child: Text(task.priority.label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList();
+
+              return Stack(
+                children: [
+                  // Logo watermark
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 280),
+                      child: Center(
+                        child: Image.asset(
+                          'assets/images/kuziini_logo_portrait.png',
+                          fit: BoxFit.contain,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Grid + tasks
+                  ListView(
+                    children: [
+                      _CalendarGrid(
+                        month: currentMonth,
+                        tasksByDay: tasksByDay,
+                        onDaySelected: (day) => ref.read(_calendarSelectedDayProvider.notifier).state = day,
+                      ),
+                      const SizedBox(height: 8),
+                      ...taskWidgets,
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ],
+              );
+            },
+            loading: () => const LoadingIndicator(size: 24),
+            error: (_, __) => const Center(child: Text('Failed to load tasks')),
           ),
         ),
       ],

@@ -682,8 +682,11 @@ class _TaskListForDay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final range = (from: DateTime(day.year, day.month, 1), to: DateTime(day.year, day.month + 1, 0));
     final tasksAsync = ref.watch(calendarTasksProvider(range));
+    final holidayName = HolidaysService.getHolidayName(day);
+    final holidayDesc = holidayName != null ? HolidaysService.getHolidayDescription(holidayName) : null;
 
     return tasksAsync.when(
       data: (allTasks) {
@@ -691,23 +694,94 @@ class _TaskListForDay extends ConsumerWidget {
             .where((t) => t.coversDate(day))
             .toList();
 
-        if (dayTasks.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(PhosphorIcons.calendarBlank(PhosphorIconsStyle.regular), size: 48, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
-                const SizedBox(height: 12),
-                Text('No tasks scheduled', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
+        return ListView(
           padding: const EdgeInsets.all(16),
-          itemCount: dayTasks.length,
-          itemBuilder: (context, index) => TaskCard(task: dayTasks[index], animationIndex: index),
+          children: [
+            // Holiday card (first if applicable)
+            if (holidayName != null) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.withValues(alpha: 0.08), Colors.indigo.withValues(alpha: 0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(PhosphorIcons.cross(PhosphorIconsStyle.fill), size: 20, color: Colors.blue.shade700),
+                        const SizedBox(width: 10),
+                        Text('Sărbătoare Legală', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: Colors.blue.shade600)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      holidayName,
+                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: Colors.blue.shade800),
+                    ),
+                    if (holidayDesc != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        holidayDesc,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.blue.shade900.withValues(alpha: 0.7),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            // Weekend info
+            if (holidayName == null && HolidaysService.isWeekend(day))
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: (HolidaysService.isSaturday(day) ? Colors.orange : Colors.green).withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: (HolidaysService.isSaturday(day) ? Colors.orange : Colors.green).withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(PhosphorIcons.sunHorizon(PhosphorIconsStyle.regular), size: 18,
+                      color: HolidaysService.isSaturday(day) ? Colors.orange.shade700 : Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      HolidaysService.isSaturday(day) ? 'Sâmbătă – Weekend' : 'Duminică – Weekend',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13,
+                        color: HolidaysService.isSaturday(day) ? Colors.orange.shade700 : Colors.green.shade700),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Tasks
+            if (dayTasks.isEmpty && holidayName == null && !HolidaysService.isWeekend(day))
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Column(
+                    children: [
+                      Icon(PhosphorIcons.calendarBlank(PhosphorIconsStyle.regular), size: 48, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
+                      const SizedBox(height: 12),
+                      Text('No tasks scheduled', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ),
+
+            ...dayTasks.asMap().entries.map((e) => TaskCard(task: e.value, animationIndex: e.key)),
+          ],
         );
       },
       loading: () => const LoadingIndicator(size: 24),

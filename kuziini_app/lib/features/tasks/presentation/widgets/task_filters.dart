@@ -7,6 +7,7 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../auth/domain/auth_state.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/task_model.dart';
+import '../../providers/leave_provider.dart';
 import '../../providers/tasks_provider.dart';
 import 'user_picker.dart';
 
@@ -23,8 +24,14 @@ class TaskFilters extends ConsumerWidget {
         // Team row (admin/manager only)
         if (isAdminOrManager) _TeamFilterRow(),
 
-        // Standard filters row
-        _StandardFilterRow(),
+        // Standard filters row + Concediu button
+        Row(
+          children: [
+            Expanded(child: _StandardFilterRow()),
+            if (isAdminOrManager)
+              _ConcediuButton(),
+          ],
+        ),
       ],
     );
   }
@@ -366,6 +373,43 @@ class _FilterChip extends StatelessWidget {
         child: Text(
           label,
           style: theme.textTheme.labelMedium?.copyWith(color: isSelected ? chipColor : theme.colorScheme.onSurfaceVariant, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Concediu Button (Admin) ──
+
+class _ConcediuButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isActive = ref.watch(showLeaveOverlayProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: GestureDetector(
+        onTap: () => ref.read(showLeaveOverlayProvider.notifier).state = !isActive,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.red.withValues(alpha: 0.12) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: AppSpacing.borderRadiusFull,
+            border: Border.all(color: isActive ? Colors.red.withValues(alpha: 0.5) : Colors.transparent),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(PhosphorIcons.sunHorizon(PhosphorIconsStyle.regular), size: 14,
+                color: isActive ? Colors.red : theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text('Concediu', style: TextStyle(fontSize: 11,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                color: isActive ? Colors.red : theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
         ),
       ),
     );

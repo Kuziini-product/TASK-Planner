@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/services/holidays_service.dart';
 import '../../../core/widgets/alerts_button.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../data/models/task_model.dart';
+import '../providers/leave_provider.dart';
 import '../providers/tasks_provider.dart';
 import 'widgets/task_card.dart';
 
@@ -716,7 +718,7 @@ class _TaskListForDay extends ConsumerWidget {
 
 // ── Calendar Grid (Month) with drag range selection ──
 
-class _CalendarGrid extends StatelessWidget {
+class _CalendarGrid extends ConsumerWidget {
   const _CalendarGrid({
     required this.month,
     required this.tasksByDay,
@@ -728,13 +730,22 @@ class _CalendarGrid extends StatelessWidget {
   final ValueChanged<DateTime> onDaySelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final showLeave = ref.watch(showLeaveOverlayProvider);
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
     final startWeekday = firstDay.weekday;
     final daysInMonth = lastDay.day;
+
+    // Fetch leaves if overlay is active
+    final range = (from: firstDay, to: lastDay);
+    final leavesAsync = showLeave ? ref.watch(monthLeavesProvider(range)) : null;
+    final leaves = leavesAsync?.valueOrNull ?? [];
+
+    // Count total active users (approximate from leaves or default)
+    final totalUsers = 5; // Will be refined if needed
 
     final cells = <Widget>[];
     for (int i = 1; i < startWeekday; i++) {
@@ -745,46 +756,97 @@ class _CalendarGrid extends StatelessWidget {
       final date = DateTime(month.year, month.month, day);
       final isToday = AppDateUtils.isToday(date);
       final tasks = tasksByDay[day] ?? [];
+      final isSat = HolidaysService.isSaturday(date);
+      final isSun = HolidaysService.isSunday(date);
+      final holidayName = HolidaysService.getHolidayName(date);
+      final isHoliday = holidayName != null;
+
+      // Leave info
+      final dayLeaves = leavesForDate(leaves, date);
+      final leaveCount = dayLeaves.length;
+      final leaveRatio = totalUsers > 0 ? (leaveCount / totalUsers).clamp(0.0, 1.0) : 0.0;
+
+      // Determine background color
+      Color? bgColor;
+      if (isToday) {
+        bgColor = primaryColor.withValues(alpha: 0.08);
+      } else if (showLeave && leaveCount > 0) {
+        // Red proportional to leave ratio
+        bgColor = Colors.red.withValues(alpha: 0.05 + leaveRatio * 0.2);
+      } else if (isHoliday) {
+        bgColor = Colors.blue.withValues(alpha: 0.08);
+      } else if (isSat) {
+        bgColor = Colors.orange.withValues(alpha: 0.06);
+      } else if (isSun) {
+        bgColor = Colors.green.withValues(alpha: 0.06);
+      }
 
       cells.add(
         GestureDetector(
-          // Tap: open day task list
           onTap: () => onDaySelected(date),
-          // Long press: open create task with this date pre-filled
           onLongPress: () {
-            final params = <String, String>{
-              'date': date.toIso8601String().split('T').first,
-            };
-            final uri = Uri(path: '/create-task', queryParameters: params);
-            context.push(uri.toString());
+            final params = <String, String>{'date': date.toIso8601String().split('T').first};
+            context.push(Uri(path: '/create-task', queryParameters: params).toString());
           },
           child: Container(
             margin: const EdgeInsets.all(1),
             decoration: BoxDecoration(
-              color: isToday ? primaryColor.withValues(alpha: 0.08) : null,
+              color: bgColor,
               borderRadius: BorderRadius.circular(6),
               border: isToday ? Border.all(color: primaryColor.withValues(alpha: 0.4), width: 1.5) : null,
             ),
             child: Column(
               children: [
+                // Day number
                 Padding(
-                  padding: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.only(top: 1),
                   child: Text(
                     '$day',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                      color: isToday ? primaryColor : theme.colorScheme.onSurface,
+                      color: isSat ? Colors.orange.shade700
+                          : isSun ? Colors.green.shade700
+                          : isHoliday ? Colors.blue.shade700
+                          : isToday ? primaryColor
+                          : theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
+                // Holiday name or leave info
+                if (isHoliday)
+                  Text(
+                    holidayName!.length > 8 ? '${holidayName.substring(0, 7)}.' : holidayName,
+                    style: TextStyle(fontSize: 6, color: Colors.blue.shade600, fontWeight: FontWeight.w600),
+                    maxLines: 1, overflow: TextOverflow.clip,
+                  )
+                else if (isSat)
+                  Text('S', style: TextStyle(fontSize: 6, color: Colors.orange.shade400, fontWeight: FontWeight.w700))
+                else if (isSun)
+                  Text('D', style: TextStyle(fontSize: 6, color: Colors.green.shade400, fontWeight: FontWeight.w700)),
+
+                // Leave indicator
+                if (showLeave && leaveCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      '$leaveCount off',
+                      style: TextStyle(fontSize: 6, color: Colors.red.shade700, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+
+                // Task dots
                 if (tasks.isNotEmpty)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.all(2),
+                      padding: const EdgeInsets.all(1),
                       child: Wrap(
-                        spacing: 2, runSpacing: 2,
-                        children: tasks.take(5).map((t) => Container(
+                        spacing: 2, runSpacing: 1,
+                        children: tasks.take(4).map((t) => Container(
                           width: 4, height: 4,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -809,7 +871,7 @@ class _CalendarGrid extends StatelessWidget {
         crossAxisCount: 7,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 0.9,
+        childAspectRatio: 0.85,
         children: cells,
       ),
     );

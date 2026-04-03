@@ -95,7 +95,8 @@ class AdminRepository {
     }
   }
 
-  Future<bool> sendInvitation({
+  /// Send invitation and return the invite link (or null on failure).
+  Future<String?> sendInvitation({
     required String email,
     String role = 'member',
   }) async {
@@ -110,10 +111,11 @@ class AdminRepository {
         'invited_by': _supabase.currentUserId,
         'created_at': DateTime.now().toIso8601String(),
       });
-      return true;
+      // Return invite link
+      return 'https://task-planner-alpha-ten.vercel.app/#/invite?token=$token';
     } catch (e) {
       debugPrint('Failed to send invitation: $e');
-      return false;
+      return null;
     }
   }
 

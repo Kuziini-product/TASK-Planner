@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -43,15 +45,66 @@ class _InvitationsScreenState extends ConsumerState<InvitationsScreen> {
     setState(() => _isSending = true);
 
     try {
-      final success = await ref.read(adminActionsProvider).sendInvitation(
+      final inviteLink = await ref.read(adminActionsProvider).sendInvitation(
             email: email,
             role: _selectedRole,
           );
 
       if (mounted) {
-        if (success) {
+        if (inviteLink != null) {
           _emailController.clear();
-          context.showSnackBar('Invitation sent to $email');
+          // Show dialog with link to copy/share
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), color: AppColors.success),
+                  const SizedBox(width: 8),
+                  const Text('Invitation Created'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Send this link to $email:'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(inviteLink, style: const TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close'),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: inviteLink));
+                    Navigator.pop(ctx);
+                    context.showSnackBar('Link copied!');
+                  },
+                  icon: Icon(PhosphorIcons.copy(PhosphorIconsStyle.regular), size: 16),
+                  label: const Text('Copy Link'),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    Share.share('Join Kuziini Task Manager:\n$inviteLink');
+                    Navigator.pop(ctx);
+                  },
+                  icon: Icon(PhosphorIcons.shareFat(PhosphorIconsStyle.regular), size: 16),
+                  label: const Text('Share'),
+                ),
+              ],
+            ),
+          );
         } else {
           context.showSnackBar('Failed to send invitation', isError: true);
         }

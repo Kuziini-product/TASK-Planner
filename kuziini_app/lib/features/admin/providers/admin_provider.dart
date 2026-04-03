@@ -57,12 +57,12 @@ class AdminActions {
     return result;
   }
 
-  Future<bool> sendInvitation({
+  Future<String?> sendInvitation({
     required String email,
     String role = 'member',
   }) async {
     final result = await _repo.sendInvitation(email: email, role: role);
-    if (result) {
+    if (result != null) {
       _ref.invalidate(invitationsProvider);
     }
     return result;

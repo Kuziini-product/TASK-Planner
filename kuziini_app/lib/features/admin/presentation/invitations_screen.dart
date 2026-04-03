@@ -26,7 +26,7 @@ class InvitationsScreen extends ConsumerStatefulWidget {
 
 class _InvitationsScreenState extends ConsumerState<InvitationsScreen> {
   final _emailController = TextEditingController();
-  String _selectedRole = 'member';
+  String _selectedRole = 'user';
   bool _isSending = false;
 
   @override
@@ -156,10 +156,17 @@ class _InvitationsScreenState extends ConsumerState<InvitationsScreen> {
                     Text('Role:', style: theme.textTheme.labelMedium),
                     AppSpacing.hGapMd,
                     ChoiceChip(
-                      label: const Text('Member'),
-                      selected: _selectedRole == 'member',
+                      label: const Text('User'),
+                      selected: _selectedRole == 'user',
                       onSelected: (_) =>
-                          setState(() => _selectedRole = 'member'),
+                          setState(() => _selectedRole = 'user'),
+                    ),
+                    AppSpacing.hGapSm,
+                    ChoiceChip(
+                      label: const Text('Manager'),
+                      selected: _selectedRole == 'manager',
+                      onSelected: (_) =>
+                          setState(() => _selectedRole = 'manager'),
                     ),
                     AppSpacing.hGapSm,
                     ChoiceChip(
@@ -167,13 +174,6 @@ class _InvitationsScreenState extends ConsumerState<InvitationsScreen> {
                       selected: _selectedRole == 'admin',
                       onSelected: (_) =>
                           setState(() => _selectedRole = 'admin'),
-                    ),
-                    AppSpacing.hGapSm,
-                    ChoiceChip(
-                      label: const Text('Viewer'),
-                      selected: _selectedRole == 'viewer',
-                      onSelected: (_) =>
-                          setState(() => _selectedRole = 'viewer'),
                     ),
                   ],
                 ),

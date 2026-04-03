@@ -114,7 +114,8 @@ class AdminRepository {
       return 'https://task-planner-alpha-ten.vercel.app/#/invite?token=$token';
     } catch (e) {
       debugPrint('Failed to send invitation: $e');
-      return null;
+      // Show actual error for debugging
+      rethrow;
     }
   }
 

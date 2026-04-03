@@ -102,14 +102,13 @@ class AdminRepository {
   }) async {
     try {
       final token = _uuid.v4();
-      await _supabase.insert(AppConstants.tableInvitations, {
-        'id': _uuid.v4(),
+      // Use direct client insert without .select().single() to avoid RLS issues
+      await _supabase.client.from(AppConstants.tableInvitations).insert({
         'email': email,
         'role': role,
         'token': token,
         'status': 'pending',
         'invited_by': _supabase.currentUserId,
-        'created_at': DateTime.now().toIso8601String(),
       });
       // Return invite link
       return 'https://task-planner-alpha-ten.vercel.app/#/invite?token=$token';

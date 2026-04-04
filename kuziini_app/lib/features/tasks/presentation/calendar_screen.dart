@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/services/birthday_service.dart';
 import '../../../core/services/holidays_service.dart';
 import '../../../core/widgets/alerts_button.dart';
 import '../../../core/constants/app_colors.dart';
@@ -46,6 +47,7 @@ class CalendarScreen extends ConsumerWidget {
     final view = ref.watch(_calendarViewProvider);
     final month = ref.watch(_calendarMonthProvider);
     final selectedDay = ref.watch(_calendarSelectedDayProvider);
+    final hasBirthday = ref.watch(hasBirthdayTodayProvider);
 
     // If a day is selected, show the day detail view
     if (selectedDay != null) {
@@ -58,6 +60,11 @@ class CalendarScreen extends ConsumerWidget {
         leading: const AlertsButton(),
         title: Image.asset('assets/images/kuziini_logo.png', height: 32, color: theme.colorScheme.onSurface),
         actions: [
+          if (hasBirthday)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Text('🎂', style: TextStyle(fontSize: 20)),
+            ),
           TextButton(
             onPressed: () {
               final now = DateTime.now();
@@ -556,6 +563,9 @@ class _YearView extends ConsumerWidget {
     // Get holidays for this year
     final holidays = HolidaysService.getHolidays(year);
 
+    // Get birthday dates
+    final birthdayDates = ref.watch(birthdayDatesProvider);
+
     return GestureDetector(
       onHorizontalDragEnd: (d) {
         if (d.primaryVelocity != null) {
@@ -601,6 +611,17 @@ class _YearView extends ConsumerWidget {
                 final parts = key.split('-');
                 if (int.parse(parts[0]) == m && !monthHolidays.contains(name)) {
                   monthHolidays.add(name);
+                }
+              });
+
+              // Birthdays in this month
+              final monthBirthdays = <String>[];
+              birthdayDates.forEach((key, names) {
+                final parts = key.split('-');
+                if (int.parse(parts[0]) == m) {
+                  for (final name in names) {
+                    monthBirthdays.add('🎂 $name (${parts[1]}/$m)');
+                  }
                 }
               });
 
@@ -655,6 +676,17 @@ class _YearView extends ConsumerWidget {
                         )),
                         if (monthHolidays.length > 3)
                           Text('+${monthHolidays.length - 3} more', style: TextStyle(fontSize: 7, color: Colors.blue.shade400)),
+                      ],
+                      // Birthdays
+                      if (monthBirthdays.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        ...monthBirthdays.take(2).map((b) => Text(
+                          b,
+                          style: TextStyle(fontSize: 8, color: const Color(0xFFFF6B9D), fontWeight: FontWeight.w600),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        )),
+                        if (monthBirthdays.length > 2)
+                          Text('+${monthBirthdays.length - 2} more', style: TextStyle(fontSize: 7, color: const Color(0xFFFF6B9D).withValues(alpha: 0.6))),
                       ],
                     ],
                   ),
@@ -719,6 +751,11 @@ class _TaskListForDay extends ConsumerWidget {
     final holidayName = HolidaysService.getHolidayName(day);
     final holidayDesc = holidayName != null ? HolidaysService.getHolidayDescription(holidayName) : null;
 
+    // Birthday users for this day
+    final birthdayDates = ref.watch(birthdayDatesProvider);
+    final birthdayKey = '${day.month}-${day.day}';
+    final birthdayNames = birthdayDates[birthdayKey] ?? [];
+
     return tasksAsync.when(
       data: (allTasks) {
         final dayTasks = allTasks
@@ -767,6 +804,52 @@ class _TaskListForDay extends ConsumerWidget {
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+            ],
+
+            // Birthday card
+            if (birthdayNames.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFF6B9D).withValues(alpha: 0.12),
+                      const Color(0xFFFFA751).withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFF6B9D).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('🎂', style: TextStyle(fontSize: 20)),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Zi de Naștere',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: const Color(0xFFFF6B9D)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...birthdayNames.map((name) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'La Multi Ani, $name! 🎉',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFFF6B9D),
+                        ),
+                      ),
+                    )),
                   ],
                 ),
               ),
@@ -839,6 +922,7 @@ class _CalendarGrid extends ConsumerWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final showLeave = ref.watch(showLeaveOverlayProvider);
+    final birthdayDates = ref.watch(birthdayDatesProvider);
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
     final startWeekday = firstDay.weekday;
@@ -865,6 +949,8 @@ class _CalendarGrid extends ConsumerWidget {
       final isSun = HolidaysService.isSunday(date);
       final holidayName = HolidaysService.getHolidayName(date);
       final isHoliday = holidayName != null;
+      final birthdayKey = '${date.month}-${date.day}';
+      final birthdayNames = birthdayDates[birthdayKey];
 
       // Leave info
       final dayLeaves = leavesForDate(leaves, date);
@@ -929,6 +1015,10 @@ class _CalendarGrid extends ConsumerWidget {
                   Text('S', style: TextStyle(fontSize: 6, color: Colors.orange.shade400, fontWeight: FontWeight.w700))
                 else if (isSun)
                   Text('D', style: TextStyle(fontSize: 6, color: Colors.green.shade400, fontWeight: FontWeight.w700)),
+
+                // Birthday indicator 🎂
+                if (birthdayNames != null && birthdayNames.isNotEmpty)
+                  const Text('🎂', style: TextStyle(fontSize: 8)),
 
                 // Leave indicator
                 if (showLeave && leaveCount > 0)

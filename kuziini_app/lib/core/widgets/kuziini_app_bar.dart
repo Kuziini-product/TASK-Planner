@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../constants/app_spacing.dart';
+import '../services/birthday_service.dart';
 
-class KuziiniAppBar extends StatelessWidget implements PreferredSizeWidget {
+class KuziiniAppBar extends ConsumerWidget implements PreferredSizeWidget {
   const KuziiniAppBar({
     super.key,
     this.title,
@@ -35,7 +37,20 @@ class KuziiniAppBar extends StatelessWidget implements PreferredSizeWidget {
       );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasBirthday = ref.watch(hasBirthdayTodayProvider);
+
+    // Build actions: prepend cake emoji if someone has a birthday
+    final effectiveActions = <Widget>[
+      if (hasBirthday)
+        const Padding(
+          padding: EdgeInsets.only(right: 4),
+          child: Text('🎂', style: TextStyle(fontSize: 20)),
+        ),
+      if (actions != null) ...actions!,
+      const SizedBox(width: 8),
+    ];
+
     return AppBar(
       title: titleWidget ??
           (title != null
@@ -52,12 +67,7 @@ class KuziiniAppBar extends StatelessWidget implements PreferredSizeWidget {
               padding: AppSpacing.paddingSm,
             )
           : leading,
-      actions: actions != null
-          ? [
-              ...actions!,
-              const SizedBox(width: 8),
-            ]
-          : null,
+      actions: effectiveActions.length > 1 ? effectiveActions : null,
       elevation: elevation,
       backgroundColor: backgroundColor,
       bottom: bottom,

@@ -4,6 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/widgets/birthday_banner.dart';
 import '../../../auth/domain/auth_state.dart';
 
 class UserListTile extends StatelessWidget {
@@ -47,24 +48,8 @@ class UserListTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Avatar
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: primaryColor.withValues(alpha: 0.1),
-                backgroundImage: user.avatarUrl != null
-                    ? NetworkImage(user.avatarUrl!)
-                    : null,
-                child: user.avatarUrl == null
-                    ? Text(
-                        user.initials,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: primaryColor,
-                        ),
-                      )
-                    : null,
-              ),
+              // Avatar — rainbow border for birthday week
+              _BirthdayAvatar(user: user, primaryColor: primaryColor),
 
               AppSpacing.hGapMd,
 
@@ -253,5 +238,49 @@ class _RoleBadge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Avatar with animated rainbow border during the user's birthday week
+class _BirthdayAvatar extends StatelessWidget {
+  const _BirthdayAvatar({required this.user, required this.primaryColor});
+  final UserProfile user;
+  final Color primaryColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = CircleAvatar(
+      radius: 20,
+      backgroundColor: primaryColor.withValues(alpha: 0.1),
+      backgroundImage:
+          user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+      child: user.avatarUrl == null
+          ? Text(
+              user.initials,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: primaryColor,
+              ),
+            )
+          : null,
+    );
+
+    if (user.isBirthdayThisWeek) {
+      return SizedBox(
+        width: 46,
+        height: 46,
+        child: BirthdayBorderWrapper(
+          borderRadius: 23,
+          strokeWidth: 2.5,
+          child: Padding(
+            padding: const EdgeInsets.all(2),
+            child: avatar,
+          ),
+        ),
+      );
+    }
+
+    return avatar;
   }
 }

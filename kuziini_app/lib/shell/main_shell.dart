@@ -7,7 +7,9 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/router/app_router.dart';
+import '../core/services/birthday_service.dart';
 import '../core/services/voice_task_parser.dart';
+import '../core/widgets/birthday_banner.dart';
 import '../features/tasks/providers/tasks_provider.dart';
 
 class MainShell extends ConsumerWidget {
@@ -75,8 +77,16 @@ class MainShell extends ConsumerWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
+    final hasBirthday = ref.watch(hasBirthdayTodayProvider);
+
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          // Birthday banner — persistent across all screens
+          if (hasBirthday) const BirthdayBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: theme.bottomNavigationBarTheme.backgroundColor,

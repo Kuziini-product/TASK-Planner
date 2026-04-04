@@ -8,6 +8,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/services/holidays_service.dart';
 import '../../../core/services/presence_service.dart';
 import '../../../core/widgets/alerts_button.dart';
+import '../../../core/widgets/birthday_banner.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -76,23 +77,7 @@ class ProfileScreen extends ConsumerWidget {
                         },
                         child: Stack(
                           children: [
-                            CircleAvatar(
-                              radius: 48,
-                              backgroundColor: primaryColor.withValues(alpha: 0.1),
-                              backgroundImage: profile.avatarUrl != null
-                                  ? NetworkImage(profile.avatarUrl!)
-                                  : null,
-                              child: profile.avatarUrl == null
-                                  ? Text(
-                                      profile.initials,
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w700,
-                                        color: primaryColor,
-                                      ),
-                                    )
-                                  : null,
-                            ),
+                            _buildProfileAvatar(profile, primaryColor),
                             Positioned(
                               bottom: 0,
                               right: 0,
@@ -683,4 +668,40 @@ class _WeekStatChip extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildProfileAvatar(dynamic profile, Color primaryColor) {
+  final avatar = CircleAvatar(
+    radius: 48,
+    backgroundColor: primaryColor.withValues(alpha: 0.1),
+    backgroundImage:
+        profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
+    child: profile.avatarUrl == null
+        ? Text(
+            profile.initials,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: primaryColor,
+            ),
+          )
+        : null,
+  );
+
+  if (profile.isBirthdayThisWeek == true) {
+    return SizedBox(
+      width: 102,
+      height: 102,
+      child: BirthdayBorderWrapper(
+        borderRadius: 51,
+        strokeWidth: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: avatar,
+        ),
+      ),
+    );
+  }
+
+  return avatar;
 }

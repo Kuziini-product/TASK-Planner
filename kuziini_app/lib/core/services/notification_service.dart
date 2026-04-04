@@ -179,6 +179,75 @@ class NotificationService {
     }
   }
 
+  /// Set app badge count everywhere possible.
+  void setAppBadge(int count) {
+    if (!kIsWeb) return;
+
+    // 1. Navigator Badge API (Chrome Android/Desktop, Edge)
+    try {
+      final navigator = js_util.getProperty(js_util.globalThis, 'navigator');
+      if (count > 0) {
+        js_util.callMethod(navigator, 'setAppBadge', [count]);
+      } else {
+        js_util.callMethod(navigator, 'clearAppBadge', []);
+      }
+    } catch (_) {}
+
+    // 2. Update page title with count (works on ALL platforms including iOS)
+    try {
+      final document = js_util.getProperty(js_util.globalThis, 'document');
+      js_util.setProperty(document, 'title', count > 0 ? '($count) Kuziini' : 'Kuziini');
+    } catch (_) {}
+
+    // 3. Dynamic favicon with badge number (visible on browser tab)
+    try {
+      _updateFaviconBadge(count);
+    } catch (_) {}
+  }
+
+  void _updateFaviconBadge(int count) {
+    try {
+      final document = js_util.getProperty(js_util.globalThis, 'document');
+      final canvas = js_util.callMethod(document, 'createElement', ['canvas']);
+      js_util.setProperty(canvas, 'width', 64);
+      js_util.setProperty(canvas, 'height', 64);
+      final ctx = js_util.callMethod(canvas, 'getContext', ['2d']);
+
+      // Draw base icon (K letter)
+      js_util.setProperty(ctx, 'fillStyle', '#0D7377');
+      js_util.callMethod(ctx, 'fillRect', [0, 0, 64, 64]);
+      js_util.setProperty(ctx, 'fillStyle', '#ffffff');
+      js_util.setProperty(ctx, 'font', 'bold 36px Arial');
+      js_util.setProperty(ctx, 'textAlign', 'center');
+      js_util.setProperty(ctx, 'textBaseline', 'middle');
+      js_util.callMethod(ctx, 'fillText', ['K', 32, 32]);
+
+      // Draw badge if count > 0
+      if (count > 0) {
+        // Red circle
+        js_util.callMethod(ctx, 'beginPath', []);
+        js_util.callMethod(ctx, 'arc', [52, 12, 14, 0, 2 * 3.14159]);
+        js_util.setProperty(ctx, 'fillStyle', '#E53935');
+        js_util.callMethod(ctx, 'fill', []);
+        // Badge text
+        js_util.setProperty(ctx, 'fillStyle', '#ffffff');
+        js_util.setProperty(ctx, 'font', 'bold 16px Arial');
+        js_util.callMethod(ctx, 'fillText', [count > 99 ? '99' : '$count', 52, 13]);
+      }
+
+      // Set as favicon
+      final dataUrl = js_util.callMethod(canvas, 'toDataURL', ['image/png']);
+      var link = js_util.callMethod(document, 'querySelector', ["link[rel*='icon']"]);
+      if (link == null) {
+        link = js_util.callMethod(document, 'createElement', ['link']);
+        js_util.setProperty(link, 'rel', 'icon');
+        final head = js_util.getProperty(document, 'head');
+        js_util.callMethod(head, 'appendChild', [link]);
+      }
+      js_util.setProperty(link, 'href', dataUrl);
+    } catch (_) {}
+  }
+
   Future<void> cancelAllNotifications() async {}
   Future<void> cancelNotification(int id) async {}
 }

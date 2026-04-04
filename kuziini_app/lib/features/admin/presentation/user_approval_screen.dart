@@ -132,10 +132,25 @@ class UserApprovalScreen extends ConsumerWidget {
                     padding: AppSpacing.paddingLg,
                     itemCount: users.length,
                     itemBuilder: (context, index) {
+                      final user = users[index];
                       return UserListTile(
-                        user: users[index],
+                        user: user,
                         isPending: false,
                         showActions: false,
+                        onDelete: () async {
+                          final confirmed = await context.showConfirmDialog(
+                            title: 'Delete User',
+                            message: 'Are you sure you want to delete ${user.displayName}? This will remove all their data.',
+                            confirmLabel: 'Delete',
+                            isDestructive: true,
+                          );
+                          if (confirmed == true && context.mounted) {
+                            final success = await ref.read(adminActionsProvider).deleteUser(user.id);
+                            if (context.mounted) {
+                              context.showSnackBar(success ? 'User deleted' : 'Failed to delete user', isError: !success);
+                            }
+                          }
+                        },
                       );
                     },
                   );

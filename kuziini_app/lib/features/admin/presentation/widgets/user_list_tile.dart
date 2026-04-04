@@ -12,6 +12,7 @@ class UserListTile extends StatelessWidget {
     required this.user,
     this.onApprove,
     this.onReject,
+    this.onDelete,
     this.onRoleChange,
     this.showActions = true,
     this.isPending = false,
@@ -20,6 +21,7 @@ class UserListTile extends StatelessWidget {
   final UserProfile user;
   final VoidCallback? onApprove;
   final VoidCallback? onReject;
+  final VoidCallback? onDelete;
   final ValueChanged<String>? onRoleChange;
   final bool showActions;
   final bool isPending;
@@ -106,11 +108,20 @@ class UserListTile extends StatelessWidget {
                 Container(
                   width: 8,
                   height: 8,
+                  margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color:
-                        user.isApproved ? AppColors.success : AppColors.warning,
+                    color: user.isApproved ? AppColors.success : AppColors.warning,
                     shape: BoxShape.circle,
                   ),
+                ),
+              // Delete button
+              if (onDelete != null)
+                IconButton(
+                  onPressed: onDelete,
+                  icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.regular), size: 18, color: AppColors.error),
+                  tooltip: 'Delete user',
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
                 ),
             ],
           ),

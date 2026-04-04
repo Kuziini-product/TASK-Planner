@@ -73,6 +73,15 @@ class AdminActions {
     _ref.invalidate(invitationsProvider);
   }
 
+  Future<bool> deleteUser(String userId) async {
+    final result = await _repo.deleteUser(userId);
+    if (result) {
+      _ref.invalidate(allUsersProvider);
+      _ref.invalidate(pendingUsersProvider);
+    }
+    return result;
+  }
+
   Future<bool> updateUserRole(String userId, String role) async {
     final result = await _repo.updateUserRole(userId, role);
     if (result) {

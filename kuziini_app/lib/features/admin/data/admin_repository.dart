@@ -95,6 +95,20 @@ class AdminRepository {
     }
   }
 
+  Future<bool> deleteUser(String userId) async {
+    try {
+      // Delete user's tasks, comments, etc.
+      await _supabase.client.from('task_assignees').delete().eq('user_id', userId);
+      await _supabase.client.from('notifications').delete().eq('user_id', userId);
+      await _supabase.client.from('edit_permissions').delete().eq('user_id', userId);
+      await _supabase.client.from(AppConstants.tableUsers).delete().eq('id', userId);
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete user: $e');
+      return false;
+    }
+  }
+
   /// Send invitation and return the invite link (or null on failure).
   Future<String?> sendInvitation({
     required String email,

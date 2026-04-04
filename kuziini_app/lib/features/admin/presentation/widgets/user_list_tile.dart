@@ -13,6 +13,7 @@ class UserListTile extends StatelessWidget {
     this.onApprove,
     this.onReject,
     this.onDelete,
+    this.onBirthDateChanged,
     this.onRoleChange,
     this.showActions = true,
     this.isPending = false,
@@ -22,6 +23,7 @@ class UserListTile extends StatelessWidget {
   final VoidCallback? onApprove;
   final VoidCallback? onReject;
   final VoidCallback? onDelete;
+  final ValueChanged<DateTime>? onBirthDateChanged;
   final ValueChanged<String>? onRoleChange;
   final bool showActions;
   final bool isPending;
@@ -92,13 +94,58 @@ class UserListTile extends StatelessWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (user.createdAt != null)
-                      Text(
-                        'Joined ${AppDateUtils.formatTimeAgo(user.createdAt!)}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        if (user.birthDate != null)
+                          GestureDetector(
+                            onTap: onBirthDateChanged != null ? () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: user.birthDate!,
+                                firstDate: DateTime(1940),
+                                lastDate: DateTime.now(),
+                              );
+                              if (date != null) onBirthDateChanged!(date);
+                            } : null,
+                            child: Row(
+                              children: [
+                                Icon(PhosphorIcons.cake(PhosphorIconsStyle.regular), size: 11, color: user.isBirthdayToday ? AppColors.error : theme.colorScheme.onSurfaceVariant),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${user.birthDate!.day}/${user.birthDate!.month}',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: user.isBirthdayToday ? AppColors.error : theme.colorScheme.onSurfaceVariant),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                            ),
+                          )
+                        else if (onBirthDateChanged != null)
+                          GestureDetector(
+                            onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime(1990, 1, 1),
+                                firstDate: DateTime(1940),
+                                lastDate: DateTime.now(),
+                              );
+                              if (date != null) onBirthDateChanged!(date);
+                            },
+                            child: Row(
+                              children: [
+                                Icon(PhosphorIcons.cake(PhosphorIconsStyle.regular), size: 11, color: primaryColor),
+                                const SizedBox(width: 3),
+                                Text('Set birthday', style: TextStyle(fontSize: 10, color: primaryColor, fontWeight: FontWeight.w500)),
+                                const SizedBox(width: 8),
+                              ],
+                            ),
+                          ),
+                        if (user.createdAt != null)
+                          Text(
+                            'Joined ${AppDateUtils.formatTimeAgo(user.createdAt!)}',
+                            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),

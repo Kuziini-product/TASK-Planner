@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/extensions.dart';
@@ -137,6 +138,15 @@ class UserApprovalScreen extends ConsumerWidget {
                         user: user,
                         isPending: false,
                         showActions: false,
+                        onBirthDateChanged: (date) async {
+                          try {
+                            await Supabase.instance.client.from('profiles').update({
+                              'birth_date': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+                            }).eq('id', user.id);
+                            ref.invalidate(allUsersProvider);
+                            if (context.mounted) context.showSnackBar('Birthday set for ${user.displayName}');
+                          } catch (_) {}
+                        },
                         onDelete: () async {
                           final confirmed = await context.showConfirmDialog(
                             title: 'Delete User',

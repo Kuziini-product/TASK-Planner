@@ -236,6 +236,11 @@ class ProfileScreen extends ConsumerWidget {
                   error: (_, __) => const SizedBox.shrink(),
                 ),
 
+                AppSpacing.vGapLg,
+
+                // Weekly stats
+                _WeeklyStatsRow(),
+
                 // Admin & Sign Out are in Settings
 
                 const SizedBox(height: 40),
@@ -425,6 +430,73 @@ class _LiveUsersCount extends ConsumerWidget {
             ),
             const SizedBox(width: 5),
             Text('$count online', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeeklyStatsRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final weeklyAsync = ref.watch(weeklyStatsProvider);
+
+    return weeklyAsync.when(
+      data: (stats) {
+        final total = stats['total'] ?? 0;
+        final done = stats['done'] ?? 0;
+        final inProgress = stats['in_progress'] ?? 0;
+        final todo = stats['todo'] ?? 0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('This Week', style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant, letterSpacing: 1)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _WeekStatChip(label: 'Total', value: total, color: AppColors.info),
+                const SizedBox(width: 8),
+                _WeekStatChip(label: 'Done', value: done, color: AppColors.success),
+                const SizedBox(width: 8),
+                _WeekStatChip(label: 'In Progress', value: inProgress, color: AppColors.warning),
+                const SizedBox(width: 8),
+                _WeekStatChip(label: 'To Do', value: todo, color: theme.colorScheme.primary),
+              ],
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _WeekStatChip extends StatelessWidget {
+  const _WeekStatChip({required this.label, required this.value, required this.color});
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border(left: BorderSide(color: color, width: 3)),
+          color: color.withValues(alpha: 0.06),
+        ),
+        child: Column(
+          children: [
+            Text('$value', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       ),

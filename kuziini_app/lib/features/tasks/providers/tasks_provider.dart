@@ -221,6 +221,24 @@ final taskAssigneesProvider =
   return repo.fetchTaskAssignees(taskId);
 });
 
+// ── Weekly Stats ──
+
+final weeklyStatsProvider = FutureProvider<Map<String, int>>((ref) async {
+  final repo = ref.watch(taskRepositoryProvider);
+  final now = DateTime.now();
+  final weekStart = now.subtract(Duration(days: now.weekday - 1));
+  final weekEnd = weekStart.add(const Duration(days: 6));
+  final tasks = await repo.fetchTasks(fromDate: weekStart, toDate: weekEnd, limit: 500);
+  final nonArchived = tasks.where((t) => t.status != TaskStatus.archived).toList();
+
+  return {
+    'total': nonArchived.length,
+    'done': nonArchived.where((t) => t.status == TaskStatus.done).length,
+    'in_progress': nonArchived.where((t) => t.status == TaskStatus.in_progress).length,
+    'todo': nonArchived.where((t) => t.status == TaskStatus.todo).length,
+  };
+});
+
 // ── Overdue Tasks ──
 
 final overdueTasksProvider = FutureProvider<List<TaskModel>>((ref) async {

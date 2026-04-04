@@ -6,7 +6,7 @@ import '../constants/app_spacing.dart';
 
 abstract final class AppTheme {
   // ── Light Theme ──
-  static ThemeData lightTheme(Color seedColor, {Color? backgroundColor, Color? buttonColor, double borderWidth = 0, Color? borderColor}) {
+  static ThemeData lightTheme(Color seedColor, {Color? backgroundColor, Color? buttonColor, double borderWidth = 0, Color? borderColor, double textIntensity = 0.5}) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: Brightness.light,
@@ -21,7 +21,10 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: bgColor,
-      textTheme: _buildTextTheme(AppColors.textPrimaryLight, AppColors.textSecondaryLight),
+      textTheme: _buildTextTheme(
+        Color.lerp(AppColors.textSecondaryLight, Colors.black, textIntensity)!,
+        Color.lerp(AppColors.textSecondaryLight, Colors.black54, textIntensity)!,
+      ),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0.5,
@@ -182,7 +185,7 @@ abstract final class AppTheme {
   }
 
   // ── Dark Theme ──
-  static ThemeData darkTheme(Color seedColor, {Color? backgroundColor, Color? buttonColor, double borderWidth = 0, Color? borderColor}) {
+  static ThemeData darkTheme(Color seedColor, {Color? backgroundColor, Color? buttonColor, double borderWidth = 0, Color? borderColor, double textIntensity = 0.5}) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: Brightness.dark,
@@ -194,7 +197,10 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: bgColor,
-      textTheme: _buildTextTheme(AppColors.textPrimaryDark, AppColors.textSecondaryDark),
+      textTheme: _buildTextTheme(
+        Color.lerp(AppColors.textSecondaryDark, Colors.white, textIntensity)!,
+        Color.lerp(AppColors.textSecondaryDark, Colors.white70, textIntensity)!,
+      ),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0.5,

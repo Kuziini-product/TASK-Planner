@@ -72,6 +72,13 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
 
+          AppSpacing.vGapLg,
+
+          // Text Intensity
+          _SectionHeader(title: 'Text Intensity'),
+          AppSpacing.vGapSm,
+          _TextIntensitySlider(),
+
           AppSpacing.vGapXl,
 
           // Notifications
@@ -883,6 +890,13 @@ class _BackgroundColorRow extends StatelessWidget {
     _BgOption('Blush', Color(0xFFFFF0F5), null),
     _BgOption('Smoke', Color(0xFFF5F5F5), null),
     _BgOption('Sand', Color(0xFFFAF0E6), null),
+    // Blue tones (medium - between light and dark)
+    _BgOption('Sky', Color(0xFFD6E8F0), null),
+    _BgOption('Steel', Color(0xFFB0C4D8), null),
+    _BgOption('Slate', Color(0xFF8BA3B8), null),
+    _BgOption('Dusk', Color(0xFF5B7A8E), null),
+    _BgOption('Ocean', Color(0xFF3D5A6E), null),
+    // Dark tones
     _BgOption('Charcoal', Color(0xFF1A1A2E), null),
     _BgOption('Navy', Color(0xFF0F0E17), null),
     _BgOption('Forest', Color(0xFF0A1F0A), null),
@@ -1003,6 +1017,46 @@ class _DefaultDurationTile extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _TextIntensitySlider extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final intensity = ref.watch(textIntensityProvider);
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Text('Aa', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: theme.colorScheme.primary,
+                  thumbColor: theme.colorScheme.primary,
+                  inactiveTrackColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  trackHeight: 4,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                ),
+                child: Slider(
+                  value: intensity,
+                  min: 0.0,
+                  max: 1.0,
+                  onChanged: (v) => ref.read(textIntensityProvider.notifier).setIntensity(v),
+                ),
+              ),
+            ),
+            Text('Aa', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
+          ],
+        ),
+        Text(
+          intensity < 0.3 ? 'Light' : intensity < 0.7 ? 'Normal' : 'Bold',
+          style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }

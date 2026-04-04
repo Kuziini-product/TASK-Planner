@@ -25,6 +25,7 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
     final btnColor = ref.watch(buttonColorProvider);
     final borderW = ref.watch(buttonBorderWidthProvider);
     final borderC = ref.watch(buttonBorderColorProvider);
+    final textInt = ref.watch(textIntensityProvider);
     final router = ref.watch(appRouterProvider);
 
     // Auto-redirect: calendar loads data, then switch to profile
@@ -43,8 +44,8 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
         MaterialApp.router(
       title: 'Kuziini Task Manager',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC),
-      darkTheme: AppTheme.darkTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC),
+      theme: AppTheme.lightTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC, textIntensity: textInt),
+      darkTheme: AppTheme.darkTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC, textIntensity: textInt),
       themeMode: themeMode,
       routerConfig: router,
       localizationsDelegates: const [

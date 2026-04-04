@@ -220,6 +220,30 @@ class ButtonBorderColorNotifier extends StateNotifier<Color?> {
   }
 }
 
+// ── Text Intensity Provider ──
+/// 0.0 = light text, 0.5 = normal, 1.0 = very bold/dark
+const _textIntensityKey = 'text_intensity';
+
+final textIntensityProvider =
+    StateNotifierProvider<TextIntensityNotifier, double>(
+  (ref) => TextIntensityNotifier(),
+);
+
+class TextIntensityNotifier extends StateNotifier<double> {
+  TextIntensityNotifier() : super(0.5) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getDouble(_textIntensityKey) ?? 0.5;
+  }
+
+  Future<void> setIntensity(double value) async {
+    state = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_textIntensityKey, value);
+  }
+}
+
 // ── Default Task Duration Provider ──
 /// Duration in minutes: 15, 30, 60 (default), 90, 120
 const _durationKey = 'default_task_duration';

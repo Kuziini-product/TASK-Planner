@@ -30,14 +30,24 @@ class AuthRepository {
     required String email,
     required String password,
     String? fullName,
+    DateTime? birthDate,
   }) async {
-    return await _supabase.auth.signUp(
+    final response = await _supabase.auth.signUp(
       email: email,
       password: password,
       data: {
         'full_name': fullName ?? '',
       },
     );
+    // Save birth_date to profiles
+    if (birthDate != null && response.user != null) {
+      try {
+        await _supabase.client.from('profiles').update({
+          'birth_date': '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+        }).eq('id', response.user!.id);
+      } catch (_) {}
+    }
+    return response;
   }
 
   Future<void> signOut() async {

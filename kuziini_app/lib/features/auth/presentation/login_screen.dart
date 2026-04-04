@@ -24,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   bool _isSignUp = false;
   final _nameController = TextEditingController();
+  DateTime? _birthDate;
 
   @override
   void dispose() {
@@ -44,6 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
           fullName: _nameController.text.trim().nullIfEmpty,
+          birthDate: _birthDate,
         );
       } else {
         await notifier.signIn(
@@ -164,6 +166,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             }
                             return null;
                           },
+                        ),
+                        AppSpacing.vGapMd,
+                        // Birth date picker
+                        GestureDetector(
+                          onTap: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime(1990, 1, 1),
+                              firstDate: DateTime(1940),
+                              lastDate: DateTime.now(),
+                            );
+                            if (date != null) setState(() => _birthDate = date);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Theme.of(context).dividerColor),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(PhosphorIcons.cake(PhosphorIconsStyle.regular), size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _birthDate != null ? '${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}' : 'Date of birth',
+                                  style: TextStyle(color: _birthDate != null ? null : Theme.of(context).colorScheme.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                         AppSpacing.vGapLg,
                       ],

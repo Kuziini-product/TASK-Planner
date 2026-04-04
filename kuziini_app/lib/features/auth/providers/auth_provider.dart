@@ -47,10 +47,11 @@ class AuthNotifier extends AsyncNotifier<AuthStatus> {
     required String email,
     required String password,
     String? fullName,
+    DateTime? birthDate,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _repo.signUp(email: email, password: password, fullName: fullName);
+      await _repo.signUp(email: email, password: password, fullName: fullName, birthDate: birthDate);
       return _repo.checkAuthStatus();
     });
   }

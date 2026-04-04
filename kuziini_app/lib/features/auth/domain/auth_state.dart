@@ -15,6 +15,7 @@ class UserProfile {
     this.status = 'pending',
     this.phone,
     this.timezone,
+    this.birthDate,
     this.createdAt,
     this.updatedAt,
   });
@@ -27,8 +28,26 @@ class UserProfile {
   final String status;
   final String? phone;
   final String? timezone;
+  final DateTime? birthDate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  bool get isBirthdayToday {
+    if (birthDate == null) return false;
+    final now = DateTime.now();
+    return birthDate!.month == now.month && birthDate!.day == now.day;
+  }
+
+  bool get isBirthdayThisWeek {
+    if (birthDate == null) return false;
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    for (int i = 0; i < 7; i++) {
+      final day = weekStart.add(Duration(days: i));
+      if (birthDate!.month == day.month && birthDate!.day == day.day) return true;
+    }
+    return false;
+  }
 
   bool get isApproved => status == 'active';
   bool get isPending => status == 'pending';
@@ -59,6 +78,7 @@ class UserProfile {
       status: json['status'] as String? ?? 'pending',
       phone: json['phone'] as String?,
       timezone: json['timezone'] as String?,
+      birthDate: json['birth_date'] != null ? DateTime.tryParse(json['birth_date'] as String) : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,

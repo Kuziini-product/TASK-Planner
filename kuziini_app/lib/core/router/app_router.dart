@@ -45,7 +45,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: AppRoutes.profile,
+    initialLocation: AppRoutes.today,
     debugLogDiagnostics: true,
     redirect: (context, state) {
       final currentAuth = authState.valueOrNull ?? AuthStatus.initial;
@@ -67,7 +67,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (currentAuth == AuthStatus.authenticated) {
-        if (isOnAuth || isOnPending) return AppRoutes.profile;
+        if (isOnAuth || isOnPending) return AppRoutes.today;
       }
 
       return null;

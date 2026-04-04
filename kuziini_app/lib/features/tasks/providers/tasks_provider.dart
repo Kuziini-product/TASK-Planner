@@ -38,6 +38,9 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     final date = ref.watch(selectedDateProvider);
     final filter = ref.watch(taskFilterProvider);
     final teamUser = ref.watch(selectedTeamUserProvider);
+    // Watch priority and status filters to auto-refresh
+    ref.watch(taskPriorityFilterProvider);
+    ref.watch(taskStatusFilterProvider);
 
     // Set up real-time subscription
     _subscription?.unsubscribe();
@@ -58,39 +61,60 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
 
   Future<List<TaskModel>> _fetchFiltered(DateTime date, TaskFilterType filter, String? teamUserId) async {
     final userId = SupabaseService.instance.currentUserId;
+    final priorityFilter = ref.read(taskPriorityFilterProvider);
+    final statusFilter = ref.read(taskStatusFilterProvider);
 
-    // If viewing team tasks
-    if (teamUserId != null) {
-      final tasks = await _repo.fetchTasksByDate(date);
-      final nonArchived = tasks.where((t) => !t.isArchived).toList();
-      if (teamUserId == 'all') {
-        return nonArchived;
-      }
-      return nonArchived.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId).toList();
+    // Fetch base tasks
+    List<TaskModel> tasks;
+    if (filter == TaskFilterType.overdue) {
+      tasks = await _repo.fetchOverdueTasks();
+    } else if (filter == TaskFilterType.myTasks) {
+      if (userId == null) return [];
+      tasks = await _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
+    } else if (filter == TaskFilterType.assignedToMe) {
+      if (userId == null) return [];
+      tasks = await _repo.fetchTasksAssignedTo(userId, date: date);
+    } else {
+      tasks = await _repo.fetchTasksByDate(date);
     }
 
-    switch (filter) {
-      case TaskFilterType.assignedToMe:
-        if (userId == null) return [];
-        final tasks = await _repo.fetchTasksAssignedTo(userId, date: date);
-        return tasks.where((t) => !t.isArchived).toList();
-      case TaskFilterType.myTasks:
-        if (userId == null) return [];
-        final tasks = await _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
-        return tasks.where((t) => !t.isArchived).toList();
-      case TaskFilterType.overdue:
-        final tasks = await _repo.fetchOverdueTasks();
-        return tasks.where((t) => !t.isArchived).toList();
-      case TaskFilterType.done:
-        final all = await _repo.fetchTasksByDate(date);
-        return all.where((t) => t.isCompleted && !t.isArchived).toList();
-      case TaskFilterType.inProgress:
-        final all = await _repo.fetchTasksByDate(date);
-        return all.where((t) => t.status == TaskStatus.in_progress).toList();
-      case TaskFilterType.all:
-        final tasks = await _repo.fetchTasksByDate(date);
-        return tasks.where((t) => !t.isArchived).toList();
+    // Apply all filters simultaneously
+    var result = tasks.where((t) => !t.isArchived);
+
+    // Team user filter
+    if (teamUserId != null && teamUserId != 'all') {
+      result = result.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId);
     }
+
+    // Status filter from More menu
+    if (filter == TaskFilterType.done) {
+      result = result.where((t) => t.isCompleted);
+    } else if (filter == TaskFilterType.inProgress) {
+      result = result.where((t) => t.status == TaskStatus.in_progress);
+    }
+
+    // Additional status filter (from statusFilterProvider)
+    if (statusFilter != null) {
+      result = result.where((t) => t.status == statusFilter);
+    }
+
+    // Priority filter
+    if (priorityFilter != null) {
+      result = result.where((t) => t.priority == priorityFilter);
+    }
+
+    // Sort: priority first (urgent→low), then by time
+    final sorted = result.toList()
+      ..sort((a, b) {
+        final pa = a.priority.index;
+        final pb = b.priority.index;
+        if (pa != pb) return pa.compareTo(pb);
+        final ta = a.startTime ?? a.dueDate ?? DateTime(2099);
+        final tb = b.startTime ?? b.dueDate ?? DateTime(2099);
+        return ta.compareTo(tb);
+      });
+
+    return sorted;
   }
 
   Future<void> _refreshTasks() async {

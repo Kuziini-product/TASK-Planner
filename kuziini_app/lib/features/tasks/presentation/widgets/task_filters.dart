@@ -153,20 +153,17 @@ class _StandardFilterRow extends ConsumerWidget {
         currentFilter == TaskFilterType.inProgress ||
         priorityFilter != null;
 
-    String moreLabel = 'More';
-    if (isMoreActive) {
-      if (priorityFilter != null) {
-        moreLabel = priorityFilter.label;
-      } else {
-        switch (currentFilter) {
-          case TaskFilterType.assignedToMe: moreLabel = 'Assigned to Me';
-          case TaskFilterType.overdue: moreLabel = 'Overdue';
-          case TaskFilterType.done: moreLabel = 'Done';
-          case TaskFilterType.inProgress: moreLabel = 'In Progress';
-          default: break;
-        }
-      }
+    // Build combined label
+    final parts = <String>[];
+    switch (currentFilter) {
+      case TaskFilterType.assignedToMe: parts.add('Assigned');
+      case TaskFilterType.overdue: parts.add('Overdue');
+      case TaskFilterType.done: parts.add('Done');
+      case TaskFilterType.inProgress: parts.add('In Progress');
+      default: break;
     }
+    if (priorityFilter != null) parts.add(priorityFilter.label);
+    final moreLabel = parts.isEmpty ? 'More' : parts.join(' + ');
 
     return Padding(
       padding: AppSpacing.paddingHorizontalLg,
@@ -174,19 +171,17 @@ class _StandardFilterRow extends ConsumerWidget {
         children: [
           _FilterChip(
             label: 'All',
-            isSelected: currentFilter == TaskFilterType.all && priorityFilter == null,
+            isSelected: currentFilter == TaskFilterType.all,
             onTap: () {
               ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
-              ref.read(taskPriorityFilterProvider.notifier).state = null;
             },
           ),
           AppSpacing.hGapSm,
           _FilterChip(
             label: 'My Tasks',
-            isSelected: currentFilter == TaskFilterType.myTasks && priorityFilter == null,
+            isSelected: currentFilter == TaskFilterType.myTasks,
             onTap: () {
               ref.read(taskFilterProvider.notifier).state = TaskFilterType.myTasks;
-              ref.read(taskPriorityFilterProvider.notifier).state = null;
             },
           ),
           AppSpacing.hGapSm,
@@ -223,9 +218,24 @@ class _MoreFilterChip extends ConsumerWidget {
           builder: (ctx) => _MoreFiltersSheet(
             currentFilter: currentFilter,
             priorityFilter: priorityFilter,
-            onFilterChanged: (filter) { ref.read(taskFilterProvider.notifier).state = filter; ref.read(taskPriorityFilterProvider.notifier).state = null; Navigator.pop(ctx); },
-            onPriorityChanged: (priority) { ref.read(taskPriorityFilterProvider.notifier).state = priority; ref.read(taskFilterProvider.notifier).state = TaskFilterType.all; Navigator.pop(ctx); },
-            onClear: () { ref.read(taskFilterProvider.notifier).state = TaskFilterType.all; ref.read(taskPriorityFilterProvider.notifier).state = null; Navigator.pop(ctx); },
+            onFilterChanged: (filter) {
+              // Toggle: tap same = deselect
+              ref.read(taskFilterProvider.notifier).state =
+                  currentFilter == filter ? TaskFilterType.all : filter;
+              Navigator.pop(ctx);
+            },
+            onPriorityChanged: (priority) {
+              // Toggle: tap same = deselect
+              ref.read(taskPriorityFilterProvider.notifier).state =
+                  priorityFilter == priority ? null : priority;
+              Navigator.pop(ctx);
+            },
+            onClear: () {
+              ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+              ref.read(taskPriorityFilterProvider.notifier).state = null;
+              ref.read(taskStatusFilterProvider.notifier).state = null;
+              Navigator.pop(ctx);
+            },
           ),
         );
       },

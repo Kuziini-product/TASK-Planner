@@ -178,10 +178,10 @@ class _StandardFilterRow extends ConsumerWidget {
           ),
           AppSpacing.hGapSm,
           _FilterChip(
-            label: 'My Tasks',
-            isSelected: currentFilter == TaskFilterType.myTasks,
+            label: 'Azi',
+            isSelected: currentFilter == TaskFilterType.today,
             onTap: () {
-              ref.read(taskFilterProvider.notifier).state = TaskFilterType.myTasks;
+              ref.read(taskFilterProvider.notifier).state = TaskFilterType.today;
             },
           ),
           AppSpacing.hGapSm,

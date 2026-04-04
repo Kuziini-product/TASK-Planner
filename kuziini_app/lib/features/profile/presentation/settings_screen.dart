@@ -760,8 +760,8 @@ class _ThemePickerDialogState extends ConsumerState<_ThemePickerDialog> {
                       ),
                       child: Slider(
                         value: ref.watch(buttonBorderWidthProvider),
-                        min: 0, max: 3,
-                        divisions: 6,
+                        min: 0, max: 6,
+                        divisions: 12,
                         label: ref.watch(buttonBorderWidthProvider).toStringAsFixed(1),
                         onChanged: (v) {
                           ref.read(buttonBorderWidthProvider.notifier).setWidth(v);
@@ -769,7 +769,7 @@ class _ThemePickerDialogState extends ConsumerState<_ThemePickerDialog> {
                       ),
                     ),
                   ),
-                  Text('3', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text('6', style: TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
 

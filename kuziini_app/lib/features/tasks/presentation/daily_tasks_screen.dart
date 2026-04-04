@@ -77,6 +77,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
     final primaryColor = theme.colorScheme.primary;
     final selectedDate = ref.watch(selectedDateProvider);
     final tasksAsync = ref.watch(dailyTasksProvider);
+    final currentFilter = ref.watch(taskFilterProvider);
     final profile = ref.watch(currentUserProfileProvider);
     final progress = ref.watch(dailyProgressProvider);
 
@@ -161,7 +162,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
               ),
             ),
 
-            // Task content - full screen, no empty time slots
+            // Task content
             tasksAsync.when(
               data: (tasks) {
                 if (tasks.isEmpty) {
@@ -172,19 +173,70 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                   );
                 }
 
+                // ALL filter: group tasks by date
+                if (currentFilter == TaskFilterType.all) {
+                  final grouped = <String, List<TaskModel>>{};
+                  for (final task in tasks) {
+                    final date = task.dueDate ?? task.createdAt ?? DateTime.now();
+                    final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                    grouped.putIfAbsent(key, () => []).add(task);
+                  }
+                  final sortedKeys = grouped.keys.toList()..sort();
+
+                  // Build flat list with date headers
+                  final items = <Widget>[];
+                  for (final key in sortedKeys) {
+                    final date = DateTime.parse(key);
+                    final isToday = AppDateUtils.isToday(date);
+                    items.add(Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                      child: Row(
+                        children: [
+                          if (isToday)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(6)),
+                              child: const Text('AZI', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                            ),
+                          Text(
+                            AppDateUtils.formatFull(date),
+                            style: TextStyle(fontSize: 13, fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                              color: isToday ? primaryColor : theme.colorScheme.onSurfaceVariant),
+                          ),
+                          const SizedBox(width: 6),
+                          Text('${grouped[key]!.length}', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ));
+                    for (final task in grouped[key]!) {
+                      items.add(Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TaskCard(task: task, showDate: false, animationIndex: 0),
+                      ));
+                    }
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => items[index],
+                      childCount: items.length,
+                    ),
+                  );
+                }
+
+                // TODAY / other filters: show by time slots
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        // Separate unscheduled and scheduled tasks
                         final unscheduled = tasks.where((t) => t.startTime == null).toList();
                         final scheduled = tasks.where((t) => t.startTime != null).toList()
                           ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
 
                         final allItems = <_TaskListItem>[];
 
-                        // Add unscheduled header + tasks
                         if (unscheduled.isNotEmpty) {
                           allItems.add(_TaskListItem(isHeader: true, headerTitle: 'Unscheduled', headerCount: unscheduled.length));
                           for (final task in unscheduled) {
@@ -192,7 +244,6 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                           }
                         }
 
-                        // Group scheduled tasks by hour and add only hours with tasks
                         if (scheduled.isNotEmpty) {
                           int? lastHour;
                           for (final task in scheduled) {

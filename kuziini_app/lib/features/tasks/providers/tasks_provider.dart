@@ -68,9 +68,14 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     List<TaskModel> tasks;
     if (filter == TaskFilterType.overdue) {
       tasks = await _repo.fetchOverdueTasks();
-    } else if (filter == TaskFilterType.myTasks) {
-      if (userId == null) return [];
-      tasks = await _repo.fetchTasks(createdBy: userId, fromDate: date, toDate: date);
+    } else if (filter == TaskFilterType.all) {
+      // All: fetch all tasks (past + present + future), limit 200
+      tasks = await _repo.fetchTasks(limit: 200);
+    } else if (filter == TaskFilterType.today) {
+      // Today: only today's tasks
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      tasks = await _repo.fetchTasksByDate(today);
     } else if (filter == TaskFilterType.assignedToMe) {
       if (userId == null) return [];
       tasks = await _repo.fetchTasksAssignedTo(userId, date: date);
@@ -103,9 +108,18 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       result = result.where((t) => t.priority == priorityFilter);
     }
 
-    // Sort: priority first (urgent→low), then by time
-    final sorted = result.toList()
-      ..sort((a, b) {
+    final sorted = result.toList();
+
+    if (filter == TaskFilterType.all) {
+      // Sort by date (newest first for past, oldest first for future)
+      sorted.sort((a, b) {
+        final da = a.dueDate ?? a.createdAt ?? DateTime(2099);
+        final db = b.dueDate ?? b.createdAt ?? DateTime(2099);
+        return da.compareTo(db);
+      });
+    } else {
+      // Sort: priority first (urgent→low), then by time
+      sorted.sort((a, b) {
         final pa = a.priority.index;
         final pb = b.priority.index;
         if (pa != pb) return pa.compareTo(pb);
@@ -113,6 +127,7 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
         final tb = b.startTime ?? b.dueDate ?? DateTime(2099);
         return ta.compareTo(tb);
       });
+    }
 
     return sorted;
   }
@@ -206,10 +221,10 @@ final upcomingTasksProvider = FutureProvider<List<TaskModel>>((ref) async {
 
 // ── Task Filters ──
 
-enum TaskFilterType { all, myTasks, assignedToMe, overdue, done, inProgress }
+enum TaskFilterType { all, today, assignedToMe, overdue, done, inProgress }
 
 final taskFilterProvider = StateProvider<TaskFilterType>((ref) {
-  return TaskFilterType.all;
+  return TaskFilterType.today;
 });
 
 final taskPriorityFilterProvider = StateProvider<TaskPriority?>((ref) {

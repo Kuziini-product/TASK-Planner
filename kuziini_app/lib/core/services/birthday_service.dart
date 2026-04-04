@@ -17,13 +17,16 @@ final birthdayUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
     final users = (data as List)
         .map((json) => UserProfile.fromJson(json as Map<String, dynamic>))
         .toList();
-    debugPrint('[Birthday] Loaded ${users.length} active users, '
-        '${users.where((u) => u.birthDate != null).length} have birth dates');
-    for (final u in users) {
-      if (u.birthDate != null) {
-        debugPrint('[Birthday]   ${u.displayName}: ${u.birthDate!.day}/${u.birthDate!.month}');
-      }
-    }
+    final now = DateTime.now();
+    final withDates = users.where((u) => u.birthDate != null).toList();
+    final todayMatches = users.where((u) => u.isBirthdayToday).toList();
+    debugPrint('[Birthday] === BIRTHDAY CHECK === '
+        'Today: ${now.day}/${now.month}/${now.year} | '
+        'Active users: ${users.length} | '
+        'With birth_date: ${withDates.length} | '
+        'Birthday TODAY: ${todayMatches.length} | '
+        'Dates: ${withDates.map((u) => "${u.displayName}=${u.birthDate!.day}/${u.birthDate!.month} (match=${u.isBirthdayToday})").join(", ")} | '
+        'Raw birth_date values: ${data.where((j) => j["birth_date"] != null).map((j) => "${j["full_name"] ?? j["email"]}=${j["birth_date"]}").join(", ")}');
     return users;
   } catch (e) {
     debugPrint('[Birthday] ERROR fetching users: $e');

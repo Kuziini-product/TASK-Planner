@@ -26,13 +26,11 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
     final borderC = ref.watch(buttonBorderColorProvider);
     final router = ref.watch(appRouterProvider);
 
-    // Auto-redirect to profile after first build
+    // Auto-redirect: calendar loads data, then switch to profile
     if (!_redirected) {
       _redirected = true;
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          router.go(AppRoutes.profile);
-        }
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (mounted) router.go(AppRoutes.profile);
       });
     }
 

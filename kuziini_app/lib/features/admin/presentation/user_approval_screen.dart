@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/services/birthday_service.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/kuziini_app_bar.dart';
@@ -144,6 +145,7 @@ class UserApprovalScreen extends ConsumerWidget {
                               'birth_date': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
                             }).eq('id', user.id);
                             ref.invalidate(allUsersProvider);
+                            ref.invalidate(birthdayUsersProvider);
                             if (context.mounted) context.showSnackBar('Birthday set for ${user.displayName}');
                           } catch (_) {}
                         },

@@ -1,25 +1,49 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/domain/auth_state.dart';
 import 'supabase_service.dart';
 
-/// Birthday users provider — fetches all active users and filters birthdays
+/// Fetches all active users with birth dates — independent provider
+/// that stays alive as long as MainShell is mounted.
+/// keepAlive ensures it doesn't auto-dispose between navigations.
 final birthdayUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
-  final supabase = SupabaseService.instance;
-  final data = await supabase.select(
-    'profiles',
-    filters: {'status': 'active'},
-  );
-  return data.map((json) => UserProfile.fromJson(json)).toList();
+  ref.keepAlive();
+  try {
+    final data = await SupabaseService.instance.client
+        .from('profiles')
+        .select('*')
+        .eq('status', 'active');
+    final users = (data as List)
+        .map((json) => UserProfile.fromJson(json as Map<String, dynamic>))
+        .toList();
+    debugPrint('[Birthday] Loaded ${users.length} active users, '
+        '${users.where((u) => u.birthDate != null).length} have birth dates');
+    for (final u in users) {
+      if (u.birthDate != null) {
+        debugPrint('[Birthday]   ${u.displayName}: ${u.birthDate!.day}/${u.birthDate!.month}');
+      }
+    }
+    return users;
+  } catch (e) {
+    debugPrint('[Birthday] ERROR fetching users: $e');
+    return [];
+  }
 });
 
 /// Users whose birthday is TODAY
 final todayBirthdayUsersProvider = Provider<List<UserProfile>>((ref) {
   final usersAsync = ref.watch(birthdayUsersProvider);
-  return usersAsync.valueOrNull
-          ?.where((u) => u.isBirthdayToday)
-          .toList() ??
-      [];
+  final users = usersAsync.valueOrNull ?? [];
+  final today = users.where((u) => u.isBirthdayToday).toList();
+  if (today.isNotEmpty) {
+    debugPrint('[Birthday] TODAY: ${today.map((u) => u.displayName).join(', ')}');
+  } else if (users.isNotEmpty) {
+    final now = DateTime.now();
+    debugPrint('[Birthday] No birthdays today (${now.day}/${now.month}). '
+        'Users with dates: ${users.where((u) => u.birthDate != null).map((u) => "${u.displayName}=${u.birthDate!.day}/${u.birthDate!.month}").join(", ")}');
+  }
+  return today;
 });
 
 /// Users whose birthday is THIS WEEK (but not today)
@@ -43,8 +67,7 @@ final birthdayDatesProvider = Provider<Map<String, List<String>>>((ref) {
   final map = <String, List<String>>{};
   for (final user in users) {
     if (user.birthDate != null) {
-      final key =
-          '${user.birthDate!.month}-${user.birthDate!.day}';
+      final key = '${user.birthDate!.month}-${user.birthDate!.day}';
       map.putIfAbsent(key, () => []).add(user.displayName);
     }
   }

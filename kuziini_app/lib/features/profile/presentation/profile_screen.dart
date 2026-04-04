@@ -15,6 +15,8 @@ import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_card.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../tasks/data/models/task_model.dart';
+import '../../tasks/presentation/widgets/task_card.dart';
 import '../../tasks/presentation/widgets/user_picker.dart';
 import '../../tasks/providers/tasks_provider.dart';
 import '../providers/profile_provider.dart';
@@ -437,67 +439,159 @@ class _LiveUsersCount extends ConsumerWidget {
   }
 }
 
-class _WeeklyStatsRow extends ConsumerWidget {
+class _WeeklyStatsRow extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final weeklyAsync = ref.watch(weeklyStatsProvider);
+  ConsumerState<_WeeklyStatsRow> createState() => _WeeklyStatsRowState();
+}
 
-    return weeklyAsync.when(
-      data: (stats) {
-        final total = stats['total'] ?? 0;
-        final done = stats['done'] ?? 0;
-        final inProgress = stats['in_progress'] ?? 0;
-        final todo = stats['todo'] ?? 0;
+class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
+  int _weekOffset = 0; // 0 = this week, -1 = last week, 1 = next week
+
+  DateTime get _weekStart {
+    final now = DateTime.now();
+    final thisWeekStart = now.subtract(Duration(days: now.weekday - 1));
+    return DateTime(thisWeekStart.year, thisWeekStart.month, thisWeekStart.day)
+        .add(Duration(days: _weekOffset * 7));
+  }
+
+  DateTime get _weekEnd => _weekStart.add(const Duration(days: 6));
+
+  String get _weekLabel {
+    if (_weekOffset == 0) return 'This Week';
+    if (_weekOffset == -1) return 'Last Week';
+    if (_weekOffset == 1) return 'Next Week';
+    return '${_weekStart.day}/${_weekStart.month} - ${_weekEnd.day}/${_weekEnd.month}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final repo = ref.watch(taskRepositoryProvider);
+
+    return FutureBuilder<List<TaskModel>>(
+      future: repo.fetchTasks(fromDate: _weekStart, toDate: _weekEnd, limit: 500),
+      builder: (context, snapshot) {
+        final tasks = snapshot.data?.where((t) => t.status != TaskStatus.archived).toList() ?? [];
+        final total = tasks.length;
+        final done = tasks.where((t) => t.status == TaskStatus.done).length;
+        final inProgress = tasks.where((t) => t.status == TaskStatus.in_progress).length;
+        final todo = tasks.where((t) => t.status == TaskStatus.todo).length;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('This Week', style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant, letterSpacing: 1)),
-            const SizedBox(height: 8),
+            // Week navigation
             Row(
               children: [
-                _WeekStatChip(label: 'Total', value: total, color: AppColors.info),
+                IconButton(
+                  onPressed: () => setState(() => _weekOffset--),
+                  icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), size: 16),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                ),
+                GestureDetector(
+                  onTap: _weekOffset != 0 ? () => setState(() => _weekOffset = 0) : null,
+                  child: Text(_weekLabel, style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: _weekOffset == 0 ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 1,
+                  )),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _weekOffset++),
+                  icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), size: 16),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                ),
+                const Spacer(),
+                Text('${_weekStart.day}/${_weekStart.month} - ${_weekEnd.day}/${_weekEnd.month}',
+                  style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // Stats chips - clickable
+            Row(
+              children: [
+                _WeekStatChip(label: 'Total', value: total, color: AppColors.info,
+                  onTap: () => _showWeekTasks(context, 'All Tasks', tasks)),
                 const SizedBox(width: 8),
-                _WeekStatChip(label: 'Done', value: done, color: AppColors.success),
+                _WeekStatChip(label: 'Done', value: done, color: AppColors.success,
+                  onTap: () => _showWeekTasks(context, 'Done', tasks.where((t) => t.isCompleted).toList())),
                 const SizedBox(width: 8),
-                _WeekStatChip(label: 'In Progress', value: inProgress, color: AppColors.warning),
+                _WeekStatChip(label: 'In Progress', value: inProgress, color: AppColors.warning,
+                  onTap: () => _showWeekTasks(context, 'In Progress', tasks.where((t) => t.status == TaskStatus.in_progress).toList())),
                 const SizedBox(width: 8),
-                _WeekStatChip(label: 'To Do', value: todo, color: theme.colorScheme.primary),
+                _WeekStatChip(label: 'To Do', value: todo, color: theme.colorScheme.primary,
+                  onTap: () => _showWeekTasks(context, 'To Do', tasks.where((t) => t.status == TaskStatus.todo).toList())),
               ],
             ),
           ],
         );
       },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showWeekTasks(BuildContext context, String title, List<TaskModel> tasks) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+            Text('$title - $_weekLabel', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            Text('${tasks.length} tasks', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: tasks.isEmpty
+                  ? Center(child: Text('No tasks', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)))
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: tasks.length,
+                      itemBuilder: (context, index) => TaskCard(task: tasks[index], animationIndex: index),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class _WeekStatChip extends StatelessWidget {
-  const _WeekStatChip({required this.label, required this.value, required this.color});
+  const _WeekStatChip({required this.label, required this.value, required this.color, this.onTap});
   final String label;
   final int value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border(left: BorderSide(color: color, width: 3)),
-          color: color.withValues(alpha: 0.06),
-        ),
-        child: Column(
-          children: [
-            Text('$value', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border(left: BorderSide(color: color, width: 3)),
+            color: color.withValues(alpha: 0.06),
+          ),
+          child: Column(
+            children: [
+              Text('$value', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+              const SizedBox(height: 2),
+              Text(label, style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ],
+          ),
         ),
       ),
     );

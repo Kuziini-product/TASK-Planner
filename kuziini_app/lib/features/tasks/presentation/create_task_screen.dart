@@ -714,20 +714,43 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
               AppSpacing.vGapXl,
 
-              // Date picker
-              _OptionTile(
-                icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
-                label: _dueDate != null
-                    ? _endDate != null && _endDate != _dueDate
-                        ? '${_dueDate!.day}/${_dueDate!.month} → ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                        : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
-                    : 'Add due date',
-                isActive: _dueDate != null,
-                onTap: _pickDate,
-                onClear: _dueDate != null
-                    ? () => setState(() { _dueDate = null; _endDate = null; })
-                    : null,
-              ),
+              // Date - show as compact info if pre-set, full picker if not
+              if (_dueDate != null && widget.queryParams.containsKey('date'))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        _endDate != null && _endDate != _dueDate
+                            ? '${_dueDate!.day}/${_dueDate!.month} → ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                            : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: primaryColor),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _pickDate,
+                        child: const Text('Change', style: TextStyle(fontSize: 11)),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                _OptionTile(
+                  icon: PhosphorIcons.calendar(PhosphorIconsStyle.regular),
+                  label: _dueDate != null
+                      ? _endDate != null && _endDate != _dueDate
+                          ? '${_dueDate!.day}/${_dueDate!.month} → ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                          : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
+                      : 'Add due date',
+                  isActive: _dueDate != null,
+                  onTap: _pickDate,
+                  onClear: _dueDate != null
+                      ? () => setState(() { _dueDate = null; _endDate = null; })
+                      : null,
+                ),
 
               // Time pickers
               _OptionTile(

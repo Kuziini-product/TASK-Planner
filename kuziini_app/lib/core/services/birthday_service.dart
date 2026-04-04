@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/domain/auth_state.dart';
@@ -20,16 +19,16 @@ final birthdayUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
     final now = DateTime.now();
     final withDates = users.where((u) => u.birthDate != null).toList();
     final todayMatches = users.where((u) => u.isBirthdayToday).toList();
-    debugPrint('[Birthday] === BIRTHDAY CHECK === '
+    // Use print() instead of debugPrint() — works in release mode on web
+    print('[Birthday] === CHECK === '
         'Today: ${now.day}/${now.month}/${now.year} | '
-        'Active users: ${users.length} | '
-        'With birth_date: ${withDates.length} | '
-        'Birthday TODAY: ${todayMatches.length} | '
-        'Dates: ${withDates.map((u) => "${u.displayName}=${u.birthDate!.day}/${u.birthDate!.month} (match=${u.isBirthdayToday})").join(", ")} | '
-        'Raw birth_date values: ${data.where((j) => j["birth_date"] != null).map((j) => "${j["full_name"] ?? j["email"]}=${j["birth_date"]}").join(", ")}');
+        'Users: ${users.length} | '
+        'With dates: ${withDates.length} | '
+        'Match today: ${todayMatches.length} | '
+        'Details: ${withDates.map((u) => "${u.displayName}=${u.birthDate!.day}/${u.birthDate!.month}(${u.isBirthdayToday})").join(", ")}');
     return users;
-  } catch (e) {
-    debugPrint('[Birthday] ERROR fetching users: $e');
+  } catch (e, st) {
+    print('[Birthday] ERROR: $e\n$st');
     return [];
   }
 });
@@ -40,10 +39,10 @@ final todayBirthdayUsersProvider = Provider<List<UserProfile>>((ref) {
   final users = usersAsync.valueOrNull ?? [];
   final today = users.where((u) => u.isBirthdayToday).toList();
   if (today.isNotEmpty) {
-    debugPrint('[Birthday] TODAY: ${today.map((u) => u.displayName).join(', ')}');
+    print('[Birthday] TODAY: ${today.map((u) => u.displayName).join(', ')}');
   } else if (users.isNotEmpty) {
     final now = DateTime.now();
-    debugPrint('[Birthday] No birthdays today (${now.day}/${now.month}). '
+    print('[Birthday] No birthdays today (${now.day}/${now.month}). '
         'Users with dates: ${users.where((u) => u.birthDate != null).map((u) => "${u.displayName}=${u.birthDate!.day}/${u.birthDate!.month}").join(", ")}');
   }
   return today;

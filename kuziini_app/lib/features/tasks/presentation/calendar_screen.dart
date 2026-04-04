@@ -138,28 +138,23 @@ class _DayView extends ConsumerWidget {
     final theme = Theme.of(context);
     final day = ref.watch(_calendarRefDateProvider);
 
-    return Column(
-      children: [
-        Padding(
-          padding: AppSpacing.paddingHorizontalLg,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = day.subtract(const Duration(days: 1)),
-                icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
-              ),
-              Text(AppDateUtils.formatFull(day), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              IconButton(
-                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = day.add(const Duration(days: 1)),
-                icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
-              ),
-            ],
+    return GestureDetector(
+      onHorizontalDragEnd: (d) {
+        if (d.primaryVelocity != null) {
+          if (d.primaryVelocity! < -100) ref.read(_calendarRefDateProvider.notifier).state = day.add(const Duration(days: 1));
+          else if (d.primaryVelocity! > 100) ref.read(_calendarRefDateProvider.notifier).state = day.subtract(const Duration(days: 1));
+        }
+      },
+      child: Column(
+        children: [
+          Padding(
+            padding: AppSpacing.paddingHorizontalLg,
+            child: Center(child: Text(AppDateUtils.formatFull(day), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
           ),
-        ),
-        const Divider(),
-        Expanded(child: _TaskListForDay(day: day)),
-      ],
+          const Divider(),
+          Expanded(child: _TaskListForDay(day: day)),
+        ],
+      ),
     );
   }
 }
@@ -183,28 +178,21 @@ class _WeekView extends ConsumerWidget {
     final range = (from: firstDay, to: lastDay);
     final tasksAsync = ref.watch(calendarTasksProvider(range));
 
-    return Column(
+    return GestureDetector(
+      onHorizontalDragEnd: (d) {
+        if (d.primaryVelocity != null) {
+          if (d.primaryVelocity! < -100) ref.read(_calendarRefDateProvider.notifier).state = refDate.add(const Duration(days: 7));
+          else if (d.primaryVelocity! > 100) ref.read(_calendarRefDateProvider.notifier).state = refDate.subtract(const Duration(days: 7));
+        }
+      },
+      child: Column(
       children: [
-        // Week navigation with arrows
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = refDate.subtract(const Duration(days: 7)),
-                icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
-              ),
-              Text(
-                '${AppDateUtils.formatDate(firstDay)} – ${AppDateUtils.formatDate(lastDay)}',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              IconButton(
-                onPressed: () => ref.read(_calendarRefDateProvider.notifier).state = refDate.add(const Duration(days: 7)),
-                icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Center(child: Text(
+            '${AppDateUtils.formatDate(firstDay)} – ${AppDateUtils.formatDate(lastDay)}',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          )),
         ),
         // Day selector row
         Padding(
@@ -357,6 +345,7 @@ class _WeekView extends ConsumerWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }
@@ -387,25 +376,18 @@ class _MonthView extends ConsumerWidget {
     final range = (from: firstDay, to: lastDay);
     final tasksAsync = ref.watch(calendarTasksProvider(range));
 
-    return Column(
+    return GestureDetector(
+      onHorizontalDragEnd: (d) {
+        if (d.primaryVelocity != null) {
+          if (d.primaryVelocity! < -100) ref.read(_calendarMonthProvider.notifier).state = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+          else if (d.primaryVelocity! > 100) ref.read(_calendarMonthProvider.notifier).state = DateTime(currentMonth.year, currentMonth.month - 1, 1);
+        }
+      },
+      child: Column(
       children: [
-        // Month navigation
         Padding(
           padding: AppSpacing.paddingHorizontalLg,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () => ref.read(_calendarMonthProvider.notifier).state = DateTime(currentMonth.year, currentMonth.month - 1, 1),
-                icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
-              ),
-              Text(AppDateUtils.formatMonthYear(currentMonth), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              IconButton(
-                onPressed: () => ref.read(_calendarMonthProvider.notifier).state = DateTime(currentMonth.year, currentMonth.month + 1, 1),
-                icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
-              ),
-            ],
-          ),
+          child: Center(child: Text(AppDateUtils.formatMonthYear(currentMonth), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
         ),
 
         // Day labels
@@ -536,6 +518,7 @@ class _MonthView extends ConsumerWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }
@@ -577,24 +560,18 @@ class _YearView extends ConsumerWidget {
     // Get holidays for this year
     final holidays = HolidaysService.getHolidays(year);
 
-    return Column(
+    return GestureDetector(
+      onHorizontalDragEnd: (d) {
+        if (d.primaryVelocity != null) {
+          if (d.primaryVelocity! < -100) ref.read(_calendarMonthProvider.notifier).state = DateTime(year + 1, currentMonth.month, 1);
+          else if (d.primaryVelocity! > 100) ref.read(_calendarMonthProvider.notifier).state = DateTime(year - 1, currentMonth.month, 1);
+        }
+      },
+      child: Column(
       children: [
         Padding(
           padding: AppSpacing.paddingHorizontalLg,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () => ref.read(_calendarMonthProvider.notifier).state = DateTime(year - 1, currentMonth.month, 1),
-                icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
-              ),
-              Text('$year', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-              IconButton(
-                onPressed: () => ref.read(_calendarMonthProvider.notifier).state = DateTime(year + 1, currentMonth.month, 1),
-                icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
-              ),
-            ],
-          ),
+          child: Center(child: Text('$year', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700))),
         ),
         const SizedBox(height: 8),
         Expanded(
@@ -691,6 +668,7 @@ class _YearView extends ConsumerWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }
@@ -715,37 +693,17 @@ class _DayDetailView extends ConsumerWidget {
         ),
         leadingWidth: 90,
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Previous day
-            IconButton(
-              onPressed: () {
-                final prev = day.subtract(const Duration(days: 1));
-                ref.read(_calendarSelectedDayProvider.notifier).state = prev;
-              },
-              icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), size: 16),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              padding: EdgeInsets.zero,
-            ),
-            Text(
-              AppDateUtils.formatFull(day),
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            // Next day
-            IconButton(
-              onPressed: () {
-                final next = day.add(const Duration(days: 1));
-                ref.read(_calendarSelectedDayProvider.notifier).state = next;
-              },
-              icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), size: 16),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              padding: EdgeInsets.zero,
-            ),
-          ],
-        ),
+        title: Text(AppDateUtils.formatFull(day), style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
       ),
-      body: _TaskListForDay(day: day),
+      body: GestureDetector(
+        onHorizontalDragEnd: (d) {
+          if (d.primaryVelocity != null) {
+            if (d.primaryVelocity! < -100) ref.read(_calendarSelectedDayProvider.notifier).state = day.add(const Duration(days: 1));
+            else if (d.primaryVelocity! > 100) ref.read(_calendarSelectedDayProvider.notifier).state = day.subtract(const Duration(days: 1));
+          }
+        },
+        child: _TaskListForDay(day: day),
+      ),
     );
   }
 }

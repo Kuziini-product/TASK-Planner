@@ -74,22 +74,36 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     final priorityFilter = ref.read(taskPriorityFilterProvider);
     final statusFilter = ref.read(taskStatusFilterProvider);
 
-    // Fetch base tasks
+    // Fetch base tasks - always fetch broadly enough
     List<TaskModel> tasks;
-    if (filter == TaskFilterType.overdue) {
-      tasks = await _repo.fetchOverdueTasks();
-    } else if (filter == TaskFilterType.all) {
-      // All: fetch all tasks (past + present + future), limit 200
-      tasks = await _repo.fetchTasks(limit: 200);
+    if (filter == TaskFilterType.all) {
+      // All: fetch all tasks
+      if (teamUserId != null && teamUserId != 'all') {
+        // Fetch all for specific user
+        tasks = await _repo.fetchTasks(createdBy: teamUserId, limit: 200);
+        final assigned = await _repo.fetchTasksAssignedTo(teamUserId);
+        final ids = tasks.map((t) => t.id).toSet();
+        for (final t in assigned) {
+          if (!ids.contains(t.id)) tasks.add(t);
+        }
+      } else {
+        tasks = await _repo.fetchTasks(limit: 200);
+      }
     } else if (filter == TaskFilterType.today) {
-      // Today: selected date's tasks + tasks without due date
-      final dated = await _repo.fetchTasksByDate(date);
+      // Today: selected date tasks
+      tasks = await _repo.fetchTasksByDate(date);
+      // Add tasks without due_date
       final allRecent = await _repo.fetchTasks(limit: 100);
       final noDueDate = allRecent.where((t) => t.dueDate == null).toList();
-      tasks = [...dated, ...noDueDate];
+      final ids = tasks.map((t) => t.id).toSet();
+      for (final t in noDueDate) {
+        if (!ids.contains(t.id)) tasks.add(t);
+      }
+    } else if (filter == TaskFilterType.overdue) {
+      tasks = await _repo.fetchOverdueTasks();
     } else if (filter == TaskFilterType.assignedToMe) {
       if (userId == null) return [];
-      tasks = await _repo.fetchTasksAssignedTo(userId, date: date);
+      tasks = await _repo.fetchTasksAssignedTo(userId);
     } else {
       tasks = await _repo.fetchTasksByDate(date);
     }
@@ -97,8 +111,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     // Apply all filters simultaneously
     var result = tasks.where((t) => !t.isArchived);
 
-    // Team user filter
-    if (teamUserId != null && teamUserId != 'all') {
+    // Team user filter (for today/overdue/done/inProgress which fetch all users)
+    if (teamUserId != null && teamUserId != 'all' && filter != TaskFilterType.all) {
       result = result.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId);
     }
 

@@ -28,7 +28,7 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
     final textInt = ref.watch(textIntensityProvider);
     final router = ref.watch(appRouterProvider);
 
-    // Auto-redirect: calendar loads data, then switch to profile
+    // Auto-redirect to profile on first load
     if (!_redirected) {
       _redirected = true;
       Future.delayed(const Duration(milliseconds: 1200), () {
@@ -58,36 +58,6 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
         Locale('ro', ''),
       ],
     ),
-        // Loading overlay
-        if (_showLoader)
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: AnimatedOpacity(
-              opacity: _showLoader ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.15),
-                child: Center(
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }

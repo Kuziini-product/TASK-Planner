@@ -8,6 +8,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/constants/app_colors.dart';
 import '../core/router/app_router.dart';
 import '../core/services/voice_task_parser.dart';
+import '../features/tasks/providers/tasks_provider.dart';
 
 class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.child});
@@ -62,6 +63,12 @@ class MainShell extends ConsumerWidget {
     }
   }
 
+  void _refreshOnNav(WidgetRef ref) {
+    ref.invalidate(dailyTasksProvider);
+    ref.invalidate(taskStatsProvider);
+    ref.invalidate(weeklyStatsProvider);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = _calculateSelectedIndex(context);
@@ -92,7 +99,7 @@ class MainShell extends ConsumerWidget {
                   activeIcon: PhosphorIcons.calendar(PhosphorIconsStyle.fill),
                   label: 'Calendar',
                   isSelected: selectedIndex == 0,
-                  onTap: () => _onItemTapped(context, 0),
+                  onTap: () { _refreshOnNav(ref); _onItemTapped(context, 0); },
                 ),
                 // Center FAB – tap: create task, long-press: voice task
                 GestureDetector(
@@ -124,7 +131,7 @@ class MainShell extends ConsumerWidget {
                   activeIcon: PhosphorIcons.user(PhosphorIconsStyle.fill),
                   label: 'Profile',
                   isSelected: selectedIndex == 2,
-                  onTap: () => _onItemTapped(context, 2),
+                  onTap: () { _refreshOnNav(ref); _onItemTapped(context, 2); },
                 ),
               ],
             ),

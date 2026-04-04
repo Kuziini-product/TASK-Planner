@@ -60,11 +60,6 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       },
     );
 
-    // Auto-refresh every 30 seconds as backup
-    Future.delayed(const Duration(seconds: 30), () {
-      if (ref.exists(dailyTasksProvider)) _refreshTasks();
-    });
-
     ref.onDispose(() {
       if (_subscription != null) {
         _repo.unsubscribe(_subscription!);

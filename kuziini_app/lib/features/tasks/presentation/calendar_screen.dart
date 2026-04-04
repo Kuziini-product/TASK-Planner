@@ -68,10 +68,7 @@ class CalendarScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: InteractiveViewer(
-        minScale: 0.7,
-        maxScale: 2.5,
-        child: Column(
+      body: Column(
         children: [
           // View selector: Day | Week | Month | Year
           Padding(
@@ -121,7 +118,6 @@ class CalendarScreen extends ConsumerWidget {
             },
           ),
         ],
-      ),
       ),
     );
   }

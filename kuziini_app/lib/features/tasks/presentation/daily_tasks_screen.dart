@@ -93,9 +93,6 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
             ),
           ),
         ),
-        child: InteractiveViewer(
-        minScale: 0.7,
-        maxScale: 2.5,
         child: RefreshIndicator(
         onRefresh: () => ref.read(dailyTasksProvider.notifier).refresh(),
         color: primaryColor,
@@ -304,7 +301,6 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
-      ),
       ),
       ),
       // FAB removed – use bottom nav (+) button instead

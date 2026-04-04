@@ -58,6 +58,21 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
         Locale('ro', ''),
       ],
     ),
+        // Splash logo while loading
+        if (_showLoader)
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Container(
+              color: Colors.white,
+              child: Center(
+                child: Image.asset(
+                  'assets/images/kuziini_logo_portrait.png',
+                  width: 200,
+                  color: primaryColor.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

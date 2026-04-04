@@ -524,16 +524,24 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
 
                   Color? bgColor;
                   Color textColor = theme.colorScheme.onSurface;
-                  if (isToday) { bgColor = weekColor; textColor = Colors.white; }
+                  if (isToday) { bgColor = primaryColor; textColor = Colors.white; }
                   else if (holidayName != null) { bgColor = Colors.green.withValues(alpha: 0.15); textColor = Colors.green.shade700; }
                   else if (isSat) { bgColor = Colors.orange.withValues(alpha: 0.08); textColor = Colors.orange.shade700; }
                   else if (isSun) { bgColor = Colors.green.withValues(alpha: 0.08); textColor = Colors.green.shade700; }
 
+                  final dayTaskList = tasks.where((t) => t.coversDate(day)).toList();
+
                   return Expanded(
                     child: GestureDetector(
                       onTap: () {
-                        final params = <String, String>{'date': day.toIso8601String().split('T').first};
-                        context.push(Uri(path: '/create-task', queryParameters: params).toString());
+                        if (dayTaskList.isEmpty) {
+                          // No tasks — go directly to create task with this date
+                          final params = <String, String>{'date': day.toIso8601String().split('T').first};
+                          context.push(Uri(path: '/create-task', queryParameters: params).toString());
+                        } else {
+                          // Has tasks — show day task list
+                          _showDayTasks(context, day, dayTaskList);
+                        }
                       },
                       child: Tooltip(
                         message: holidayName ?? '',
@@ -550,7 +558,7 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
                               Text(['L', 'M', 'M', 'J', 'V', 'S', 'D'][day.weekday - 1],
                                 style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : textColor.withValues(alpha: 0.7))),
                               Text('${day.day}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isToday ? Colors.white : textColor)),
-                              if (dayTasks > 0)
+                              if (dayTaskList.isNotEmpty)
                                 Container(width: 4, height: 4, margin: const EdgeInsets.only(top: 1),
                                   decoration: BoxDecoration(shape: BoxShape.circle, color: isToday ? Colors.white70 : weekColor)),
                             ],
@@ -630,6 +638,60 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
                       itemCount: tasks.length,
                       itemBuilder: (context, index) => TaskCard(task: tasks[index], animationIndex: index),
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDayTasks(BuildContext context, DateTime day, List<TaskModel> tasks) {
+    final theme = Theme.of(context);
+    final dayNames = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'];
+    final dayLabel = '${dayNames[day.weekday - 1]}, ${day.day}/${day.month}';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+            Text(dayLabel, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            Text('${tasks.length} task${tasks.length != 1 ? '-uri' : ''}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: tasks.length,
+                itemBuilder: (context, index) => TaskCard(task: tasks[index], animationIndex: index),
+              ),
+            ),
+            // Add task button at the bottom
+            Padding(
+              padding: EdgeInsets.only(left: 16, right: 16, bottom: MediaQuery.of(ctx).padding.bottom + 12, top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    final params = <String, String>{'date': day.toIso8601String().split('T').first};
+                    context.push(Uri(path: '/create-task', queryParameters: params).toString());
+                  },
+                  icon: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold), size: 18),
+                  label: const Text('Task nou'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

@@ -104,6 +104,9 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     } else if (filter == TaskFilterType.assignedToMe) {
       if (userId == null) return [];
       tasks = await _repo.fetchTasksAssignedTo(userId);
+    } else if (filter == TaskFilterType.done || filter == TaskFilterType.inProgress) {
+      // Done/InProgress: fetch all tasks so we can filter by status
+      tasks = await _repo.fetchTasks(limit: 500);
     } else {
       tasks = await _repo.fetchTasksByDate(date);
     }

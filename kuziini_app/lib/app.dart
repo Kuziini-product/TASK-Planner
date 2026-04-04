@@ -15,6 +15,7 @@ class KuziiniApp extends ConsumerStatefulWidget {
 
 class _KuziiniAppState extends ConsumerState<KuziiniApp> {
   bool _redirected = false;
+  bool _showLoader = true;
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +31,16 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
     if (!_redirected) {
       _redirected = true;
       Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted) router.go(AppRoutes.profile);
+        if (mounted) {
+          router.go(AppRoutes.profile);
+          setState(() => _showLoader = false);
+        }
       });
     }
 
-    return MaterialApp.router(
+    return Stack(
+      children: [
+        MaterialApp.router(
       title: 'Kuziini Task Manager',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC),
@@ -49,6 +55,38 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
       supportedLocales: const [
         Locale('en', ''),
         Locale('ro', ''),
+      ],
+    ),
+        // Loading overlay
+        if (_showLoader)
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: AnimatedOpacity(
+              opacity: _showLoader ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.15),
+                child: Center(
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

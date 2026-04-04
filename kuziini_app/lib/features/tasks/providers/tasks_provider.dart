@@ -87,11 +87,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       // All: fetch all tasks (past + present + future), limit 200
       tasks = await _repo.fetchTasks(limit: 200);
     } else if (filter == TaskFilterType.today) {
-      // Today: today's tasks + tasks without due date
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final dated = await _repo.fetchTasksByDate(today);
-      // Also fetch tasks without due_date
+      // Today: selected date's tasks + tasks without due date
+      final dated = await _repo.fetchTasksByDate(date);
       final allRecent = await _repo.fetchTasks(limit: 100);
       final noDueDate = allRecent.where((t) => t.dueDate == null).toList();
       tasks = [...dated, ...noDueDate];

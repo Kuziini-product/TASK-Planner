@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/services/holidays_service.dart';
 import '../../../core/services/presence_service.dart';
 import '../../../core/widgets/alerts_button.dart';
 
@@ -468,10 +469,19 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
     return 'W$_weekNumber';
   }
 
+  // Rotating colors for different weeks
+  static const _weekColors = [
+    Colors.teal, Colors.indigo, Colors.deepOrange, Colors.purple,
+    Colors.blue, Colors.pink, Colors.amber, Colors.cyan,
+  ];
+
+  Color get _weekColor => _weekColors[_weekNumber % _weekColors.length];
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final weekColor = _weekColor;
     final repo = ref.watch(taskRepositoryProvider);
     final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
 
@@ -487,74 +497,79 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
         return GestureDetector(
           onHorizontalDragEnd: (details) {
             if (details.primaryVelocity != null) {
-              if (details.primaryVelocity! < -100) {
-                setState(() => _weekOffset++);
-              } else if (details.primaryVelocity! > 100) {
-                setState(() => _weekOffset--);
-              }
+              if (details.primaryVelocity! < -100) setState(() => _weekOffset++);
+              else if (details.primaryVelocity! > 100) setState(() => _weekOffset--);
             }
           },
-          child: Column(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: weekColor.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: weekColor.withValues(alpha: 0.15)),
+            ),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Week header with swipe hint
+              // Week header
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: _weekOffset != 0 ? () => setState(() => _weekOffset = 0) : null,
-                    child: Text(_weekLabel, style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: _weekOffset == 0 ? primaryColor : theme.colorScheme.onSurfaceVariant,
-                    )),
-                  ),
+                  Text(_weekLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: weekColor)),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('W$_weekNumber', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: primaryColor)),
+                    decoration: BoxDecoration(color: weekColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                    child: Text('W$_weekNumber', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: weekColor)),
                   ),
                   const Spacer(),
                   Text('${_weekStart.day}/${_weekStart.month} - ${_weekEnd.day}/${_weekEnd.month}',
                     style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
-                  const SizedBox(width: 4),
-                  Icon(PhosphorIcons.arrowsLeftRight(PhosphorIconsStyle.regular), size: 12, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
                 ],
               ),
               const SizedBox(height: 8),
-              // Day buttons - click to add task
+              // Day buttons with holidays in green
               Row(
                 children: days.map((day) {
                   final isToday = day.year == DateTime.now().year && day.month == DateTime.now().month && day.day == DateTime.now().day;
+                  final holidayName = HolidaysService.getHolidayName(day);
+                  final isSat = HolidaysService.isSaturday(day);
+                  final isSun = HolidaysService.isSunday(day);
+                  final isFree = holidayName != null || isSat || isSun;
                   final dayTasks = tasks.where((t) => t.dueDate != null && t.dueDate!.day == day.day && t.dueDate!.month == day.month).length;
+
+                  Color? bgColor;
+                  Color textColor = theme.colorScheme.onSurface;
+                  if (isToday) { bgColor = weekColor; textColor = Colors.white; }
+                  else if (holidayName != null) { bgColor = Colors.green.withValues(alpha: 0.15); textColor = Colors.green.shade700; }
+                  else if (isSat) { bgColor = Colors.orange.withValues(alpha: 0.08); textColor = Colors.orange.shade700; }
+                  else if (isSun) { bgColor = Colors.green.withValues(alpha: 0.08); textColor = Colors.green.shade700; }
+
                   return Expanded(
                     child: GestureDetector(
                       onTap: () {
                         final params = <String, String>{'date': day.toIso8601String().split('T').first};
                         context.push(Uri(path: '/create-task', queryParameters: params).toString());
                       },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isToday ? primaryColor : null,
-                          borderRadius: BorderRadius.circular(6),
-                          border: isToday ? null : Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(['L', 'M', 'M', 'J', 'V', 'S', 'D'][day.weekday - 1],
-                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant)),
-                            Text('${day.day}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null)),
-                            if (dayTasks > 0)
-                              Container(
-                                width: 4, height: 4, margin: const EdgeInsets.only(top: 1),
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: isToday ? Colors.white70 : primaryColor),
-                              ),
-                          ],
+                      child: Tooltip(
+                        message: holidayName ?? '',
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            borderRadius: BorderRadius.circular(6),
+                            border: isToday ? null : Border.all(color: isFree ? Colors.green.withValues(alpha: 0.3) : theme.dividerColor.withValues(alpha: 0.15)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(['L', 'M', 'M', 'J', 'V', 'S', 'D'][day.weekday - 1],
+                                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : textColor.withValues(alpha: 0.7))),
+                              Text('${day.day}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isToday ? Colors.white : textColor)),
+                              if (dayTasks > 0)
+                                Container(width: 4, height: 4, margin: const EdgeInsets.only(top: 1),
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: isToday ? Colors.white70 : weekColor)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -578,7 +593,25 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
                     onTap: () => _showWeekTasks(context, 'To Do', tasks.where((t) => t.status == TaskStatus.todo).toList())),
                 ],
               ),
+              // This Week button
+              if (_weekOffset != 0) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _weekOffset = 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: weekColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('This Week', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: weekColor)),
+                    ),
+                  ),
+                ),
+              ],
             ],
+          ),
           ),
         );
       },

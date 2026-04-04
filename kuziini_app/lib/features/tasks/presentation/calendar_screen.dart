@@ -546,6 +546,21 @@ class _YearView extends ConsumerWidget {
   const _YearView({required this.month});
   final DateTime month;
 
+  // Season colors
+  static Color _seasonColor(int month) {
+    if (month >= 3 && month <= 5) return Colors.green.withValues(alpha: 0.08); // Spring
+    if (month >= 6 && month <= 8) return Colors.amber.withValues(alpha: 0.08); // Summer
+    if (month >= 9 && month <= 11) return Colors.orange.withValues(alpha: 0.08); // Autumn
+    return Colors.blue.withValues(alpha: 0.08); // Winter
+  }
+
+  static Color _seasonBorder(int month) {
+    if (month >= 3 && month <= 5) return Colors.green.withValues(alpha: 0.3);
+    if (month >= 6 && month <= 8) return Colors.amber.withValues(alpha: 0.3);
+    if (month >= 9 && month <= 11) return Colors.orange.withValues(alpha: 0.3);
+    return Colors.blue.withValues(alpha: 0.3);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -554,9 +569,16 @@ class _YearView extends ConsumerWidget {
     final year = currentMonth.year;
     final now = DateTime.now();
 
+    // Fetch all tasks for the year
+    final yearStart = DateTime(year, 1, 1);
+    final yearEnd = DateTime(year, 12, 31);
+    final tasksAsync = ref.watch(calendarTasksProvider((from: yearStart, to: yearEnd)));
+
+    // Get holidays for this year
+    final holidays = HolidaysService.getHolidays(year);
+
     return Column(
       children: [
-        // Year navigation
         Padding(
           padding: AppSpacing.paddingHorizontalLg,
           child: Row(
@@ -575,21 +597,39 @@ class _YearView extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 8),
-        // 12 month grid (3x4)
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.75,
             ),
             itemCount: 12,
             itemBuilder: (context, index) {
               final m = index + 1;
               final isCurrentMonth = year == now.year && m == now.month;
-              final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              final monthNames = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
+
+              // Count tasks per month and status
+              final monthTasks = tasksAsync.valueOrNull?.where((t) {
+                if (t.dueDate == null) return false;
+                return t.dueDate!.month == m && t.dueDate!.year == year;
+              }).where((t) => t.status != TaskStatus.archived).toList() ?? [];
+
+              final total = monthTasks.length;
+              final done = monthTasks.where((t) => t.isCompleted).length;
+              final inProgress = monthTasks.where((t) => t.status == TaskStatus.in_progress).length;
+
+              // Holidays in this month
+              final monthHolidays = <String>[];
+              holidays.forEach((key, name) {
+                final parts = key.split('-');
+                if (int.parse(parts[0]) == m && !monthHolidays.contains(name)) {
+                  monthHolidays.add(name);
+                }
+              });
 
               return GestureDetector(
                 onTap: () {
@@ -597,20 +637,53 @@ class _YearView extends ConsumerWidget {
                   ref.read(_calendarViewProvider.notifier).state = CalendarView.month;
                 },
                 child: Container(
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isCurrentMonth ? primaryColor.withValues(alpha: 0.1) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    color: isCurrentMonth ? primaryColor.withValues(alpha: 0.1) : _seasonColor(m),
                     borderRadius: BorderRadius.circular(12),
-                    border: isCurrentMonth ? Border.all(color: primaryColor.withValues(alpha: 0.4)) : null,
+                    border: Border.all(color: isCurrentMonth ? primaryColor.withValues(alpha: 0.5) : _seasonBorder(m)),
                   ),
-                  child: Center(
-                    child: Text(
-                      monthNames[index],
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isCurrentMonth ? FontWeight.w700 : FontWeight.w500,
-                        color: isCurrentMonth ? primaryColor : theme.colorScheme.onSurface,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Month name
+                      Text(
+                        monthNames[index],
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isCurrentMonth ? FontWeight.w800 : FontWeight.w600,
+                          color: isCurrentMonth ? primaryColor : theme.colorScheme.onSurface,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      // Task counts
+                      if (total > 0) ...[
+                        Row(
+                          children: [
+                            Container(width: 4, height: 4, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.info)),
+                            Text(' $total', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.info)),
+                            const SizedBox(width: 6),
+                            Container(width: 4, height: 4, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success)),
+                            Text(' $done', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.success)),
+                            const SizedBox(width: 6),
+                            Container(width: 4, height: 4, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.warning)),
+                            Text(' $inProgress', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.warning)),
+                          ],
+                        ),
+                      ] else
+                        Text('0 tasks', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                      // Holidays
+                      if (monthHolidays.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        ...monthHolidays.take(3).map((h) => Text(
+                          h,
+                          style: TextStyle(fontSize: 8, color: Colors.blue.shade700, fontWeight: FontWeight.w600),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        )),
+                        if (monthHolidays.length > 3)
+                          Text('+${monthHolidays.length - 3} more', style: TextStyle(fontSize: 7, color: Colors.blue.shade400)),
+                      ],
+                    ],
                   ),
                 ),
               );

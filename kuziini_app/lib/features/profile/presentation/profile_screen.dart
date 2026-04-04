@@ -445,7 +445,7 @@ class _WeeklyStatsRow extends ConsumerStatefulWidget {
 }
 
 class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
-  int _weekOffset = 0; // 0 = this week, -1 = last week, 1 = next week
+  int _weekOffset = 0;
 
   DateTime get _weekStart {
     final now = DateTime.now();
@@ -456,17 +456,24 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
 
   DateTime get _weekEnd => _weekStart.add(const Duration(days: 6));
 
+  int get _weekNumber {
+    final jan1 = DateTime(_weekStart.year, 1, 1);
+    return ((_weekStart.difference(jan1).inDays + jan1.weekday) / 7).ceil();
+  }
+
   String get _weekLabel {
     if (_weekOffset == 0) return 'This Week';
     if (_weekOffset == -1) return 'Last Week';
     if (_weekOffset == 1) return 'Next Week';
-    return '${_weekStart.day}/${_weekStart.month} - ${_weekEnd.day}/${_weekEnd.month}';
+    return 'W$_weekNumber';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
     final repo = ref.watch(taskRepositoryProvider);
+    final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
 
     return FutureBuilder<List<TaskModel>>(
       future: repo.fetchTasks(fromDate: _weekStart, toDate: _weekEnd, limit: 500),
@@ -477,55 +484,102 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
         final inProgress = tasks.where((t) => t.status == TaskStatus.in_progress).length;
         final todo = tasks.where((t) => t.status == TaskStatus.todo).length;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Week navigation
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => setState(() => _weekOffset--),
-                  icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), size: 16),
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: EdgeInsets.zero,
-                ),
-                GestureDetector(
-                  onTap: _weekOffset != 0 ? () => setState(() => _weekOffset = 0) : null,
-                  child: Text(_weekLabel, style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: _weekOffset == 0 ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1,
-                  )),
-                ),
-                IconButton(
-                  onPressed: () => setState(() => _weekOffset++),
-                  icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), size: 16),
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: EdgeInsets.zero,
-                ),
-                const Spacer(),
-                Text('${_weekStart.day}/${_weekStart.month} - ${_weekEnd.day}/${_weekEnd.month}',
-                  style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            // Stats chips - clickable
-            Row(
-              children: [
-                _WeekStatChip(label: 'Total', value: total, color: AppColors.info,
-                  onTap: () => _showWeekTasks(context, 'All Tasks', tasks)),
-                const SizedBox(width: 8),
-                _WeekStatChip(label: 'Done', value: done, color: AppColors.success,
-                  onTap: () => _showWeekTasks(context, 'Done', tasks.where((t) => t.isCompleted).toList())),
-                const SizedBox(width: 8),
-                _WeekStatChip(label: 'In Progress', value: inProgress, color: AppColors.warning,
-                  onTap: () => _showWeekTasks(context, 'In Progress', tasks.where((t) => t.status == TaskStatus.in_progress).toList())),
-                const SizedBox(width: 8),
-                _WeekStatChip(label: 'To Do', value: todo, color: theme.colorScheme.primary,
-                  onTap: () => _showWeekTasks(context, 'To Do', tasks.where((t) => t.status == TaskStatus.todo).toList())),
-              ],
-            ),
-          ],
+        return GestureDetector(
+          onHorizontalDragEnd: (details) {
+            if (details.primaryVelocity != null) {
+              if (details.primaryVelocity! < -100) {
+                setState(() => _weekOffset++);
+              } else if (details.primaryVelocity! > 100) {
+                setState(() => _weekOffset--);
+              }
+            }
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Week header with swipe hint
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: _weekOffset != 0 ? () => setState(() => _weekOffset = 0) : null,
+                    child: Text(_weekLabel, style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _weekOffset == 0 ? primaryColor : theme.colorScheme.onSurfaceVariant,
+                    )),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('W$_weekNumber', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: primaryColor)),
+                  ),
+                  const Spacer(),
+                  Text('${_weekStart.day}/${_weekStart.month} - ${_weekEnd.day}/${_weekEnd.month}',
+                    style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(width: 4),
+                  Icon(PhosphorIcons.arrowsLeftRight(PhosphorIconsStyle.regular), size: 12, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Day buttons - click to add task
+              Row(
+                children: days.map((day) {
+                  final isToday = day.year == DateTime.now().year && day.month == DateTime.now().month && day.day == DateTime.now().day;
+                  final dayTasks = tasks.where((t) => t.dueDate != null && t.dueDate!.day == day.day && t.dueDate!.month == day.month).length;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        final params = <String, String>{'date': day.toIso8601String().split('T').first};
+                        context.push(Uri(path: '/create-task', queryParameters: params).toString());
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isToday ? primaryColor : null,
+                          borderRadius: BorderRadius.circular(6),
+                          border: isToday ? null : Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(['L', 'M', 'M', 'J', 'V', 'S', 'D'][day.weekday - 1],
+                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: isToday ? Colors.white70 : theme.colorScheme.onSurfaceVariant)),
+                            Text('${day.day}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isToday ? Colors.white : null)),
+                            if (dayTasks > 0)
+                              Container(
+                                width: 4, height: 4, margin: const EdgeInsets.only(top: 1),
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: isToday ? Colors.white70 : primaryColor),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              // Stats chips - clickable
+              Row(
+                children: [
+                  _WeekStatChip(label: 'Total', value: total, color: AppColors.info,
+                    onTap: () => _showWeekTasks(context, 'All Tasks', tasks)),
+                  const SizedBox(width: 6),
+                  _WeekStatChip(label: 'Done', value: done, color: AppColors.success,
+                    onTap: () => _showWeekTasks(context, 'Done', tasks.where((t) => t.isCompleted).toList())),
+                  const SizedBox(width: 6),
+                  _WeekStatChip(label: 'In Progress', value: inProgress, color: AppColors.warning,
+                    onTap: () => _showWeekTasks(context, 'In Progress', tasks.where((t) => t.status == TaskStatus.in_progress).toList())),
+                  const SizedBox(width: 6),
+                  _WeekStatChip(label: 'To Do', value: todo, color: primaryColor,
+                    onTap: () => _showWeekTasks(context, 'To Do', tasks.where((t) => t.status == TaskStatus.todo).toList())),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -546,7 +600,7 @@ class _WeeklyStatsRowState extends ConsumerState<_WeeklyStatsRow> {
           children: [
             Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
-            Text('$title - $_weekLabel', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            Text('$title - $_weekLabel (W$_weekNumber)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
             Text('${tasks.length} tasks', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Expanded(

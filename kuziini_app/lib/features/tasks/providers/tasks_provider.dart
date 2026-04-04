@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -45,10 +46,24 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     // Set up real-time subscription
     _subscription?.unsubscribe();
     _subscription = _repo.subscribeToTasks(
-      onInsert: (task) => _refreshTasks(),
-      onUpdate: (task) => _refreshTasks(),
-      onDelete: (taskId) => _refreshTasks(),
+      onInsert: (task) {
+        debugPrint('RT: task inserted');
+        _refreshTasks();
+      },
+      onUpdate: (task) {
+        debugPrint('RT: task updated');
+        _refreshTasks();
+      },
+      onDelete: (taskId) {
+        debugPrint('RT: task deleted');
+        _refreshTasks();
+      },
     );
+
+    // Auto-refresh every 30 seconds as backup
+    Future.delayed(const Duration(seconds: 30), () {
+      if (ref.exists(dailyTasksProvider)) _refreshTasks();
+    });
 
     ref.onDispose(() {
       if (_subscription != null) {

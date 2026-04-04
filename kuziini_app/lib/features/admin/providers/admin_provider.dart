@@ -59,7 +59,7 @@ class AdminActions {
 
   Future<String?> sendInvitation({
     required String email,
-    String role = 'member',
+    String role = 'user',
   }) async {
     final result = await _repo.sendInvitation(email: email, role: role);
     if (result != null) {

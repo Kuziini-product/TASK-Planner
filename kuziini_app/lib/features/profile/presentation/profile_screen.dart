@@ -348,24 +348,73 @@ class _LiveUsersCount extends ConsumerWidget {
     return usersAsync.when(
       data: (users) {
         final count = users.length;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7, height: 7,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success,
-                  boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)]),
+        return GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+              builder: (ctx) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(color: Theme.of(ctx).dividerColor, borderRadius: BorderRadius.circular(2))),
+                    Text('Online Users', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    ...users.map((user) => ListTile(
+                      leading: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.1),
+                        backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+                        child: user.avatarUrl == null ? Text(user.displayName[0].toUpperCase(),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(ctx).colorScheme.primary)) : null,
+                      ),
+                      title: Text(user.displayName, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: Text(user.email, style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(user.role.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Theme.of(ctx).colorScheme.primary)),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(width: 8, height: 8,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success,
+                              boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)])),
+                        ],
+                      ),
+                      dense: true,
+                    )),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
-              const SizedBox(width: 5),
-              Text('$count online', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success)),
-            ],
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7, height: 7,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success,
+                    boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)]),
+                ),
+                const SizedBox(width: 5),
+                Text('$count online', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success)),
+              ],
+            ),
           ),
         );
       },

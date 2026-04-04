@@ -98,9 +98,11 @@ class TaskRepository {
         .neq('status', 'archived')
         .order('due_date', ascending: true);
 
-    return (response as List)
+    final tasks = (response as List)
         .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
         .toList();
+
+    return _enrichTasksWithAssignees(tasks);
   }
 
   Future<List<TaskModel>> fetchUpcomingTasks({int days = 7}) async {

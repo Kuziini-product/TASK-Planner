@@ -14,6 +14,7 @@ import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_card.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../tasks/presentation/widgets/user_picker.dart';
 import '../../tasks/providers/tasks_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -127,21 +128,29 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
                       AppSpacing.vGapSm,
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.08),
-                          borderRadius: AppSpacing.borderRadiusFull,
-                        ),
-                        child: Text(
-                          profile.role.toUpperCase(),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: primaryColor,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withValues(alpha: 0.08),
+                              borderRadius: AppSpacing.borderRadiusFull,
+                            ),
+                            child: Text(
+                              profile.role.toUpperCase(),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: primaryColor,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (profile.isAdmin) ...[
+                            const SizedBox(width: 8),
+                            _LiveUsersCount(),
+                          ],
+                        ],
                       ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
                     ],
                   ),
@@ -327,6 +336,41 @@ class _ProfileMenuItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LiveUsersCount extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usersAsync = ref.watch(activeUsersProvider);
+
+    return usersAsync.when(
+      data: (users) {
+        final count = users.length;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7, height: 7,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success,
+                  boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)]),
+              ),
+              const SizedBox(width: 5),
+              Text('$count online', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success)),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

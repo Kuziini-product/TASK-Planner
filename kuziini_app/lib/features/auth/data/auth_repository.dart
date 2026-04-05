@@ -39,13 +39,25 @@ class AuthRepository {
         'full_name': fullName ?? '',
       },
     );
-    // Save birth_date to profiles
-    if (birthDate != null && response.user != null) {
+
+    // Ensure profile exists (trigger may fail on some Supabase configs)
+    if (response.user != null) {
       try {
-        await _supabase.client.from('profiles').update({
-          'birth_date': '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
-        }).eq('id', response.user!.id);
-      } catch (_) {}
+        final birthDateStr = birthDate != null
+            ? '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}'
+            : null;
+
+        // Try upsert — if trigger created it, update; if not, insert
+        await _supabase.client.from('profiles').upsert({
+          'id': response.user!.id,
+          'email': email,
+          'full_name': fullName ?? '',
+          'avatar_url': '',
+          if (birthDateStr != null) 'birth_date': birthDateStr,
+        }, onConflict: 'id');
+      } catch (e) {
+        debugPrint('Profile upsert after signup: $e');
+      }
     }
     return response;
   }

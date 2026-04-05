@@ -276,6 +276,7 @@ class _VoiceTaskSheet extends StatefulWidget {
 
 class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProviderStateMixin {
   String _text = '';
+  String _confirmedText = ''; // Text from previous recognition sessions (before auto-restart)
   bool _listening = false;
   String _error = '';
   bool _wantsPhoto = false;
@@ -317,17 +318,22 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
     _jsSetProp(recognition, 'lang', 'ro-RO');
 
     _jsSetProp(recognition, 'onresult', _jsAllowInterop((event) {
-      String transcript = '';
+      String sessionTranscript = '';
       try {
         final results = _jsGetProp(event, 'results')!;
         final len = _jsGetPropInt(results, 'length');
         for (int i = 0; i < len; i++) {
           final result = _jsCallMethod(results, 'item', [i]);
           final alt = _jsCallMethod(result, 'item', [0]);
-          transcript += _jsGetPropString(alt, 'transcript');
+          sessionTranscript += _jsGetPropString(alt, 'transcript');
         }
       } catch (_) {}
-      if (mounted) setState(() => _text = transcript);
+      // Combine confirmed text from previous sessions with current session
+      if (mounted) {
+        setState(() => _text = _confirmedText.isEmpty
+            ? sessionTranscript
+            : '$_confirmedText $sessionTranscript');
+      }
     }));
 
     _jsSetProp(recognition, 'onerror', _jsAllowInterop((event) {
@@ -340,6 +346,8 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
     _jsSetProp(recognition, 'onend', _jsAllowInterop((event) {
       // Chrome stops recognition after silence — auto-restart to keep listening
       if (mounted && _listening) {
+        // Save current text before restart (new session resets results)
+        _confirmedText = _text;
         try {
           _jsCallMethod(recognition!, 'start', []);
         } catch (_) {

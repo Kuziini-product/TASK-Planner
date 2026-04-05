@@ -36350,12 +36350,12 @@ _.r=e
 _.a=f},
 A1:function A1(a){this.a=a},
 TI:function TI(a,b){var _=this
-_.d=""
-_.e=!1
-_.f=""
-_.w=_.r=!1
-_.y=_.x=$
-_.z=null
+_.e=_.d=""
+_.f=!1
+_.r=""
+_.x=_.w=!1
+_.z=_.y=$
+_.Q=null
 _.eD$=a
 _.c8$=b
 _.c=_.a=null},
@@ -135768,12 +135768,12 @@ aC(){var s,r,q=this,p=null
 q.aY()
 s=A.bO(p,B.pG,p,1,p,q)
 s.Mr(0,!0)
-q.x=s
+q.y=s
 r=t.Y
-q.y=new A.aP(A.cj(B.jn,s,p),new A.b4(1,1.35,r),r.h("aP<aU.T>"))
+q.z=new A.aP(A.cj(B.jn,s,p),new A.b4(1,1.35,r),r.h("aP<aU.T>"))
 q.a46(0)},
 l(){this.Ie()
-var s=this.x
+var s=this.y
 s===$&&A.a()
 s.l()
 this.aoI()},
@@ -135784,7 +135784,7 @@ p=s.webkitSpeechRecognition
 r=p==null?s.SpeechRecognition:p
 if(r==null)throw A.f("not supported")
 o=l.a=new r()}catch(n){if(m.c!=null)m.N(new A.bc4(m))
-return}m.z=o
+return}m.Q=o
 o.continuous=!0
 o.interimResults=!0
 o.lang="ro-RO"
@@ -135795,14 +135795,14 @@ try{A.fq(l.a,"start",[])
 if(m.c!=null)m.N(new A.bc8(m))}catch(n){q=A.a8(n)
 if(m.c!=null)m.N(new A.bc9(m,q))}},
 Ie(){var s,r
-this.e=!1
-try{s=this.z
+this.f=!1
+try{s=this.Q
 if(s!=null)A.fq(s,"stop",[])}catch(r){}},
 P0(){var s,r,q=this
 q.Ie()
 s=q.d
-if(q.r)s+=" __PHOTO__"
-if(q.w)s+=" __ATTACHMENT__"
+if(q.w)s+=" __PHOTO__"
+if(q.x)s+=" __ATTACHMENT__"
 r=q.c
 r.toString
 A.bU(r,!1).dv(s)},
@@ -135815,8 +135815,8 @@ if(o==null)o=B.he
 return A.IF(new A.bcd(this,r.a===B.aM,s,r.b,o,p),!0,0.92,0.95,0.5)}}
 A.bc4.prototype={
 $0(){var s=this.a
-s.f=u.R
-s.e=!1},
+s.r=u.R
+s.f=!1},
 $S:0}
 A.bc5.prototype={
 $1(a){var s,r,q,p,o,n,m,l,k={}
@@ -135836,7 +135836,8 @@ k.a=k.a+o.transcript}}catch(l){}n=this.a
 if(n.c!=null)n.N(new A.bc3(k,n))},
 $S:12}
 A.bc3.prototype={
-$0(){return this.b.d=this.a.a},
+$0(){var s=this.b,r=s.e,q=this.a.a
+return s.d=r.length===0?q:r+" "+q},
 $S:0}
 A.bc6.prototype={
 $1(a){var s,r,q
@@ -135846,30 +135847,31 @@ r.N(new A.bc2(r,s))}}catch(q){}},
 $S:12}
 A.bc2.prototype={
 $0(){var s=this.a
-s.f="Error: "+this.b
-s.e=!1},
+s.r="Error: "+this.b
+s.f=!1},
 $S:0}
 A.bc7.prototype={
 $1(a){var s,r=this.b,q=r.c!=null
-if(q&&r.e)try{q=this.a.a
+if(q&&r.f){r.e=r.d
+try{q=this.a.a
 q.toString
-A.fq(q,"start",[])}catch(s){r.N(new A.bc0(r))}else if(q)r.N(new A.bc1(r))},
+A.fq(q,"start",[])}catch(s){r.N(new A.bc0(r))}}else if(q)r.N(new A.bc1(r))},
 $S:12}
 A.bc0.prototype={
-$0(){return this.a.e=!1},
+$0(){return this.a.f=!1},
 $S:0}
 A.bc1.prototype={
-$0(){return this.a.e=!1},
+$0(){return this.a.f=!1},
 $S:0}
 A.bc8.prototype={
 $0(){var s=this.a
-s.e=!0
-s.f=""},
+s.f=!0
+s.r=""},
 $S:0}
 A.bc9.prototype={
 $0(){var s=this.a
-s.f="Failed: "+A.j(this.b)
-s.e=!1},
+s.r="Failed: "+A.j(this.b)
+s.f=!1},
 $S:0}
 A.bcd.prototype={
 $2(a6,a7){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e=this,d=null,c=e.b,b=c?B.V6:B.m,a=A.b([new A.dw(0,B.bu,B.w.T(0.15),B.l,20)],t.J),a0=A.as(a6,d,t.l).w,a1=e.c,a2=a1.ax,a3=a2.rx,a4=a3==null,a5=A.bP(A.an(d,d,B.k,d,d,new A.ag((a4?a2.k3:a3).T(0.2),d,d,A.aW(2),d,d,B.r),d,4,B.XY,d,d,d,40),d,d)
@@ -135882,14 +135884,14 @@ else a1=a1.xQ(a4?a2.k3:a3,11)
 r=t.p
 a1=A.b2(A.az(A.b([s,B.eW,A.z("Speak naturally \u2014 keywords switch fields",d,d,d,d,a1,d,d,d)],r),B.Q,B.h,B.i,0,B.p),1,d)
 s=e.a
-q=s.e?s.gaHU():s.gaBH(s)
-p=s.y
+q=s.f?s.gaHU():s.gaBH(s)
+p=s.z
 p===$&&A.a()
 o=e.d
 q=A.aw(A.b([a1,A.bX(d,A.h2(p,new A.bca(s,o),d),B.v,!1,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,q,d,d,d,d,d,d,!1,B.R)],r),B.j,B.h,B.i,0,d)
-a1=s.e
+a1=s.f
 if(a1)p="Listening..."
-else{p=s.f
+else{p=s.r
 p=p.length!==0?p:"Tap mic to start"}if(a1)a1=B.W
 else a1=a4?a2.k3:a3
 a1=A.z(p,d,d,d,d,A.aB(d,d,a1,d,d,d,d,d,d,d,d,11,d,d,d,d,d,!0,d,d,d,d,d,d,d,d),d,d,d)
@@ -135918,11 +135920,11 @@ j=l?d:m.f
 h=l?d:m.w
 if(h==null)h=A.b([],t.s)
 g=A.aEt(B.q)
-if(!s.r)f=(l?d:m.x)===!0
+if(!s.w)f=(l?d:m.x)===!0
 else f=!0
 f=A.b2(new A.Oz(g,"Take a picture",new A.bcb(s),f,d),1,d)
 g=A.a4c(B.q)
-if(!s.w)m=(l?d:m.y)===!0
+if(!s.x)m=(l?d:m.y)===!0
 else m=!0
 m=A.b([a5,new A.a2(B.lF,q,d),B.cM,new A.a2(B.lF,a1,d),B.a0,k,new A.a2(B.bd,i,d),n,new A.ah2(p,j,d),new A.aaY(p,h,d),new A.a2(B.lG,A.aw(A.b([f,B.ac,A.b2(new A.Oz(g,"Add attachment",new A.bcc(s),m,d),1,d)],r),B.j,B.h,B.i,0,d),d),B.a0],r)
 if(s.d.length!==0){c=c?B.m.T(0.03):B.i4.T(0.05)
@@ -135940,24 +135942,24 @@ return A.an(d,A.ou(m,a7,new A.a4(0,0,0,a0.r.d+16),d),B.k,d,d,new A.ag(b,d,d,B.RM
 $S:933}
 A.bca.prototype={
 $2(a,b){var s,r,q,p=null,o=this.a
-if(o.e){s=o.y
+if(o.f){s=o.z
 s===$&&A.a()
 r=s.a
 r=s.b.ag(0,r.gq(r))
 s=r}else s=1
-r=o.e
+r=o.f
 q=r?B.W:this.b
 r=r?A.b([new A.dw(0,B.bu,B.W.T(0.4),B.l,12)],t.J):p
-return A.a8_(B.a3,A.an(p,A.ai(o.e?A.bkl(B.ab):A.bry(B.ab),B.m,p,p,24),B.k,p,p,new A.ag(q,p,p,p,r,p,B.av),p,52,p,p,p,p,52),s,p,p,!0)},
+return A.a8_(B.a3,A.an(p,A.ai(o.f?A.bkl(B.ab):A.bry(B.ab),B.m,p,p,24),B.k,p,p,new A.ag(q,p,p,p,r,p,B.av),p,52,p,p,p,p,52),s,p,p,!0)},
 $S:105}
 A.bcb.prototype={
 $0(){var s=this.a
-s.r=!0
+s.w=!0
 s.P0()},
 $S:0}
 A.bcc.prototype={
 $0(){var s=this.a
-s.w=!0
+s.x=!0
 s.P0()},
 $S:0}
 A.adI.prototype={

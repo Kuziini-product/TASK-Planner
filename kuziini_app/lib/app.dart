@@ -39,7 +39,9 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
       });
     }
 
-    return Stack(
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
       children: [
         MaterialApp.router(
       title: 'Kuziini Task Manager',
@@ -74,6 +76,7 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
             ),
           ),
       ],
+    ),
     );
   }
 }

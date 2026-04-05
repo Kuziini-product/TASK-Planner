@@ -70,16 +70,33 @@ class TaskRepository {
   Future<List<TaskModel>> fetchTasksByDate(DateTime date) async {
     final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-    final response = await _supabase.client
+    // Fetch tasks with due_date on this exact date
+    final exactResponse = await _supabase.client
         .from(AppConstants.tableTasks)
         .select('*')
         .eq('due_date', dateStr)
         .order('start_time', ascending: true);
 
-    final tasks = (response as List)
-        .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
-        .toList();
+    // Fetch multi-day tasks that span across this date (due_date <= date AND end_date >= date)
+    final multiDayResponse = await _supabase.client
+        .from(AppConstants.tableTasks)
+        .select('*')
+        .lte('due_date', dateStr)
+        .gte('end_date', dateStr)
+        .order('start_time', ascending: true);
 
+    // Merge, dedup by id
+    final allJson = <String, Map<String, dynamic>>{};
+    for (final json in (exactResponse as List)) {
+      final map = json as Map<String, dynamic>;
+      allJson[map['id'] as String] = map;
+    }
+    for (final json in (multiDayResponse as List)) {
+      final map = json as Map<String, dynamic>;
+      allJson[map['id'] as String] = map;
+    }
+
+    final tasks = allJson.values.map((json) => TaskModel.fromJson(json)).toList();
     return _enrichTasksWithAssignees(tasks);
   }
 

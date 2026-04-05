@@ -89,6 +89,7 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
   bool _saving = false;
   bool _isEdit = false;
   String? _editId;
+  Offset _textOffset = Offset.zero; // drag position relative to center
 
   @override
   void initState() {
@@ -241,35 +242,61 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
                     gradient: LinearGradient(colors: [gradient.start, gradient.end],
                       begin: Alignment.topLeft, end: Alignment.bottomRight),
                   ),
-                  child: Stack(
-                    children: [
-                      // Images as background collage
-                      if (_imageUrls.isNotEmpty || _imageBytes.isNotEmpty)
-                        Positioned.fill(
-                          child: Opacity(
-                            opacity: 0.4,
-                            child: _buildImageCollage(),
+                  child: SizedBox(
+                    height: 120,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Images as background collage
+                        if (_imageUrls.isNotEmpty || _imageBytes.isNotEmpty)
+                          Positioned.fill(
+                            child: Opacity(opacity: 0.4, child: _buildImageCollage()),
+                          ),
+                        // Draggable text overlay
+                        Positioned(
+                          left: 0, right: 0, top: 0, bottom: 0,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: _textOffset.dx + 16,
+                                top: _textOffset.dy + 16,
+                                child: GestureDetector(
+                                  onPanUpdate: (d) => setState(() =>
+                                    _textOffset = Offset(
+                                      _textOffset.dx + d.delta.dx,
+                                      _textOffset.dy + d.delta.dy,
+                                    )),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.white30, width: 1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (_titleController.text.isNotEmpty)
+                                          Text(_titleController.text,
+                                            style: _fontStyle(_font, size: 17), textAlign: TextAlign.center),
+                                        if (_subtitleController.text.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Text(_subtitleController.text,
+                                              style: _fontStyle(_font, size: 12, color: Colors.white70),
+                                              textAlign: TextAlign.center),
+                                          ),
+                                        if (_titleController.text.isEmpty && _subtitleController.text.isEmpty)
+                                          Text('Drag text here', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      // Text overlay
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        child: Column(
-                          children: [
-                            if (_titleController.text.isNotEmpty)
-                              Text(_titleController.text,
-                                style: _fontStyle(_font, size: 17), textAlign: TextAlign.center),
-                            if (_subtitleController.text.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(_subtitleController.text,
-                                  style: _fontStyle(_font, size: 12, color: Colors.white70),
-                                  textAlign: TextAlign.center),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 // Effect overlay

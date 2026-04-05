@@ -131082,7 +131082,7 @@ ahG(a,b){var s=0,r=A.p(t._P),q,p,o,n,m,l,k,j
 var $async$A0=A.l(function(c,d){if(c===1)return A.m(d,r)
 for(;;)switch(s){case 0:k=$.ba().b
 k===$&&A.a()
-p=k.cu("tasks").eG(0,"status, due_date, created_by")
+p=k.cu("tasks").eG(0,"status, due_date, created_by, title")
 j=J
 s=3
 return A.i(b!=null?p.ek("created_by",b):p,$async$A0)
@@ -131159,7 +131159,13 @@ A.aPo.prototype={
 $1(a){return!J.c(J.ap(a,"created_by"),this.a)},
 $S:44}
 A.aPp.prototype={
-$1(a){return!J.c(J.ap(a,"status"),"archived")},
+$1(a){var s,r=J.a6(a)
+if(J.c(r.i(a,"status"),"archived"))return!1
+r=A.aR(r.i(a,"title"))
+if(r==null)r=""
+s=r.toLowerCase()
+if(B.c.n(s,"concediu")||B.c.n(s,"liber"))return!1
+return!0},
 $S:44}
 A.aPq.prototype={
 $1(a){return J.c(J.ap(a,"status"),"archived")},

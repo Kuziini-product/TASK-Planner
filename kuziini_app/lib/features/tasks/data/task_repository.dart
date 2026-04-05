@@ -586,7 +586,7 @@ class TaskRepository {
   // ── Statistics ──
 
   Future<Map<String, int>> getTaskStats({String? userId, String? excludeUserId}) async {
-    var query = _supabase.client.from(AppConstants.tableTasks).select('status, due_date, created_by');
+    var query = _supabase.client.from(AppConstants.tableTasks).select('status, due_date, created_by, title');
     if (userId != null) {
       query = query.eq('created_by', userId);
     }
@@ -598,8 +598,13 @@ class TaskRepository {
     }
     final now = DateTime.now();
 
-    // Exclude archived from total count
-    final activeTasks = tasks.where((t) => t['status'] != 'archived').toList();
+    // Exclude archived and leave tasks (concediu/liber) from stats
+    final activeTasks = tasks.where((t) {
+      if (t['status'] == 'archived') return false;
+      final title = (t['title'] as String? ?? '').toLowerCase();
+      if (title.contains('concediu') || title.contains('liber')) return false;
+      return true;
+    }).toList();
     int archived = tasks.where((t) => t['status'] == 'archived').length;
 
     int total = activeTasks.length;

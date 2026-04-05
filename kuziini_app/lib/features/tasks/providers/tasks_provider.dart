@@ -65,23 +65,30 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     final priorityFilter = ref.read(taskPriorityFilterProvider);
     final statusFilter = ref.read(taskStatusFilterProvider);
 
-    // Fetch base tasks - always fetch broadly enough
+    // Determine effective user: null (Me) = current user, 'all' = everyone, else = specific user
+    final effectiveUser = teamUserId ?? userId;
+    final showAll = teamUserId == 'all';
+
+    // Helper to fetch tasks for a specific user (created + assigned)
+    Future<List<TaskModel>> fetchForUser(String uid) async {
+      final created = await _repo.fetchTasks(createdBy: uid, limit: 200);
+      final assigned = await _repo.fetchTasksAssignedTo(uid);
+      final ids = created.map((t) => t.id).toSet();
+      for (final t in assigned) {
+        if (!ids.contains(t.id)) created.add(t);
+      }
+      return created;
+    }
+
+    // Fetch base tasks
     List<TaskModel> tasks;
     if (filter == TaskFilterType.all) {
-      // All: fetch all tasks
-      if (teamUserId != null && teamUserId != 'all') {
-        // Fetch all for specific user
-        tasks = await _repo.fetchTasks(createdBy: teamUserId, limit: 200);
-        final assigned = await _repo.fetchTasksAssignedTo(teamUserId);
-        final ids = tasks.map((t) => t.id).toSet();
-        for (final t in assigned) {
-          if (!ids.contains(t.id)) tasks.add(t);
-        }
-      } else {
+      if (showAll) {
         tasks = await _repo.fetchTasks(limit: 200);
+      } else {
+        tasks = await fetchForUser(effectiveUser!);
       }
     } else if (filter == TaskFilterType.today) {
-      // Today: selected date tasks
       tasks = await _repo.fetchTasksByDate(date);
       // Add tasks without due_date
       final allRecent = await _repo.fetchTasks(limit: 100);
@@ -96,8 +103,11 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       if (userId == null) return [];
       tasks = await _repo.fetchTasksAssignedTo(userId);
     } else if (filter == TaskFilterType.done || filter == TaskFilterType.inProgress) {
-      // Done/InProgress: fetch all tasks so we can filter by status
-      tasks = await _repo.fetchTasks(limit: 500);
+      if (showAll) {
+        tasks = await _repo.fetchTasks(limit: 500);
+      } else {
+        tasks = await fetchForUser(effectiveUser!);
+      }
     } else {
       tasks = await _repo.fetchTasksByDate(date);
     }
@@ -105,9 +115,14 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     // Apply all filters simultaneously
     var result = tasks.where((t) => !t.isArchived);
 
-    // Team user filter (for today/overdue/done/inProgress which fetch all users)
-    if (teamUserId != null && teamUserId != 'all' && filter != TaskFilterType.all) {
+    // Team user filter for today/overdue (which fetch all via DB, need client-side filter)
+    if (!showAll && teamUserId != null && filter != TaskFilterType.all) {
       result = result.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId);
+    }
+    // "Me" filter for today/overdue — show only my tasks
+    if (teamUserId == null && userId != null &&
+        (filter == TaskFilterType.today || filter == TaskFilterType.overdue)) {
+      result = result.where((t) => t.createdBy == userId || t.assigneeId == userId);
     }
 
     // Status filter from More menu
@@ -307,9 +322,28 @@ final calendarTasksProvider = FutureProvider.family<List<TaskModel>,
   // Watch dailyTasksProvider to auto-refresh when realtime updates arrive
   ref.watch(dailyTasksProvider);
   final repo = ref.watch(taskRepositoryProvider);
-  return repo.fetchTasks(
+  final userId = SupabaseService.instance.currentUserId;
+
+  // Fetch tasks for date range
+  final tasks = await repo.fetchTasks(
     fromDate: range.from,
     toDate: range.to,
     limit: 200,
   );
+
+  // Also fetch assigned tasks for this user in range
+  if (userId != null) {
+    final assigned = await repo.fetchTasksAssignedTo(userId);
+    final ids = tasks.map((t) => t.id).toSet();
+    for (final t in assigned) {
+      if (!ids.contains(t.id) && t.dueDate != null) {
+        final d = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
+        if (!d.isBefore(range.from) && !d.isAfter(range.to)) {
+          tasks.add(t);
+        }
+      }
+    }
+  }
+
+  return tasks;
 });

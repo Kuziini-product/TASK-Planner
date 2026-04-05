@@ -131,30 +131,31 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     var result = tasks.where((t) => !t.isArchived);
 
     // Team user filter for today/overdue (which fetch all via DB, need client-side filter)
+    // Leave tasks (concediu/liber) are always visible to everyone
     if (!showAll && teamUserId != null && filter != TaskFilterType.all) {
-      result = result.where((t) => t.createdBy == teamUserId || t.assigneeId == teamUserId);
+      result = result.where((t) => t.isLeave || t.createdBy == teamUserId || t.assigneeId == teamUserId);
     }
-    // "Me" filter for today/overdue — show only my tasks
+    // "Me" filter for today/overdue — show only my tasks + all leave tasks
     if (teamUserId == null && userId != null &&
         (filter == TaskFilterType.today || filter == TaskFilterType.overdue)) {
-      result = result.where((t) => t.createdBy == userId || t.assigneeId == userId);
+      result = result.where((t) => t.isLeave || t.createdBy == userId || t.assigneeId == userId);
     }
 
-    // Status filter from More menu
+    // Status filter from More menu (leave tasks always pass)
     if (filter == TaskFilterType.done) {
-      result = result.where((t) => t.isCompleted);
+      result = result.where((t) => t.isLeave || t.isCompleted);
     } else if (filter == TaskFilterType.inProgress) {
-      result = result.where((t) => t.status == TaskStatus.in_progress);
+      result = result.where((t) => t.isLeave || t.status == TaskStatus.in_progress);
     }
 
-    // Additional status filter (from statusFilterProvider)
+    // Additional status filter (leave tasks always pass)
     if (statusFilter != null) {
-      result = result.where((t) => t.status == statusFilter);
+      result = result.where((t) => t.isLeave || t.status == statusFilter);
     }
 
-    // Priority filter
+    // Priority filter (leave tasks always pass)
     if (priorityFilter != null) {
-      result = result.where((t) => t.priority == priorityFilter);
+      result = result.where((t) => t.isLeave || t.priority == priorityFilter);
     }
 
     final sorted = result.toList();

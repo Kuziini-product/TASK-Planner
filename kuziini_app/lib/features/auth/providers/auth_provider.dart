@@ -69,6 +69,17 @@ class AuthNotifier extends AsyncNotifier<AuthStatus> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await _repo.signUp(email: email, password: password, fullName: fullName, birthDate: birthDate);
+
+      // Notify admins about new signup needing approval
+      try {
+        final notifRepo = NotificationRepository();
+        await notifRepo.notifyAdmins(
+          title: 'Cont nou: ${fullName ?? email}',
+          body: '$email solicită aprobare',
+          type: 'user_signup',
+        );
+      } catch (_) {}
+
       return _repo.checkAuthStatus();
     });
   }

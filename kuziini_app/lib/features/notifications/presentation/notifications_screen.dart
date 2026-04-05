@@ -63,6 +63,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             // Group notifications by category
             final newTasks = notifications.where((n) => n.type == 'task_assigned' || n.type == 'task_created').toList();
             final logins = notifications.where((n) => n.type == 'user_login').toList();
+            final signups = notifications.where((n) => n.type == 'user_signup').toList();
             final overdue = notifications.where((n) => n.type == 'task_due' || n.type == 'task_overdue').toList();
             final comments = notifications.where((n) => n.type == 'task_comment').toList();
             final attachments = notifications.where((n) => n.type == 'task_attachment').toList();
@@ -72,7 +73,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               n.type != 'task_due' && n.type != 'task_overdue' &&
               n.type != 'task_comment' && n.type != 'task_attachment' &&
               n.type != 'edit_request' && n.type != 'edit_approved' &&
-              n.type != 'user_login'
+              n.type != 'user_login' && n.type != 'user_signup'
             ).toList();
 
             // Resolved today count
@@ -111,6 +112,43 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     ],
                   ),
                 ),
+
+                // Pending approvals shortcut (admin only)
+                if (signups.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => context.push('/admin/approvals'),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(PhosphorIcons.userPlus(PhosphorIconsStyle.fill), color: AppColors.warning, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Solicitări de aprobare', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.warning)),
+                                Text('${signups.length} cont${signups.length != 1 ? 'uri' : ''} noi', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: AppColors.warning, borderRadius: BorderRadius.circular(12)),
+                            child: Text('${signups.length}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), size: 16, color: AppColors.warning),
+                        ],
+                      ),
+                    ),
+                  ),
 
                 // Category cards
                 if (logins.isNotEmpty)

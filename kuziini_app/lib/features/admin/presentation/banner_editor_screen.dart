@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:js_util' as js_util;
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -91,12 +93,100 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
   String? _editId;
   Offset _textOffset = Offset.zero;
   double _textScale = 1.0; // pinch/stretch scale
+  bool _isDragOver = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.existingBanner != null) {
       _loadExisting(widget.existingBanner!);
+    }
+    _setupWebDragDrop();
+  }
+
+  void _setupWebDragDrop() {
+    try {
+      final body = js_util.getProperty(js_util.globalThis, 'document');
+      final bodyEl = js_util.getProperty(body, 'body');
+
+      js_util.callMethod(bodyEl, 'addEventListener', [
+        'dragover',
+        js_util.allowInterop((event) {
+          js_util.callMethod(event, 'preventDefault', []);
+        }),
+      ]);
+
+      js_util.callMethod(bodyEl, 'addEventListener', [
+        'drop',
+        js_util.allowInterop((event) {
+          js_util.callMethod(event, 'preventDefault', []);
+          _handleWebDrop(event);
+        }),
+      ]);
+    } catch (_) {}
+  }
+
+  Future<void> _handleWebDrop(dynamic event) async {
+    try {
+      final dataTransfer = js_util.getProperty(event, 'dataTransfer');
+      final files = js_util.getProperty(dataTransfer, 'files');
+      final length = js_util.getProperty<int>(files, 'length');
+
+      for (int i = 0; i < length; i++) {
+        final file = js_util.callMethod(files, 'item', [i]);
+        final type = js_util.getProperty<String>(file, 'type');
+
+        if (!type.startsWith('image/')) continue;
+
+        final name = js_util.getProperty<String>(file, 'name');
+        final reader = js_util.callConstructor(
+          js_util.getProperty(js_util.globalThis, 'FileReader'), [],
+        );
+
+        final completer = Completer<Uint8List>();
+        js_util.setProperty(reader, 'onload', js_util.allowInterop((_) {
+          final result = js_util.getProperty(reader, 'result');
+          final jsArray = js_util.callConstructor(
+            js_util.getProperty(js_util.globalThis, 'Uint8Array'),
+            [result],
+          );
+          final len = js_util.getProperty<int>(jsArray, 'length');
+          final bytes = Uint8List(len);
+          for (int j = 0; j < len; j++) {
+            bytes[j] = js_util.getProperty<int>(jsArray, j);
+          }
+          completer.complete(bytes);
+        }));
+
+        js_util.callMethod(reader, 'readAsArrayBuffer', [file]);
+
+        final bytes = await completer.future;
+        if (bytes.length > 2 * 1024 * 1024) {
+          if (mounted) context.showSnackBar('Imaginea e prea mare (max 2MB)', isError: true);
+          continue;
+        }
+
+        // Upload to Supabase
+        final ext = name.contains('.') ? name.split('.').last : 'jpg';
+        final fileName = '${const Uuid().v4()}.$ext';
+        await Supabase.instance.client.storage
+            .from('banners')
+            .uploadBinary(fileName, bytes, fileOptions: FileOptions(upsert: true, contentType: 'image/$ext'));
+        final url = Supabase.instance.client.storage.from('banners').getPublicUrl(fileName);
+        if (mounted) {
+          setState(() {
+            _imageUrls.add(url);
+            _imageBytes.add(bytes);
+            _isDragOver = false;
+          });
+        }
+      }
+      if (mounted) setState(() => _isDragOver = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDragOver = false);
+        context.showSnackBar('Drop failed: $e', isError: true);
+      }
     }
   }
 
@@ -405,14 +495,42 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
           _sectionLabel(theme, 'IMAGINI'),
           GestureDetector(
             onTap: _pickImages,
-            child: Container(
+            child: DragTarget<Object>(
+              onWillAcceptWithDetails: (_) {
+                setState(() => _isDragOver = true);
+                return true;
+              },
+              onLeave: (_) => setState(() => _isDragOver = false),
+              onAcceptWithDetails: (_) => setState(() => _isDragOver = false),
+              builder: (context, candidateData, rejectedData) => AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               height: 80,
-              decoration: BoxDecoration(border: Border.all(color: theme.dividerColor), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _isDragOver ? theme.colorScheme.primary : theme.dividerColor,
+                  width: _isDragOver ? 2.5 : 1,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                color: _isDragOver ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
+              ),
               child: (_imageUrls.isEmpty && _imageBytes.isEmpty)
                   ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(PhosphorIcons.images(PhosphorIconsStyle.regular), size: 28, color: theme.colorScheme.onSurfaceVariant),
+                      Icon(
+                        _isDragOver
+                            ? PhosphorIcons.uploadSimple(PhosphorIconsStyle.regular)
+                            : PhosphorIcons.images(PhosphorIconsStyle.regular),
+                        size: 28,
+                        color: _isDragOver ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(height: 4),
-                      Text('Tap pentru a adăuga imagini', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                      Text(
+                        _isDragOver ? 'Eliberează pentru upload' : 'Tap sau drag & drop imagini',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _isDragOver ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: _isDragOver ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
                     ]))
                   : ListView.builder(
                       scrollDirection: Axis.horizontal,
@@ -451,6 +569,7 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
                         );
                       },
                     ),
+            ),
             ),
           ),
 

@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:js_util' as js_util;
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/supabase_service.dart';
@@ -20,6 +22,7 @@ import '../../../core/widgets/kuziini_text_field.dart';
 import '../../../core/widgets/voice_input_button.dart';
 import '../data/models/task_model.dart';
 import '../providers/tasks_provider.dart';
+import 'widgets/attachment_section.dart';
 import 'widgets/user_picker.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
@@ -50,6 +53,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   String? _assigneeId;
   String? _assigneeName;
   bool _isSubmitting = false;
+
+  // Early-created task ID (created on first attachment pick)
+  String? _earlyTaskId;
+  bool _isUploading = false;
 
   // Location fields
   bool _useDefaultLocation = true;
@@ -484,6 +491,110 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     }
   }
 
+  /// Creates the task early (if not yet created) so attachments can be uploaded immediately.
+  Future<String> _ensureTaskCreated() async {
+    if (_earlyTaskId != null) return _earlyTaskId!;
+
+    final userId = SupabaseService.instance.currentUserId!;
+    final now = DateTime.now();
+    final desc = _descriptionController.text.trim();
+    final title = _titleController.text.trim().isNotEmpty
+        ? _titleController.text.trim()
+        : desc.isNotEmpty
+            ? desc.split(RegExp(r'\s+')).take(3).join(' ')
+            : 'Task nou';
+
+    final repo = ref.read(taskRepositoryProvider);
+    final task = TaskModel(
+      id: '',
+      title: title,
+      priority: _priority,
+      createdBy: userId,
+      dueDate: _dueDate ?? now,
+      startTime: now,
+    );
+    final created = await repo.createTask(task);
+    _earlyTaskId = created.id;
+    return created.id;
+  }
+
+  Future<void> _uploadFileToTask(Uint8List bytes, String fileName) async {
+    setState(() => _isUploading = true);
+    try {
+      final taskId = await _ensureTaskCreated();
+      final userId = SupabaseService.instance.currentUserId!;
+      final repo = ref.read(taskRepositoryProvider);
+      await repo.uploadAttachment(
+        taskId: taskId,
+        userId: userId,
+        fileBytes: bytes,
+        fileName: fileName,
+      );
+      ref.invalidate(taskAttachmentsProvider(taskId));
+      if (mounted) context.showSnackBar('$fileName atașat ✓');
+    } catch (e) {
+      if (mounted) context.showSnackBar('Upload eșuat: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) context.showSnackBar('Nu s-au putut citi datele imaginii', isError: true);
+        return;
+      }
+
+      final maxSize = AppConstants.maxAttachmentSizeMB * 1024 * 1024;
+      if (bytes.length > maxSize) {
+        if (mounted) context.showSnackBar('Fișierul e prea mare (max ${AppConstants.maxAttachmentSizeMB}MB)', isError: true);
+        return;
+      }
+
+      await _uploadFileToTask(bytes, file.name);
+    } catch (e) {
+      if (mounted) context.showSnackBar('Nu s-a putut selecta imaginea: $e', isError: true);
+    }
+  }
+
+  Future<void> _pickDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) context.showSnackBar('Nu s-a putut citi fișierul', isError: true);
+        return;
+      }
+
+      final maxSize = AppConstants.maxAttachmentSizeMB * 1024 * 1024;
+      if (bytes.length > maxSize) {
+        if (mounted) context.showSnackBar('Fișierul e prea mare (max ${AppConstants.maxAttachmentSizeMB}MB)', isError: true);
+        return;
+      }
+
+      await _uploadFileToTask(bytes, file.name);
+    } catch (e) {
+      if (mounted) context.showSnackBar('Nu s-a putut selecta documentul: $e', isError: true);
+    }
+  }
+
   Future<void> _submit() async {
     // Auto-generate title if empty
     if (_titleController.text.trim().isEmpty) {
@@ -580,30 +691,52 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         }
       } else {
         // ── Create mode ──
-        final task = TaskModel(
-          id: '',
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim().nullIfEmpty,
-          priority: _priority,
-          createdBy: userId,
-          dueDate: _dueDate,
-          endDate: _endDate,
-          startTime: startDateTime,
-          endTime: endDateTime,
-          labels: _labels,
-          locationName: locName,
-          locationAddress: locAddress,
-          locationUrl: locUrl,
-          locationLat: locLat,
-          locationLng: locLng,
-        );
+        String taskId;
 
-        final createdTask = await repo.createTask(task);
+        if (_earlyTaskId != null) {
+          // Task was already created when user picked an attachment – update it with final data
+          taskId = _earlyTaskId!;
+          await repo.updateTask(taskId, {
+            'title': _titleController.text.trim(),
+            'description': _descriptionController.text.trim().nullIfEmpty,
+            'priority': _priority.name,
+            'due_date': _dueDate?.toIso8601String(),
+            'end_date': _endDate?.toIso8601String(),
+            'start_time': startDateTime?.toIso8601String(),
+            'end_time': endDateTime?.toIso8601String(),
+            'location_name': locName,
+            'location_address': locAddress,
+            'location_url': locUrl,
+            'location_lat': locLat,
+            'location_lng': locLng,
+          });
+        } else {
+          // Normal creation (no early attachment)
+          final task = TaskModel(
+            id: '',
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim().nullIfEmpty,
+            priority: _priority,
+            createdBy: userId,
+            dueDate: _dueDate,
+            endDate: _endDate,
+            startTime: startDateTime,
+            endTime: endDateTime,
+            labels: _labels,
+            locationName: locName,
+            locationAddress: locAddress,
+            locationUrl: locUrl,
+            locationLat: locLat,
+            locationLng: locLng,
+          );
+          final createdTask = await repo.createTask(task);
+          taskId = createdTask.id;
+        }
 
         // Assign task if an assignee was selected
         if (_assigneeId != null) {
           await SupabaseService.instance.client.from('task_assignees').insert({
-            'task_id': createdTask.id,
+            'task_id': taskId,
             'user_id': _assigneeId,
             'assigned_by': userId,
           });
@@ -615,7 +748,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               title: 'New Task Assigned',
               body: _titleController.text.trim(),
               type: 'task_assigned',
-              data: {'task_id': createdTask.id},
+              data: {'task_id': taskId},
             );
             NotificationService.instance.notifyTaskEvent(
               title: 'Task Assigned',
@@ -624,10 +757,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           } catch (_) {}
         }
 
-        // Add checklist items using the server-assigned task ID
+        // Add checklist items
         for (int i = 0; i < _checklistItems.length; i++) {
           await repo.addChecklistItem(
-            taskId: createdTask.id,
+            taskId: taskId,
             title: _checklistItems[i],
             sortOrder: i,
           );
@@ -641,7 +774,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             title: '${profile?.displayName ?? 'Someone'} a creat un task',
             body: _titleController.text.trim(),
             type: 'task_created',
-            data: {'task_id': createdTask.id},
+            data: {'task_id': taskId},
           );
         } catch (_) {}
 
@@ -649,7 +782,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
         if (mounted) {
           Navigator.of(context).pop();
-          context.showSnackBar('Task created successfully');
+          context.showSnackBar('Task creat');
         }
       }
     } catch (e) {
@@ -951,34 +1084,34 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   Expanded(
                     child: _OptionTile(
                       icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
-                      label: 'Adaugă foto',
-                      isActive: false,
-                      onTap: () async {
-                        final picker = ImagePicker();
-                        final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800);
-                        if (image != null && mounted) {
-                          context.showSnackBar('Foto va fi atașată la creare');
-                        }
-                      },
+                      label: _isUploading ? 'Se încarcă...' : 'Adaugă foto',
+                      isActive: _earlyTaskId != null,
+                      onTap: _isUploading ? () {} : () => _pickImage(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _OptionTile(
                       icon: PhosphorIcons.file(PhosphorIconsStyle.regular),
-                      label: 'Adaugă doc',
-                      isActive: false,
-                      onTap: () async {
-                        final picker = ImagePicker();
-                        final file = await picker.pickImage(source: ImageSource.gallery);
-                        if (file != null && mounted) {
-                          context.showSnackBar('Document va fi atașat la creare');
-                        }
-                      },
+                      label: _isUploading ? 'Se încarcă...' : 'Adaugă doc',
+                      isActive: _earlyTaskId != null,
+                      onTap: _isUploading ? () {} : () => _pickDocument(),
                     ),
                   ),
                 ],
               ),
+
+              // Show real uploaded attachments
+              if (_earlyTaskId != null) ...[
+                AppSpacing.vGapSm,
+                AttachmentSection(taskId: _earlyTaskId!),
+              ],
+
+              if (_isUploading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: LinearProgressIndicator(),
+                ),
 
               const SizedBox(height: 40),
             ],
@@ -1131,3 +1264,4 @@ class _OptionTile extends StatelessWidget {
     );
   }
 }
+

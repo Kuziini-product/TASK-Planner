@@ -151,6 +151,14 @@ class UserApprovalScreen extends ConsumerWidget {
                             if (context.mounted) context.showSnackBar('Failed to set birthday: $e', isError: true);
                           }
                         },
+                        onRoleChange: (newRole) async {
+                          final success = await ref.read(adminActionsProvider).updateUserRole(user.id, newRole);
+                          if (context.mounted) {
+                            context.showSnackBar(success
+                                ? '${user.displayName} is now ${newRole.toUpperCase()}'
+                                : 'Failed to change role', isError: !success);
+                          }
+                        },
                         onDelete: () async {
                           final confirmed = await context.showConfirmDialog(
                             title: 'Delete User',

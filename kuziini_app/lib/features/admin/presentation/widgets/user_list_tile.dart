@@ -29,6 +29,51 @@ class UserListTile extends StatelessWidget {
   final bool showActions;
   final bool isPending;
 
+  void _showRolePicker(BuildContext context) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4,
+                decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              Text('Schimbă rolul', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              Text(user.displayName, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 16),
+              ...['user', 'manager', 'admin'].map((role) {
+                final isSelected = user.role == role;
+                final color = role == 'admin' ? AppColors.priorityUrgent
+                    : role == 'manager' ? theme.colorScheme.primary
+                    : AppColors.secondary;
+                return ListTile(
+                  leading: Icon(
+                    isSelected ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(PhosphorIconsStyle.regular),
+                    color: isSelected ? color : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  title: Text(role.toUpperCase(), style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? color : null,
+                  )),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    if (!isSelected) onRoleChange?.call(role);
+                  },
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -68,7 +113,10 @@ class UserListTile extends StatelessWidget {
                           ),
                         ),
                         AppSpacing.hGapSm,
-                        _RoleBadge(role: user.role),
+                        GestureDetector(
+                          onTap: onRoleChange != null ? () => _showRolePicker(context) : null,
+                          child: _RoleBadge(role: user.role),
+                        ),
                       ],
                     ),
                     AppSpacing.vGapXs,

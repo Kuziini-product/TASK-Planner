@@ -257,63 +257,10 @@ class _WeekView extends ConsumerWidget {
                 return da.compareTo(db);
               });
 
-              final taskWidgets = weekTasks.map((task) {
-                final color = _priorityColorStatic(context, task.priority);
-                final dayLabel = task.dueDate != null
-                    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][task.dueDate!.weekday - 1]
-                    : '';
-                final timeStr = task.startTime != null
-                    ? AppDateUtils.formatTime(task.startTime!)
-                    : '';
-
-                return GestureDetector(
-                  onTap: () => context.push('/task/${task.id}'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: color,
-                            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4)],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                task.title,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (dayLabel.isNotEmpty || timeStr.isNotEmpty)
-                                Text(
-                                  [dayLabel, timeStr].where((s) => s.isNotEmpty).join(' \u00B7 '),
-                                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                                ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            task.priority.label,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              final taskWidgets = weekTasks.asMap().entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: TaskCard(task: entry.value, animationIndex: entry.key),
                 );
               }).toList();
 
@@ -448,43 +395,10 @@ class _MonthView extends ConsumerWidget {
                 return da.compareTo(db);
               });
 
-              final taskWidgets = allMonthTasks.map((task) {
-                final color = _priorityColorStatic(context, task.priority);
-                final dateStr = task.dueDate != null ? '${task.dueDate!.day}/${task.dueDate!.month}' : '';
-                final timeStr = task.startTime != null ? AppDateUtils.formatTime(task.startTime!) : '';
-
-                return GestureDetector(
-                  onTap: () => context.push('/task/${task.id}'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 10, height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle, color: color,
-                            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4)],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(task.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              if (dateStr.isNotEmpty || timeStr.isNotEmpty)
-                                Text([dateStr, timeStr].where((s) => s.isNotEmpty).join(' \u00B7 '), style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                          child: Text(task.priority.label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
-                        ),
-                      ],
-                    ),
-                  ),
+              final taskWidgets = allMonthTasks.asMap().entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TaskCard(task: entry.value, animationIndex: entry.key),
                 );
               }).toList();
 

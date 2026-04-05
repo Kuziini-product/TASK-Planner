@@ -16,14 +16,30 @@ import '../../tasks/providers/tasks_provider.dart';
 import '../data/notification_repository.dart';
 import '../providers/notifications_provider.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  bool _markedRead = false;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final notificationsAsync = ref.watch(notificationsProvider);
+
+    // Auto-mark all as read when screen is viewed
+    if (!_markedRead && notificationsAsync.hasValue) {
+      final hasUnread = notificationsAsync.value!.any((n) => !n.isRead);
+      if (hasUnread) {
+        _markedRead = true;
+        Future.microtask(() => ref.read(notificationsProvider.notifier).markAllAsRead());
+      }
+    }
 
     // Daily stats
     final statsAsync = ref.watch(taskStatsProvider);
@@ -46,6 +62,7 @@ class NotificationsScreen extends ConsumerWidget {
           data: (notifications) {
             // Group notifications by category
             final newTasks = notifications.where((n) => n.type == 'task_assigned' || n.type == 'task_created').toList();
+            final logins = notifications.where((n) => n.type == 'user_login').toList();
             final overdue = notifications.where((n) => n.type == 'task_due' || n.type == 'task_overdue').toList();
             final comments = notifications.where((n) => n.type == 'task_comment').toList();
             final attachments = notifications.where((n) => n.type == 'task_attachment').toList();
@@ -54,7 +71,8 @@ class NotificationsScreen extends ConsumerWidget {
               n.type != 'task_assigned' && n.type != 'task_created' &&
               n.type != 'task_due' && n.type != 'task_overdue' &&
               n.type != 'task_comment' && n.type != 'task_attachment' &&
-              n.type != 'edit_request' && n.type != 'edit_approved'
+              n.type != 'edit_request' && n.type != 'edit_approved' &&
+              n.type != 'user_login'
             ).toList();
 
             // Resolved today count
@@ -95,6 +113,16 @@ class NotificationsScreen extends ConsumerWidget {
                 ),
 
                 // Category cards
+                if (logins.isNotEmpty)
+                  _NotificationCategory(
+                    icon: PhosphorIcons.signIn(PhosphorIconsStyle.fill),
+                    title: 'Conectări',
+                    color: AppColors.success,
+                    notifications: logins,
+                    onTapNotification: (n) => ref.read(notificationsProvider.notifier).deleteNotification(n.id),
+                    onDismiss: (n) => ref.read(notificationsProvider.notifier).deleteNotification(n.id),
+                  ),
+
                 if (newTasks.isNotEmpty)
                   _NotificationCategory(
                     icon: PhosphorIcons.plusCircle(PhosphorIconsStyle.fill),

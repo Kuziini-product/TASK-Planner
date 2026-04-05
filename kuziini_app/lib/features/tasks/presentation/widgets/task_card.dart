@@ -63,41 +63,36 @@ class TaskCard extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              Icon(PhosphorIcons.sun(PhosphorIconsStyle.fill), size: 20, color: AppColors.success),
+              // Assignee profile photo (the person on leave)
+              _UserAvatar(
+                name: task.assigneeName ?? task.leavePerson,
+                avatarUrl: task.assigneeAvatarUrl,
+                color: AppColors.success,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      task.leavePerson,
+                      task.assigneeName ?? task.leavePerson,
                       style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: AppColors.success),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      task.isMultiDay
-                          ? '${task.title} \u2022 ${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}'
-                          : task.title,
-                      style: TextStyle(fontSize: 11, color: AppColors.success.withValues(alpha: 0.7)),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                    ),
+                    if (task.isMultiDay && task.dueDate != null && task.endDate != null)
+                      Text(
+                        '${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month} \u2022 ${task.endDate!.difference(task.dueDate!).inDays + 1} zile',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success.withValues(alpha: 0.7)),
+                      )
+                    else if (task.dueDate != null)
+                      Text(
+                        '${task.dueDate!.day}/${task.dueDate!.month} \u2022 1 zi',
+                        style: TextStyle(fontSize: 11, color: AppColors.success.withValues(alpha: 0.7)),
+                      ),
                   ],
                 ),
               ),
-              if (task.isMultiDay) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${task.endDate!.difference(task.dueDate!).inDays + 1} zile',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.success),
-                  ),
-                ),
-              ],
+              Icon(PhosphorIcons.sun(PhosphorIconsStyle.fill), size: 18, color: AppColors.success.withValues(alpha: 0.5)),
             ],
           ),
         ),

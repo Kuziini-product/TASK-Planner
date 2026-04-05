@@ -11,6 +11,21 @@ import '../data/models/task_attachment.dart';
 import '../data/models/checklist_item.dart';
 import '../data/task_repository.dart';
 
+/// IDs of users a manager has permission to see (empty = see all for admin)
+final managerPermittedUsersProvider = FutureProvider<List<String>>((ref) async {
+  final userId = SupabaseService.instance.currentUserId;
+  if (userId == null) return [];
+  try {
+    final response = await SupabaseService.instance.client
+        .from('manager_permissions')
+        .select('user_id')
+        .eq('manager_id', userId);
+    return (response as List).map((r) => r['user_id'] as String).toList();
+  } catch (_) {
+    return [];
+  }
+});
+
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   return TaskRepository();
 });

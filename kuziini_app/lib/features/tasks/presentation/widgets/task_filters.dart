@@ -44,6 +44,10 @@ class _TeamFilterRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final selectedUser = ref.watch(selectedTeamUserProvider);
     final usersAsync = ref.watch(activeUsersProvider);
+    final profile = ref.watch(currentUserProfileProvider).valueOrNull;
+    final isAdmin = profile?.isAdmin == true;
+    final isManager = profile?.isManager == true;
+    final permittedIds = ref.watch(managerPermittedUsersProvider).valueOrNull ?? [];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -58,9 +62,9 @@ class _TeamFilterRow extends ConsumerWidget {
           ),
           const SizedBox(width: 6),
 
-          // "All Team" button
+          // "All Team" button (admin sees all, manager sees permitted)
           _TeamChip(
-            label: 'All Team',
+            label: isAdmin ? 'All Team' : 'Echipa mea',
             icon: PhosphorIcons.users(PhosphorIconsStyle.regular),
             isSelected: selectedUser == 'all',
             onTap: () => ref.read(selectedTeamUserProvider.notifier).state =
@@ -68,11 +72,17 @@ class _TeamFilterRow extends ConsumerWidget {
           ),
           const SizedBox(width: 6),
 
-          // Individual team members
+          // Individual team members (filtered by permissions for manager)
           ...usersAsync.when(
             data: (users) {
-              final currentUserId = ref.read(currentUserProfileProvider).valueOrNull?.id;
-              final otherUsers = users.where((u) => u.id != currentUserId).toList();
+              final currentUserId = profile?.id;
+              var otherUsers = users.where((u) => u.id != currentUserId).toList();
+
+              // Manager: show only permitted users
+              if (isManager && !isAdmin && permittedIds.isNotEmpty) {
+                otherUsers = otherUsers.where((u) => permittedIds.contains(u.id)).toList();
+              }
+
               return otherUsers.map((user) => Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: _TeamChip(

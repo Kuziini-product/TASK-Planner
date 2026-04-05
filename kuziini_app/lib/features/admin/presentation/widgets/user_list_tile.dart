@@ -16,6 +16,7 @@ class UserListTile extends StatelessWidget {
     this.onDelete,
     this.onBirthDateChanged,
     this.onRoleChange,
+    this.onManageAccess,
     this.showActions = true,
     this.isPending = false,
   });
@@ -26,6 +27,7 @@ class UserListTile extends StatelessWidget {
   final VoidCallback? onDelete;
   final ValueChanged<DateTime>? onBirthDateChanged;
   final ValueChanged<String>? onRoleChange;
+  final VoidCallback? onManageAccess;
   final bool showActions;
   final bool isPending;
 
@@ -193,6 +195,15 @@ class UserListTile extends StatelessWidget {
                     color: user.isApproved ? AppColors.success : AppColors.warning,
                     shape: BoxShape.circle,
                   ),
+                ),
+              // Manage access button (managers only)
+              if (onManageAccess != null)
+                IconButton(
+                  onPressed: onManageAccess,
+                  icon: Icon(PhosphorIcons.usersThree(PhosphorIconsStyle.regular), size: 18, color: Theme.of(context).colorScheme.primary),
+                  tooltip: 'Manage access',
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
                 ),
               // Delete button
               if (onDelete != null)

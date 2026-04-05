@@ -124359,7 +124359,7 @@ a4=A.b([new A.Ca(a8,"Kuziini Task Manager",q,A.yP(a1,new A.vE(B.j5,8,b,b,n,B.w1,
 if(b0)a4.push(A.aF(b,A.bZ(A.BC("assets/images/kuziini_logo_portrait.png",a0.X(0.3),b,b,200),b,b),B.l,B.m,b,b,b,b,b,b,b,b,b))
 return A.bh7(A.fI(B.br,a4,B.Q,B.bo),B.n)}}
 A.bda.prototype={
-$1(a){var s="/calendar",r=null,q=a.aL($.nG(),t.It),p=$.bxM(),o=A.jS(new A.bcV(),r,p,"/login"),n=A.jS(new A.bcW(),r,p,"/invite"),m=A.jS(new A.bcX(),r,p,"/pending-approval"),l=$.bxP(),k=t.q2,j=A.b([A.jS(r,new A.bd2(),r,"/today"),A.jS(r,new A.bd3(),r,s),A.jS(r,new A.bd4(),r,"/notifications"),A.jS(r,new A.bd5(),r,"/profile")],k)
+$1(a){var s="/profile",r=null,q=a.aL($.nG(),t.It),p=$.bxM(),o=A.jS(new A.bcV(),r,p,"/login"),n=A.jS(new A.bcW(),r,p,"/invite"),m=A.jS(new A.bcX(),r,p,"/pending-approval"),l=$.bxP(),k=t.q2,j=A.b([A.jS(r,new A.bd2(),r,"/today"),A.jS(r,new A.bd3(),r,"/calendar"),A.jS(r,new A.bd4(),r,"/notifications"),A.jS(r,new A.bd5(),r,s)],k)
 o=A.b([o,n,m,new A.yv(new A.bd6(),l,r,j,r),A.jS(new A.bd7(),r,p,"/task/:id"),A.jS(new A.bd8(),r,p,"/create-task"),A.jS(new A.bd9(),r,p,"/search"),A.jS(new A.bcY(),r,p,"/settings"),A.jS(new A.bcZ(),r,p,"/admin"),A.jS(new A.bd_(),r,p,"/admin/approvals"),A.jS(new A.bd0(),r,p,"/admin/invitations")],k)
 return A.bCl(!0,r,r,r,r,s,p,r,r,!1,r,!0,r,!1,new A.abu(new A.aJV(o,new A.bd1(q),5)))},
 $S:709}
@@ -124372,7 +124372,7 @@ q=s===o
 if(n===B.ot)return p
 if(n===B.ky){if(s==="/invite")return p
 return r?p:"/login"}if(n===B.kz)return q?p:o
-if(n===B.kx)if(r||q)return"/calendar"
+if(n===B.kx)if(r||q)return"/profile"
 return p},
 $S:710}
 A.bcV.prototype={

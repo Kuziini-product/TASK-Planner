@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -343,82 +344,155 @@ const _presets = [
   ),
 ];
 
-class _ThemePresets extends ConsumerWidget {
+class _ThemePresets extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ThemePresets> createState() => _ThemePresetsState();
+}
+
+class _ThemePresetsState extends ConsumerState<_ThemePresets> {
+  double _kuziiniIntensity = 0.3;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIntensity();
+  }
+
+  Future<void> _loadIntensity() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _kuziiniIntensity = prefs.getDouble('kuziini_intensity') ?? 0.3;
+    });
+  }
+
+  Future<void> _saveIntensity(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('kuziini_intensity', value);
+  }
+
+  Color _kuziiniBgFromIntensity(double intensity) {
+    // 0.0 = white, 1.0 = full lime green
+    return Color.lerp(Colors.white, const Color(0xFF7CB342), intensity)!;
+  }
+
+  bool _isKuziiniSelected(Color currentColor) {
+    // Check if current primary is near Kuziini lime
+    return currentColor.value == const Color(0xFF558F45).value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentColor = ref.watch(primaryColorProvider);
     final currentBg = ref.watch(backgroundColorProvider);
 
     return Column(
-      children: _presets.map((preset) {
-        final isSelected = preset.primaryColor.value == currentColor.value &&
-            preset.backgroundColor == currentBg;
+      children: [
+        ..._presets.map((preset) {
+          final isKuziini = preset.name == 'Kuziini';
+          final isSelected = isKuziini
+              ? _isKuziiniSelected(currentColor)
+              : (preset.primaryColor.value == currentColor.value && preset.backgroundColor == currentBg);
 
-        return GestureDetector(
-          onTap: () {
-            ref.read(themeModeProvider.notifier).setThemeMode(preset.mode);
-            ref.read(primaryColorProvider.notifier).setColor(preset.primaryColor);
-            ref.read(backgroundColorProvider.notifier).setColor(preset.backgroundColor);
-            ref.read(textIntensityProvider.notifier).setIntensity(preset.textIntensity);
-            ref.read(buttonColorProvider.notifier).setColor(null);
-            ref.read(buttonBorderWidthProvider.notifier).setWidth(0);
-            ref.read(buttonBorderColorProvider.notifier).setColor(null);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: preset.backgroundColor ?? (preset.mode == ThemeMode.dark ? const Color(0xFF1A1A2E) : Colors.white),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? preset.primaryColor : theme.dividerColor.withValues(alpha: 0.3),
-                width: isSelected ? 2.5 : 1,
-              ),
-              boxShadow: isSelected ? [BoxShadow(color: preset.primaryColor.withValues(alpha: 0.2), blurRadius: 8)] : null,
-            ),
-            child: Row(
-              children: [
-                Text(preset.emoji, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  ref.read(themeModeProvider.notifier).setThemeMode(preset.mode);
+                  ref.read(primaryColorProvider.notifier).setColor(preset.primaryColor);
+                  if (isKuziini) {
+                    ref.read(backgroundColorProvider.notifier).setColor(_kuziiniBgFromIntensity(_kuziiniIntensity));
+                  } else {
+                    ref.read(backgroundColorProvider.notifier).setColor(preset.backgroundColor);
+                  }
+                  ref.read(textIntensityProvider.notifier).setIntensity(preset.textIntensity);
+                  ref.read(buttonColorProvider.notifier).setColor(null);
+                  ref.read(buttonBorderWidthProvider.notifier).setWidth(0);
+                  ref.read(buttonBorderColorProvider.notifier).setColor(null);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isKuziini
+                        ? _kuziiniBgFromIntensity(_kuziiniIntensity)
+                        : preset.backgroundColor ?? (preset.mode == ThemeMode.dark ? const Color(0xFF1A1A2E) : Colors.white),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected ? preset.primaryColor : theme.dividerColor.withValues(alpha: 0.3),
+                      width: isSelected ? 2.5 : 1,
+                    ),
+                    boxShadow: isSelected ? [BoxShadow(color: preset.primaryColor.withValues(alpha: 0.2), blurRadius: 8)] : null,
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        preset.name,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: preset.mode == ThemeMode.dark ? Colors.white : Colors.black87,
+                      Text(preset.emoji, style: const TextStyle(fontSize: 24)),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              preset.name,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: preset.mode == ThemeMode.dark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              preset.mode == ThemeMode.dark ? 'Dark theme' : 'Light theme',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: preset.mode == ThemeMode.dark ? Colors.white60 : Colors.black45,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        preset.mode == ThemeMode.dark ? 'Dark theme' : 'Light theme',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: preset.mode == ThemeMode.dark ? Colors.white60 : Colors.black45,
-                        ),
-                      ),
+                      Container(width: 18, height: 18,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: preset.primaryColor)),
+                      const SizedBox(width: 8),
+                      if (isSelected)
+                        Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 22, color: preset.primaryColor)
+                      else
+                        Icon(PhosphorIcons.circle(PhosphorIconsStyle.regular), size: 22,
+                          color: preset.mode == ThemeMode.dark ? Colors.white30 : Colors.black26),
                     ],
                   ),
                 ),
-                // Color preview dots
-                Container(width: 18, height: 18,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: preset.primaryColor)),
-                const SizedBox(width: 8),
-                if (isSelected)
-                  Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 22, color: preset.primaryColor)
-                else
-                  Icon(PhosphorIcons.circle(PhosphorIconsStyle.regular), size: 22,
-                    color: preset.mode == ThemeMode.dark ? Colors.white30 : Colors.black26),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+              ),
+              // Intensity slider for Kuziini
+              if (isKuziini && isSelected)
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.brightness_low, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                      Expanded(
+                        child: Slider(
+                          value: _kuziiniIntensity,
+                          min: 0.0,
+                          max: 0.6,
+                          activeColor: const Color(0xFF558F45),
+                          onChanged: (v) {
+                            setState(() => _kuziiniIntensity = v);
+                            final bg = _kuziiniBgFromIntensity(v);
+                            ref.read(backgroundColorProvider.notifier).setColor(bg);
+                            _saveIntensity(v);
+                          },
+                        ),
+                      ),
+                      Icon(Icons.brightness_high, size: 16, color: const Color(0xFF558F45)),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        }),
+      ],
     );
   }
 }

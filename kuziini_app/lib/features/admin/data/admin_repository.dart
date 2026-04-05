@@ -97,23 +97,17 @@ class AdminRepository {
 
   Future<bool> deleteUser(String userId) async {
     try {
-      // Delete user's related data first
-      await _supabase.client.from('task_assignees').delete().eq('user_id', userId);
-      await _supabase.client.from('notifications').delete().eq('user_id', userId);
-      await _supabase.client.from('edit_permissions').delete().eq('user_id', userId);
-      // Delete the profile
-      await _supabase.client.from(AppConstants.tableUsers).delete().eq('id', userId);
-      // Verify deletion actually happened (RLS may silently block it)
+      // Call server-side function that deletes from auth + profiles + related data
+      await _supabase.client.rpc('delete_user_completely', params: {
+        'target_user_id': userId,
+      });
+      // Verify
       final check = await _supabase.client
           .from(AppConstants.tableUsers)
           .select('id')
           .eq('id', userId)
           .maybeSingle();
-      if (check != null) {
-        debugPrint('Delete user: RLS blocked deletion for $userId');
-        return false;
-      }
-      return true;
+      return check == null;
     } catch (e) {
       debugPrint('Failed to delete user: $e');
       return false;

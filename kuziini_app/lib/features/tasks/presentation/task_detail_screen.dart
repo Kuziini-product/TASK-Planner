@@ -567,14 +567,17 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
           const SizedBox(height: 16),
 
-          // Activity info
-          if (task.createdAt != null) ...[
-            Text('Created ${AppDateUtils.formatTimeAgo(task.createdAt!)}', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            if (task.updatedAt != null)
-              Text('Updated ${AppDateUtils.formatTimeAgo(task.updatedAt!)}', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            if (task.completedAt != null)
-              Text('Completed ${AppDateUtils.formatTimeAgo(task.completedAt!)}', style: theme.textTheme.bodySmall?.copyWith(color: AppColors.success)),
-          ],
+          // Created by + timestamps
+          _CreatedByInfo(task: task),
+
+          const SizedBox(height: 12),
+
+          // Activity Log
+          _ExpandableCard(
+            icon: PhosphorIcons.clockCounterClockwise(PhosphorIconsStyle.regular),
+            title: 'Activity Log',
+            child: _ActivityLog(taskId: widget.taskId),
+          ),
 
           const SizedBox(height: 40),
         ],
@@ -680,6 +683,183 @@ class _ExpandableCardState extends State<_ExpandableCard> {
           ),
       ],
     );
+  }
+}
+
+// ── Created By Info ──
+
+class _CreatedByInfo extends ConsumerWidget {
+  const _CreatedByInfo({required this.task});
+  final TaskModel task;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final creatorAsync = ref.watch(userProfileByIdProvider(task.createdBy));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Created by
+        Row(
+          children: [
+            Icon(PhosphorIcons.userCircle(PhosphorIconsStyle.regular), size: 14, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              'Creat de ',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            creatorAsync.when(
+              data: (profile) => Text(
+                profile?['full_name'] as String? ?? profile?['email'] as String? ?? 'Unknown',
+                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              loading: () => const SizedBox(width: 60, height: 12),
+              error: (_, __) => Text('Unknown', style: theme.textTheme.bodySmall),
+            ),
+            if (task.createdAt != null) ...[
+              Text(' · ', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              Text(
+                AppDateUtils.formatTimeAgo(task.createdAt!),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ],
+        ),
+        // Updated
+        if (task.updatedAt != null && task.updatedAt != task.createdAt)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Row(
+              children: [
+                Icon(PhosphorIcons.pencilSimple(PhosphorIconsStyle.regular), size: 14, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text('Actualizat ${AppDateUtils.formatTimeAgo(task.updatedAt!)}',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        // Completed
+        if (task.completedAt != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Row(
+              children: [
+                Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 14, color: AppColors.success),
+                const SizedBox(width: 6),
+                Text('Finalizat ${AppDateUtils.formatTimeAgo(task.completedAt!)}',
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppColors.success)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Activity Log ──
+
+class _ActivityLog extends ConsumerWidget {
+  const _ActivityLog({required this.taskId});
+  final String taskId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final activityAsync = ref.watch(taskActivityProvider(taskId));
+
+    return activityAsync.when(
+      data: (logs) {
+        if (logs.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Nicio activitate înregistrată', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+          );
+        }
+        return Column(
+          children: logs.map((log) {
+            final action = log['action'] as String? ?? '';
+            final createdAt = log['created_at'] != null ? DateTime.parse(log['created_at'] as String) : null;
+            final profile = log['profiles'] as Map<String, dynamic>?;
+            final userName = profile?['full_name'] as String? ?? profile?['email'] as String? ?? 'Unknown';
+            final details = log['details'] as Map<String, dynamic>? ?? {};
+
+            final (icon, label, color) = _actionInfo(action, details);
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 12, color: color),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: theme.textTheme.bodySmall,
+                            children: [
+                              TextSpan(text: userName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              TextSpan(text: ' $label'),
+                            ],
+                          ),
+                        ),
+                        if (createdAt != null)
+                          Text(
+                            AppDateUtils.formatTimeAgo(createdAt),
+                            style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.all(12),
+        child: LoadingIndicator(size: 16),
+      ),
+      error: (_, __) => Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('Failed to load activity', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+      ),
+    );
+  }
+
+  (IconData, String, Color) _actionInfo(String action, Map<String, dynamic> details) {
+    return switch (action) {
+      'created' => (PhosphorIcons.plus(PhosphorIconsStyle.bold), 'a creat task-ul', AppColors.info),
+      'updated' => (PhosphorIcons.pencilSimple(PhosphorIconsStyle.bold), 'a actualizat task-ul', Colors.orange),
+      'status_changed' => (PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.bold),
+          'a schimbat statusul${details['to'] != null ? ' → ${details['to']}' : ''}', Colors.purple),
+      'assigned' => (PhosphorIcons.userPlus(PhosphorIconsStyle.bold),
+          'a asignat${details['to_name'] != null ? ' lui ${details['to_name']}' : ''}', AppColors.info),
+      'unassigned' => (PhosphorIcons.userMinus(PhosphorIconsStyle.bold), 'a dezasignat', Colors.grey),
+      'commented' => (PhosphorIcons.chatCircle(PhosphorIconsStyle.bold), 'a comentat', Colors.teal),
+      'attachment_added' => (PhosphorIcons.paperclip(PhosphorIconsStyle.bold), 'a adăugat un fișier', Colors.indigo),
+      'attachment_removed' => (PhosphorIcons.trash(PhosphorIconsStyle.bold), 'a șters un fișier', AppColors.error),
+      'due_date_changed' => (PhosphorIcons.calendar(PhosphorIconsStyle.bold),
+          'a schimbat data${details['to'] != null ? ' → ${details['to']}' : ''}', Colors.deepOrange),
+      'priority_changed' => (PhosphorIcons.flag(PhosphorIconsStyle.bold),
+          'a schimbat prioritatea${details['to'] != null ? ' → ${details['to']}' : ''}', AppColors.warning),
+      'checklist_added' => (PhosphorIcons.listChecks(PhosphorIconsStyle.bold), 'a adăugat checklist item', Colors.teal),
+      'checklist_completed' => (PhosphorIcons.checkSquare(PhosphorIconsStyle.bold), 'a bifat checklist item', AppColors.success),
+      'archived' => (PhosphorIcons.archive(PhosphorIconsStyle.bold), 'a arhivat task-ul', Colors.grey),
+      'restored' => (PhosphorIcons.arrowCounterClockwise(PhosphorIconsStyle.bold), 'a restaurat task-ul', AppColors.info),
+      _ => (PhosphorIcons.dotsThree(PhosphorIconsStyle.bold), action, Colors.grey),
+    };
   }
 }
 

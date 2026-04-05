@@ -347,3 +347,30 @@ final calendarTasksProvider = FutureProvider.family<List<TaskModel>,
 
   return tasks;
 });
+
+// ── Activity Logs for a Task ──
+
+final taskActivityProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, taskId) async {
+  final supabase = SupabaseService.instance;
+  final response = await supabase.client
+      .from('activity_logs')
+      .select('*, profiles:user_id(full_name, email)')
+      .eq('task_id', taskId)
+      .order('created_at', ascending: false)
+      .limit(50);
+  return List<Map<String, dynamic>>.from(response as List);
+});
+
+// ── Creator Profile ──
+
+final userProfileByIdProvider =
+    FutureProvider.family<Map<String, dynamic>?, String>((ref, userId) async {
+  final supabase = SupabaseService.instance;
+  final response = await supabase.client
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', userId)
+      .maybeSingle();
+  return response;
+});

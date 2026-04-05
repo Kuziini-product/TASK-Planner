@@ -41,7 +41,7 @@ class TaskCard extends ConsumerWidget {
       case TaskPriority.low:
         return AppColors.priorityLow;
       case TaskPriority.none:
-        return Colors.transparent;
+        return AppColors.priorityNone;
     }
   }
 
@@ -118,7 +118,7 @@ class TaskCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border(
             left: BorderSide(
-              color: task.priority != TaskPriority.none ? _accentColor : Colors.transparent,
+              color: _accentColor,
               width: 3,
             ),
           ),

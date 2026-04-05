@@ -34,6 +34,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _descriptionFocusNode = FocusNode();
+  bool _titleManuallyEdited = false;
   final _checklistController = TextEditingController();
 
   TaskPriority _priority = TaskPriority.none;
@@ -61,9 +63,37 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   void initState() {
     super.initState();
     if (_isEditMode) {
+      _titleManuallyEdited = true; // Don't auto-generate title when editing
       _applyExistingTask();
     } else {
       _applyVoiceParams();
+      // Auto-generate title from first 3 words of description
+      _descriptionController.addListener(_autoGenerateTitle);
+      // Focus description field on new task
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_isEditMode) _descriptionFocusNode.requestFocus();
+      });
+    }
+    // Track manual title edits
+    _titleController.addListener(() {
+      if (_titleController.text.isNotEmpty && _descriptionController.text.isEmpty) {
+        _titleManuallyEdited = true;
+      }
+    });
+  }
+
+  void _autoGenerateTitle() {
+    if (_titleManuallyEdited) return;
+    final desc = _descriptionController.text.trim();
+    if (desc.isEmpty) {
+      _titleController.text = '';
+      return;
+    }
+    final words = desc.split(RegExp(r'\s+'));
+    final title = words.take(3).join(' ');
+    // Only update if different to avoid cursor jumping
+    if (_titleController.text != title) {
+      _titleController.text = title;
     }
   }
 
@@ -155,8 +185,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   @override
   void dispose() {
+    _descriptionController.removeListener(_autoGenerateTitle);
     _titleController.dispose();
     _descriptionController.dispose();
+    _descriptionFocusNode.dispose();
     _checklistController.dispose();
     _locationNameController.dispose();
     _locationAddressController.dispose();
@@ -642,54 +674,18 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: KuziiniTextField(
-                      controller: _titleController,
-                      hint: 'Task title',
-                      autofocus: true,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a title';
-                        }
-                        return null;
-                      },
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
-                      fillColor: Colors.transparent,
-                      borderRadius: 0,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: VoiceInputButton(
-                      mini: true,
-                      hintText: 'Say the task title...',
-                      onResult: (text) {
-                        _titleController.text = text;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              AppSpacing.vGapMd,
-
-              // Description
+              // Description (primary input — title auto-generates from first 3 words)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: KuziiniTextField(
                       controller: _descriptionController,
-                      hint: 'Add description...',
+                      focusNode: _descriptionFocusNode,
+                      hint: 'Descrie task-ul...',
                       maxLines: 4,
                       minLines: 2,
+                      autofocus: !_isEditMode,
                       textCapitalization: TextCapitalization.sentences,
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -701,11 +697,51 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     padding: const EdgeInsets.only(top: 2),
                     child: VoiceInputButton(
                       mini: true,
-                      hintText: 'Say the task description...',
+                      hintText: 'Dictează descrierea...',
                       onResult: (text) {
                         final current = _descriptionController.text;
                         _descriptionController.text =
                             current.isEmpty ? text : '$current $text';
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              AppSpacing.vGapSm,
+
+              // Title (auto-generated, editable)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: KuziiniTextField(
+                      controller: _titleController,
+                      hint: 'Titlu (auto din descriere)',
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => _titleManuallyEdited = true,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Titlul e obligatoriu';
+                        }
+                        return null;
+                      },
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+                      fillColor: Colors.transparent,
+                      borderRadius: 0,
+                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: VoiceInputButton(
+                      mini: true,
+                      hintText: 'Dictează titlul...',
+                      onResult: (text) {
+                        _titleManuallyEdited = true;
+                        _titleController.text = text;
                       },
                     ),
                   ),

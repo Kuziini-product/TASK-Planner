@@ -31,6 +31,7 @@ class KuziiniTextField extends StatelessWidget {
     this.contentPadding,
     this.fillColor,
     this.borderRadius,
+    this.style,
   });
 
   final TextEditingController? controller;
@@ -58,6 +59,7 @@ class KuziiniTextField extends StatelessWidget {
   final EdgeInsetsGeometry? contentPadding;
   final Color? fillColor;
   final double? borderRadius;
+  final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +96,7 @@ class KuziiniTextField extends StatelessWidget {
           inputFormatters: inputFormatters,
           focusNode: focusNode,
           textCapitalization: textCapitalization,
-          style: theme.textTheme.bodyLarge,
+          style: style ?? theme.textTheme.bodyLarge,
           decoration: InputDecoration(
             hintText: hint,
             fillColor: fillColor,

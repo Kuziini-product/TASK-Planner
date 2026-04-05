@@ -19,7 +19,6 @@ import '../../../core/widgets/loading_indicator.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../tasks/data/models/task_model.dart';
-import '../../tasks/data/task_repository.dart';
 import '../../tasks/presentation/widgets/task_card.dart';
 import '../../tasks/presentation/widgets/user_picker.dart';
 import '../../tasks/providers/tasks_provider.dart';
@@ -158,7 +157,10 @@ class ProfileScreen extends ConsumerWidget {
                         // Overdue badge - prominent at top
                         if (overdue > 0)
                           GestureDetector(
-                            onTap: () => _showFilteredTasks(context, ref, 'Overdue Tasks', TaskFilterType.overdue),
+                            onTap: () {
+                              ref.read(taskFilterProvider.notifier).state = TaskFilterType.overdue;
+                              context.go(AppRoutes.today);
+                            },
                             child: Container(
                               width: double.infinity,
                               margin: const EdgeInsets.only(bottom: 12),
@@ -189,21 +191,30 @@ class ProfileScreen extends ConsumerWidget {
                               label: 'Total',
                               value: '${stats['total'] ?? 0}',
                               color: AppColors.info,
-                              onTap: () => _showFilteredTasks(context, ref, 'All Tasks', TaskFilterType.all),
+                              onTap: () {
+                                ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                                context.go(AppRoutes.today);
+                              },
                             ),
                             AppSpacing.hGapMd,
                             _StatCard(
                               label: 'Done',
                               value: '${stats['done'] ?? 0}',
                               color: AppColors.success,
-                              onTap: () => _showFilteredTasks(context, ref, 'Done', TaskFilterType.done),
+                              onTap: () {
+                                ref.read(taskFilterProvider.notifier).state = TaskFilterType.done;
+                                context.go(AppRoutes.today);
+                              },
                             ),
                             AppSpacing.hGapMd,
                             _StatCard(
                               label: 'In Progress',
                               value: '${stats['in_progress'] ?? 0}',
                               color: AppColors.warning,
-                              onTap: () => _showFilteredTasks(context, ref, 'In Progress', TaskFilterType.inProgress),
+                              onTap: () {
+                                ref.read(taskFilterProvider.notifier).state = TaskFilterType.inProgress;
+                                context.go(AppRoutes.today);
+                              },
                             ),
                           ],
                         ),
@@ -758,62 +769,3 @@ Widget _buildProfileAvatar(UserProfile profile, Color primaryColor) {
   return avatar;
 }
 
-void _showFilteredTasks(BuildContext context, WidgetRef ref, String title, TaskFilterType filter) {
-  final repo = ref.read(taskRepositoryProvider);
-  final theme = Theme.of(context);
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.3,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (ctx, scrollController) => FutureBuilder<List<TaskModel>>(
-        future: _fetchTasksForFilter(repo, filter),
-        builder: (ctx, snapshot) {
-          final tasks = snapshot.data ?? [];
-          return Column(
-            children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
-              Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-              Text('${tasks.length} task${tasks.length != 1 ? '-uri' : ''}',
-                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 8),
-              Expanded(
-                child: snapshot.connectionState == ConnectionState.waiting
-                    ? const Center(child: LoadingIndicator(size: 24))
-                    : tasks.isEmpty
-                        ? Center(child: Text('Niciun task', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)))
-                        : ListView.builder(
-                            controller: scrollController,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: tasks.length,
-                            itemBuilder: (context, index) => TaskCard(task: tasks[index], animationIndex: index),
-                          ),
-              ),
-            ],
-          );
-        },
-      ),
-    ),
-  );
-}
-
-Future<List<TaskModel>> _fetchTasksForFilter(TaskRepository repo, TaskFilterType filter) async {
-  List<TaskModel> tasks;
-  switch (filter) {
-    case TaskFilterType.overdue:
-      tasks = await repo.fetchOverdueTasks();
-    case TaskFilterType.done:
-      tasks = (await repo.fetchTasks(limit: 500)).where((t) => t.isCompleted).toList();
-    case TaskFilterType.inProgress:
-      tasks = (await repo.fetchTasks(limit: 500)).where((t) => t.status == TaskStatus.in_progress).toList();
-    default:
-      tasks = await repo.fetchTasks(limit: 200);
-  }
-  return tasks.where((t) => !t.isArchived).toList();
-}

@@ -104,6 +104,19 @@ class TaskModel {
 
   bool get isCompleted => status == TaskStatus.done;
   bool get isArchived => status == TaskStatus.archived;
+
+  /// Leave/day-off task — special display, not counted in stats
+  bool get isLeave {
+    final t = title.toLowerCase().trim();
+    return t.contains('concediu') || t.contains('liber');
+  }
+
+  /// Display name for leave card (creator or assignee name)
+  String get leavePerson {
+    if (assigneeName != null && assigneeName!.isNotEmpty) return assigneeName!;
+    if (creatorName != null && creatorName!.isNotEmpty) return creatorName!;
+    return 'Unknown';
+  }
   bool get isOverdue {
     if (dueDate == null || isCompleted) return false;
     final now = DateTime.now();

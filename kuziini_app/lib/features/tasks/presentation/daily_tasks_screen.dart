@@ -231,11 +231,20 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final unscheduled = tasks.where((t) => t.startTime == null).toList();
-                        final scheduled = tasks.where((t) => t.startTime != null).toList()
+                        // Separate leave tasks from regular tasks
+                        final leaveTasks = tasks.where((t) => t.isLeave).toList();
+                        final regularTasks = tasks.where((t) => !t.isLeave).toList();
+
+                        final unscheduled = regularTasks.where((t) => t.startTime == null).toList();
+                        final scheduled = regularTasks.where((t) => t.startTime != null).toList()
                           ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
 
                         final allItems = <_TaskListItem>[];
+
+                        // Leave tasks first (no header)
+                        for (final task in leaveTasks) {
+                          allItems.add(_TaskListItem(task: task));
+                        }
 
                         if (unscheduled.isNotEmpty) {
                           allItems.add(_TaskListItem(isHeader: true, headerTitle: 'Unscheduled', headerCount: unscheduled.length));
@@ -308,10 +317,12 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
   }
 
   int _calculateItemCount(List<TaskModel> tasks) {
-    final unscheduled = tasks.where((t) => t.startTime == null).toList();
-    final scheduled = tasks.where((t) => t.startTime != null).toList();
+    final leaveTasks = tasks.where((t) => t.isLeave).toList();
+    final regularTasks = tasks.where((t) => !t.isLeave).toList();
+    final unscheduled = regularTasks.where((t) => t.startTime == null).toList();
+    final scheduled = regularTasks.where((t) => t.startTime != null).toList();
 
-    int count = 0;
+    int count = leaveTasks.length; // leave tasks (no header)
     if (unscheduled.isNotEmpty) count += 1 + unscheduled.length; // header + tasks
     if (scheduled.isNotEmpty) {
       final hours = scheduled.map((t) => t.startTime!.toLocal().hour).toSet();
@@ -358,8 +369,9 @@ class _CompactDayHeader extends StatelessWidget {
     final isToday = AppDateUtils.isToday(date);
     final greeting = _getGreeting();
 
-    final totalTasks = tasksAsync.valueOrNull?.length ?? 0;
-    final completedTasks = tasksAsync.valueOrNull?.where((t) => t.isCompleted).length ?? 0;
+    final regularTasks = tasksAsync.valueOrNull?.where((t) => !t.isLeave).toList() ?? [];
+    final totalTasks = regularTasks.length;
+    final completedTasks = regularTasks.where((t) => t.isCompleted).length;
     final remaining = totalTasks - completedTasks;
 
     return InkWell(

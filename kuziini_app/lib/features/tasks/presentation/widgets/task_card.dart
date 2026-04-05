@@ -49,6 +49,65 @@ class TaskCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
+    // ── Leave/day-off card: special green design ──
+    if (task.isLeave) {
+      return GestureDetector(
+        onTap: onTap ?? () => context.push('/task/${task.id}'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.symmetric(vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Icon(PhosphorIcons.sun(PhosphorIconsStyle.fill), size: 20, color: AppColors.success),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.leavePerson,
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: AppColors.success),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      task.isMultiDay
+                          ? '${task.title} \u2022 ${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}'
+                          : task.title,
+                      style: TextStyle(fontSize: 11, color: AppColors.success.withValues(alpha: 0.7)),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (task.isMultiDay) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${task.endDate!.difference(task.dueDate!).inDays + 1} zile',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.success),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      )
+          .animate()
+          .fadeIn(duration: 300.ms, delay: Duration(milliseconds: 50 * animationIndex))
+          .moveX(begin: 20, duration: 300.ms, delay: Duration(milliseconds: 50 * animationIndex));
+    }
+
+    // ── Normal task card ──
     return GestureDetector(
       onTap: onTap ?? () => context.push('/task/${task.id}'),
       child: Container(

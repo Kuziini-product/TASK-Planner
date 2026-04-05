@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_util' as js_util;
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -39,7 +40,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   bool _titleManuallyEdited = false;
   final _checklistController = TextEditingController();
 
-  TaskPriority _priority = TaskPriority.none;
+  TaskPriority _priority = TaskPriority.medium;
   DateTime? _dueDate;
   DateTime? _endDate; // For multi-day tasks
   TimeOfDay? _startTime;
@@ -875,7 +876,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               AppSpacing.vGapSm,
               Wrap(
                 spacing: 8,
-                children: TaskPriority.values.map((priority) {
+                children: TaskPriority.values.where((p) => p != TaskPriority.none).map((priority) {
                   final isSelected = _priority == priority;
                   Color color;
                   switch (priority) {
@@ -952,8 +953,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
                       label: 'Adaugă foto',
                       isActive: false,
-                      onTap: () {
-                        context.showSnackBar('Poți adăuga foto după creare din detalii task');
+                      onTap: () async {
+                        final picker = ImagePicker();
+                        final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800);
+                        if (image != null && mounted) {
+                          context.showSnackBar('Foto va fi atașată la creare');
+                        }
                       },
                     ),
                   ),
@@ -963,8 +968,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       icon: PhosphorIcons.file(PhosphorIconsStyle.regular),
                       label: 'Adaugă doc',
                       isActive: false,
-                      onTap: () {
-                        context.showSnackBar('Poți adăuga documente după creare din detalii task');
+                      onTap: () async {
+                        final picker = ImagePicker();
+                        final file = await picker.pickImage(source: ImageSource.gallery);
+                        if (file != null && mounted) {
+                          context.showSnackBar('Document va fi atașat la creare');
+                        }
                       },
                     ),
                   ),

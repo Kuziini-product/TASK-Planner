@@ -104,8 +104,13 @@ class TaskModel {
 
   bool get isCompleted => status == TaskStatus.done;
   bool get isArchived => status == TaskStatus.archived;
-  bool get isOverdue =>
-      dueDate != null && dueDate!.isBefore(DateTime.now()) && !isCompleted;
+  bool get isOverdue {
+    if (dueDate == null || isCompleted) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final due = DateTime(dueDate!.year, dueDate!.month, dueDate!.day);
+    return due.isBefore(today);
+  }
   bool get hasChecklist => checklistTotal > 0;
   bool get hasComments => commentCount > 0;
   bool get hasAttachments => attachmentCount > 0;

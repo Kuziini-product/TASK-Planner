@@ -543,12 +543,15 @@ class TaskRepository {
     int inProgress = activeTasks.where((t) => t['status'] == 'in_progress').length;
     int todo = activeTasks.where((t) => t['status'] == 'todo').length;
     int review = activeTasks.where((t) => t['status'] == 'review').length;
+    final today = DateTime(now.year, now.month, now.day);
     int overdue = activeTasks.where((t) {
       if (t['status'] == 'done') return false;
       final dueDateStr = t['due_date'] as String?;
       if (dueDateStr == null) return false;
       final dueDate = DateTime.tryParse(dueDateStr);
-      return dueDate != null && dueDate.isBefore(now);
+      if (dueDate == null) return false;
+      final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+      return dueDay.isBefore(today);
     }).length;
 
     return {

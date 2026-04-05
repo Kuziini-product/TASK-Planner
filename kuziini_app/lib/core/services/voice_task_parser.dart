@@ -31,7 +31,7 @@
 library;
 
 // ── Field enum ──
-enum VoiceField { title, description, time, date, address, priority, assign }
+enum VoiceField { title, description, time, date, address, priority, assign, photo, attachment }
 
 // ── Result ──
 class VoiceTaskResult {
@@ -43,6 +43,8 @@ class VoiceTaskResult {
   final String? priority; // high, medium, low, none
   final String? address;
   final List<String> assignees;
+  final bool wantsPhoto;
+  final bool wantsAttachment;
   /// Which field is currently being filled (for live UI).
   final VoiceField activeField;
 
@@ -55,6 +57,8 @@ class VoiceTaskResult {
     this.priority,
     this.address,
     this.assignees = const [],
+    this.wantsPhoto = false,
+    this.wantsAttachment = false,
     this.activeField = VoiceField.title,
   });
 
@@ -102,7 +106,27 @@ class VoiceTaskParser {
 
   // ── Multi-word keyword triggers (longer first for greedy match) ──
   static const _contextTriggers = <String, VoiceField>{
+    // Photo (multi-word first)
+    'adaugă poză': VoiceField.photo,
+    'adauga poza': VoiceField.photo,
+    'adaugă pozã': VoiceField.photo,
+    'fă poză': VoiceField.photo,
+    'fa poza': VoiceField.photo,
+    'fă pozã': VoiceField.photo,
+    'picture': VoiceField.photo,
+    // Attachment (multi-word first)
+    'adaugă atașament': VoiceField.attachment,
+    'adauga atasament': VoiceField.attachment,
+    'adaugă document': VoiceField.attachment,
+    'adauga document': VoiceField.attachment,
+    'document': VoiceField.attachment,
     // Assign (multi-word first)
+    'adaugă-l și pe': VoiceField.assign,
+    'adauga-l si pe': VoiceField.assign,
+    'adaug-o și pe': VoiceField.assign,
+    'adaug-o si pe': VoiceField.assign,
+    'adaugă-l pe': VoiceField.assign,
+    'adauga-l pe': VoiceField.assign,
     'trimite și la': VoiceField.assign,
     'trimite si la': VoiceField.assign,
     'trimite la': VoiceField.assign,
@@ -112,6 +136,7 @@ class VoiceTaskParser {
     'atribuie la': VoiceField.assign,
     'assign': VoiceField.assign,
     'asign': VoiceField.assign,
+    'asignat': VoiceField.assign,
     'atribuie': VoiceField.assign,
     'notifică': VoiceField.assign,
     'notifica': VoiceField.assign,
@@ -123,6 +148,8 @@ class VoiceTaskParser {
     // Time
     'time': VoiceField.time,
     'timp': VoiceField.time,
+    'ora': VoiceField.time,
+    'orele': VoiceField.time,
     // Date
     'date': VoiceField.date,
     'dată': VoiceField.date,
@@ -152,6 +179,7 @@ class VoiceTaskParser {
     final buffers = <VoiceField, List<String>>{
       for (final f in VoiceField.values) f: [],
     };
+    final triggeredFields = <VoiceField>{};
 
     int i = 0;
     while (i < words.length) {
@@ -159,24 +187,16 @@ class VoiceTaskParser {
       final match = _matchContextTrigger(words, i);
       if (match != null) {
         activeField = match.field;
+        triggeredFields.add(match.field);
         i += match.wordCount;
         continue;
       }
 
-      // "ora" inside time context or standalone → treated as time trigger + skip word
-      if (activeField == VoiceField.time && words[i] == 'ora') {
-        i++;
-        continue;
+      // Add word to active buffer (skip for photo/attachment - they're flags, not content)
+      if (activeField == VoiceField.photo || activeField == VoiceField.attachment) {
+        // These are flag fields - switch back to title context
+        activeField = VoiceField.title;
       }
-
-      // Standalone "ora" anywhere → switch to time context
-      if (words[i] == 'ora') {
-        activeField = VoiceField.time;
-        i++;
-        continue;
-      }
-
-      // Add word to active buffer
       buffers[activeField]!.add(words[i]);
       i++;
     }
@@ -217,6 +237,10 @@ class VoiceTaskParser {
     // Assignees – split by "și", "si", ",", "and"
     final assignees = _parseAssignees(buffers[VoiceField.assign]!);
 
+    // Photo/attachment flags - triggered if the keyword was ever spoken
+    final wantsPhoto = triggeredFields.contains(VoiceField.photo);
+    final wantsAttachment = triggeredFields.contains(VoiceField.attachment);
+
     return VoiceTaskResult(
       title: title,
       description: description,
@@ -226,6 +250,8 @@ class VoiceTaskParser {
       priority: priority,
       address: address,
       assignees: assignees,
+      wantsPhoto: wantsPhoto,
+      wantsAttachment: wantsAttachment,
       activeField: activeField,
     );
   }

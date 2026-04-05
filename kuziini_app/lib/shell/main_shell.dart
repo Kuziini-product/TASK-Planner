@@ -52,6 +52,8 @@ class MainShell extends ConsumerWidget {
         if (result.priority != null) params['priority'] = result.priority!;
         if (result.address != null) params['locAddress'] = result.address!;
         if (result.assignees.isNotEmpty) params['assignee'] = result.assignees.first;
+        if (result.wantsPhoto) params['photo'] = '1';
+        if (result.wantsAttachment) params['attachment'] = '1';
 
         final uri = Uri(path: AppRoutes.createTask, queryParameters: params.isNotEmpty ? params : null);
         context.push(uri.toString());
@@ -494,9 +496,8 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     child: _ActionCard(
                       icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
                       label: 'Take a picture',
-                      onTap: () {
-                        // Will be handled after task creation
-                      },
+                      isActive: parsed?.wantsPhoto == true,
+                      onTap: () {},
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -504,9 +505,8 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     child: _ActionCard(
                       icon: PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
                       label: 'Add attachment',
-                      onTap: () {
-                        // Will be handled after task creation
-                      },
+                      isActive: parsed?.wantsAttachment == true,
+                      onTap: () {},
                     ),
                   ),
                 ],
@@ -783,10 +783,11 @@ class _AssignCard extends StatelessWidget {
 
 // ── Action Card (Take picture / Add attachment) ──
 class _ActionCard extends StatelessWidget {
-  const _ActionCard({required this.icon, required this.label, required this.onTap});
+  const _ActionCard({required this.icon, required this.label, required this.onTap, this.isActive = false});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -799,15 +800,22 @@ class _ActionCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-          color: primaryColor.withValues(alpha: 0.05),
+          border: Border.all(
+            color: isActive ? AppColors.success : primaryColor.withValues(alpha: 0.3),
+            width: isActive ? 2 : 1,
+          ),
+          color: isActive ? AppColors.success.withValues(alpha: 0.1) : primaryColor.withValues(alpha: 0.05),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: primaryColor),
+            Icon(
+              isActive ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : icon,
+              size: 18,
+              color: isActive ? AppColors.success : primaryColor,
+            ),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor)),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isActive ? AppColors.success : primaryColor)),
           ],
         ),
       ),

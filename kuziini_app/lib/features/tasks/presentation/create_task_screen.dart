@@ -173,6 +173,19 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     if (p.containsKey('assignee')) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _resolveAssignee(p['assignee']!));
     }
+
+    // Auto-open pickers if voice requested photo/attachment
+    if (p.containsKey('photo')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _pickImage());
+    }
+    if (p.containsKey('attachment')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Delay slightly if photo picker is also opening
+        Future.delayed(Duration(milliseconds: p.containsKey('photo') ? 500 : 0), () {
+          if (mounted) _pickDocument();
+        });
+      });
+    }
   }
 
   Future<void> _resolveAssignee(String name) async {

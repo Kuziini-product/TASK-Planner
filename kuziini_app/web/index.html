@@ -32,23 +32,33 @@
     });
 
     // PWA Install prompt
-    var deferredInstallPrompt = null;
+    window.deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', function(e) {
       e.preventDefault();
-      deferredInstallPrompt = e;
+      window.deferredInstallPrompt = e;
+      console.log('PWA install prompt captured');
     });
-    function triggerPWAInstall() {
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        deferredInstallPrompt.userChoice.then(function(result) {
-          deferredInstallPrompt = null;
+    window.triggerPWAInstall = function() {
+      if (window.deferredInstallPrompt) {
+        window.deferredInstallPrompt.prompt();
+        window.deferredInstallPrompt.userChoice.then(function(result) {
+          console.log('PWA install result:', result.outcome);
+          window.deferredInstallPrompt = null;
         });
         return true;
       }
       return false;
-    }
-    function isPWAInstalled() {
+    };
+    window.isPWAInstalled = function() {
       return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    };
+    window.canInstallPWA = function() {
+      return window.deferredInstallPrompt !== null;
+    };
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('flutter_service_worker.js');
     }
   </script>
 </body>

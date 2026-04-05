@@ -130330,14 +130330,17 @@ a5(){return new A.QA()}}
 A.QA.prototype={
 aB(){this.aT()
 this.arw()},
-arw(){var s
-try{this.d=globalThis.isPWAInstalled()}catch(s){}if(this.c!=null)this.N(new A.b1n())},
-aB8(){var s,r,q,p='Deschide meniul browser (\u22ee) \u2192 "Install Kuziini"'
-try{s=globalThis.triggerPWAInstall()
-if(!s&&this.c!=null){r=this.c
-r.toString
-A.bZ(r,p,!1)}}catch(q){r=this.c
-if(r!=null)A.bZ(r,p,!1)}},
+arw(){var s,r
+try{s=globalThis
+this.d=J.c(s.isPWAInstalled(),!0)
+J.c(s.canInstallPWA(),!0)}catch(r){}if(this.c!=null)this.N(new A.b1n())},
+aB8(){var s,r,q,p,o='Apas\u0103 meniul browser (\u22ee) apoi "Instaleaz\u0103 aplica\u021bia" sau "Install app"'
+try{s=globalThis
+r=s.triggerPWAInstall()
+if(!J.c(r,!0)&&this.c!=null){q=this.c
+q.toString
+A.bZ(q,o,!1)}}catch(p){q=this.c
+if(q!=null)A.bZ(q,o,!1)}},
 G(a){var s,r,q,p,o,n=null
 if(this.d)return B.aj
 s=A.y(a).ax.b

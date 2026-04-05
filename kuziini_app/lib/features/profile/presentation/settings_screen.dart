@@ -1416,6 +1416,7 @@ class _InstallAppButton extends StatefulWidget {
 
 class _InstallAppButtonState extends State<_InstallAppButton> {
   bool _isInstalled = false;
+  bool _canInstall = false;
 
   @override
   void initState() {
@@ -1425,20 +1426,24 @@ class _InstallAppButtonState extends State<_InstallAppButton> {
 
   void _checkInstallState() {
     try {
-      _isInstalled = js_util.callMethod<bool>(js_util.globalThis, 'isPWAInstalled', []);
+      final global = js_util.globalThis;
+      _isInstalled = js_util.callMethod(global, 'isPWAInstalled', []) == true;
+      _canInstall = js_util.callMethod(global, 'canInstallPWA', []) == true;
     } catch (_) {}
     if (mounted) setState(() {});
   }
 
   void _install() {
     try {
-      final result = js_util.callMethod<bool>(js_util.globalThis, 'triggerPWAInstall', []);
-      if (!result && mounted) {
-        context.showSnackBar('Deschide meniul browser (\u22EE) \u2192 "Install Kuziini"');
+      final global = js_util.globalThis;
+      final result = js_util.callMethod(global, 'triggerPWAInstall', []);
+      if (result != true && mounted) {
+        // Fallback: tell user to use browser menu
+        context.showSnackBar('Apasă meniul browser (\u22EE) apoi "Instalează aplicația" sau "Install app"');
       }
     } catch (_) {
       if (mounted) {
-        context.showSnackBar('Deschide meniul browser (\u22EE) \u2192 "Install Kuziini"');
+        context.showSnackBar('Apasă meniul browser (\u22EE) apoi "Instalează aplicația" sau "Install app"');
       }
     }
   }

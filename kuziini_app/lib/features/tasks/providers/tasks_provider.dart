@@ -316,11 +316,12 @@ final taskStatsProvider = FutureProvider<Map<String, int>>((ref) async {
   return repo.getTaskStats(userId: userId);
 });
 
-// ── Global Task Stats (all team — admin only) ──
+// ── Global Task Stats (team only, excludes admin's own — admin only) ──
 
 final globalTaskStatsProvider = FutureProvider<Map<String, int>>((ref) async {
   final repo = ref.watch(taskRepositoryProvider);
-  return repo.getTaskStats();
+  final userId = SupabaseService.instance.currentUserId;
+  return repo.getTaskStats(excludeUserId: userId);
 });
 
 // ── Calendar Tasks (auto-refresh when daily tasks change via realtime) ──

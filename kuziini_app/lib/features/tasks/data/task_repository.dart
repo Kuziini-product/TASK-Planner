@@ -521,14 +521,17 @@ class TaskRepository {
 
   // ── Statistics ──
 
-  Future<Map<String, int>> getTaskStats({String? userId}) async {
-    var query = _supabase.client.from(AppConstants.tableTasks).select('status, due_date');
+  Future<Map<String, int>> getTaskStats({String? userId, String? excludeUserId}) async {
+    var query = _supabase.client.from(AppConstants.tableTasks).select('status, due_date, created_by');
     if (userId != null) {
       query = query.eq('created_by', userId);
     }
 
     final response = await query;
-    final tasks = response as List;
+    var tasks = (response as List).toList();
+    if (excludeUserId != null) {
+      tasks = tasks.where((t) => t['created_by'] != excludeUserId).toList();
+    }
     final now = DateTime.now();
 
     // Exclude archived from total count

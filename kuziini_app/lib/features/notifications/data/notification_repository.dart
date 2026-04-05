@@ -149,4 +149,25 @@ class NotificationRepository {
         .eq('role', 'admin');
     return (response as List).map((r) => r['id'] as String).toList();
   }
+
+  /// Notify all admins about an event (excludes current user if admin)
+  Future<void> notifyAdmins({
+    required String title,
+    required String body,
+    String? type,
+    Map<String, dynamic>? data,
+  }) async {
+    final currentUserId = _supabase.currentUserId;
+    final adminIds = await fetchAdminUserIds();
+    for (final adminId in adminIds) {
+      if (adminId == currentUserId) continue; // Don't notify yourself
+      await createNotification(
+        userId: adminId,
+        title: title,
+        body: body,
+        type: type,
+        data: data,
+      );
+    }
+  }
 }

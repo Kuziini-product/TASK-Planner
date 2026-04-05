@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../notifications/data/notification_repository.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/extensions.dart';
@@ -616,6 +617,18 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             sortOrder: i,
           );
         }
+
+        // Notify admins about new task
+        try {
+          final profile = ref.read(currentUserProfileProvider).valueOrNull;
+          final notifRepo = NotificationRepository();
+          await notifRepo.notifyAdmins(
+            title: '${profile?.displayName ?? 'Someone'} a creat un task',
+            body: _titleController.text.trim(),
+            type: 'task_created',
+            data: {'task_id': createdTask.id},
+          );
+        } catch (_) {}
 
         ref.invalidate(dailyTasksProvider);
 

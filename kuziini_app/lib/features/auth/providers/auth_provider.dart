@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/supabase_service.dart';
+import '../../notifications/data/notification_repository.dart';
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
 
@@ -39,7 +41,22 @@ class AuthNotifier extends AsyncNotifier<AuthStatus> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await _repo.signIn(email: email, password: password);
-      return _repo.checkAuthStatus();
+      final status = await _repo.checkAuthStatus();
+
+      // Notify admins about login
+      if (status == AuthStatus.authenticated) {
+        try {
+          final profile = await _repo.getUserProfile();
+          final notifRepo = NotificationRepository();
+          await notifRepo.notifyAdmins(
+            title: '${profile?.displayName ?? email} s-a logat',
+            body: 'Utilizator conectat acum',
+            type: 'user_login',
+          );
+        } catch (_) {}
+      }
+
+      return status;
     });
   }
 

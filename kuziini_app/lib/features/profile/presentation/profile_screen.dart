@@ -230,9 +230,23 @@ class ProfileScreen extends ConsumerWidget {
                 // Team Stats (admin & manager)
                 if (profile.isAdmin || profile.isManager) ...[
                   AppSpacing.vGapLg,
-                  Text(profile.isAdmin ? 'TASK-URI ECHIPĂ (GLOBAL)' : 'TASK-URI ECHIPĂ',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                    color: primaryColor, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                  Builder(builder: (context) {
+                    String teamLabel;
+                    if (profile.isAdmin) {
+                      teamLabel = 'TASK-URI ECHIPĂ (GLOBAL)';
+                    } else {
+                      final permittedIds = ref.watch(managerPermittedUsersProvider).valueOrNull ?? [];
+                      final allUsers = ref.watch(activeUsersProvider).valueOrNull ?? [];
+                      if (permittedIds.length == 1) {
+                        final user = allUsers.where((u) => u.id == permittedIds.first).firstOrNull;
+                        teamLabel = 'TASK-URI ${user?.displayName.toUpperCase() ?? 'ECHIPĂ'}';
+                      } else {
+                        teamLabel = 'TASK-URI ECHIPĂ (${permittedIds.length})';
+                      }
+                    }
+                    return Text(teamLabel, style: theme.textTheme.labelSmall?.copyWith(
+                      color: primaryColor, fontWeight: FontWeight.w700, letterSpacing: 1));
+                  }),
                   AppSpacing.vGapSm,
                   ref.watch(globalTaskStatsProvider).when(
                     data: (gStats) {

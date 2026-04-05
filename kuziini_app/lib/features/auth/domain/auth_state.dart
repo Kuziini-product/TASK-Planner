@@ -110,6 +110,7 @@ class UserProfile {
     String? status,
     String? phone,
     String? timezone,
+    DateTime? birthDate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -122,6 +123,7 @@ class UserProfile {
       status: status ?? this.status,
       phone: phone ?? this.phone,
       timezone: timezone ?? this.timezone,
+      birthDate: birthDate ?? this.birthDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

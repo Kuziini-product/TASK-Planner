@@ -46,18 +46,9 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     // Set up real-time subscription
     _subscription?.unsubscribe();
     _subscription = _repo.subscribeToTasks(
-      onInsert: (task) {
-        debugPrint('RT: task inserted');
-        _refreshTasks();
-      },
-      onUpdate: (task) {
-        debugPrint('RT: task updated');
-        _refreshTasks();
-      },
-      onDelete: (taskId) {
-        debugPrint('RT: task deleted');
-        _refreshTasks();
-      },
+      onInsert: (task) => _refreshTasks(),
+      onUpdate: (task) => _refreshTasks(),
+      onDelete: (taskId) => _refreshTasks(),
     );
 
     ref.onDispose(() {

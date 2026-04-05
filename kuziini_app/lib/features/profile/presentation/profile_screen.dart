@@ -16,6 +16,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_card.dart';
 import '../../../core/widgets/loading_indicator.dart';
+import '../../auth/domain/auth_state.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../tasks/data/models/task_model.dart';
 import '../../tasks/presentation/widgets/task_card.dart';
@@ -732,7 +733,7 @@ class _WeekStatChip extends StatelessWidget {
   }
 }
 
-Widget _buildProfileAvatar(dynamic profile, Color primaryColor) {
+Widget _buildProfileAvatar(UserProfile profile, Color primaryColor) {
   final avatar = CircleAvatar(
     radius: 48,
     backgroundColor: primaryColor.withValues(alpha: 0.1),

@@ -147,7 +147,9 @@ class UserApprovalScreen extends ConsumerWidget {
                             ref.invalidate(allUsersProvider);
                             ref.invalidate(birthdayUsersProvider);
                             if (context.mounted) context.showSnackBar('Birthday set for ${user.displayName}');
-                          } catch (_) {}
+                          } catch (e) {
+                            if (context.mounted) context.showSnackBar('Failed to set birthday: $e', isError: true);
+                          }
                         },
                         onDelete: () async {
                           final confirmed = await context.showConfirmDialog(

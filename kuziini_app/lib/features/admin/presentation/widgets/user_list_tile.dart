@@ -214,9 +214,9 @@ class _RoleBadge extends StatelessWidget {
     switch (role) {
       case 'admin':
         color = AppColors.priorityUrgent;
-      case 'member':
+      case 'manager':
         color = Theme.of(context).colorScheme.primary;
-      case 'viewer':
+      case 'user':
         color = AppColors.secondary;
       default:
         color = AppColors.priorityNone;

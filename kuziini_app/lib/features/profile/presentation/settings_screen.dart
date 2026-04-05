@@ -1,3 +1,4 @@
+import 'dart:js_util' as js_util;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -36,6 +37,11 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(title: 'Temă'),
           AppSpacing.vGapSm,
           _ThemePresets(),
+
+          AppSpacing.vGapXl,
+
+          // Install App
+          _InstallAppButton(),
 
           AppSpacing.vGapXl,
 
@@ -1399,6 +1405,92 @@ class _ReminderRepeatTile extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _InstallAppButton extends StatefulWidget {
+  @override
+  State<_InstallAppButton> createState() => _InstallAppButtonState();
+}
+
+class _InstallAppButtonState extends State<_InstallAppButton> {
+  bool _isInstalled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInstallState();
+  }
+
+  void _checkInstallState() {
+    try {
+      _isInstalled = js_util.callMethod<bool>(js_util.globalThis, 'isPWAInstalled', []);
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
+  void _install() {
+    try {
+      final result = js_util.callMethod<bool>(js_util.globalThis, 'triggerPWAInstall', []);
+      if (!result && mounted) {
+        context.showSnackBar('Deschide meniul browser (\u22EE) \u2192 "Install Kuziini"');
+      }
+    } catch (_) {
+      if (mounted) {
+        context.showSnackBar('Deschide meniul browser (\u22EE) \u2192 "Install Kuziini"');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInstalled) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    return GestureDetector(
+      onTap: _install,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primaryColor, primaryColor.withValues(alpha: 0.7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.install_desktop, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Instalează Kuziini', style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text('Adaugă pe Desktop ca aplicație', style: TextStyle(
+                    fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                ],
+              ),
+            ),
+            Icon(PhosphorIcons.downloadSimple(PhosphorIconsStyle.bold), color: Colors.white, size: 24),
+          ],
+        ),
+      ),
     );
   }
 }

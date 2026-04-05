@@ -30,6 +30,26 @@
         }
       }, 2000);
     });
+
+    // PWA Install prompt
+    var deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+    });
+    function triggerPWAInstall() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        deferredInstallPrompt.userChoice.then(function(result) {
+          deferredInstallPrompt = null;
+        });
+        return true;
+      }
+      return false;
+    }
+    function isPWAInstalled() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
   </script>
 </body>
 </html>

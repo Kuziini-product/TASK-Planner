@@ -521,7 +521,10 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                       icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
                       label: 'Take a picture',
                       isActive: _wantsPhoto || parsed?.wantsPhoto == true,
-                      onTap: () => setState(() => _wantsPhoto = !_wantsPhoto),
+                      onTap: () {
+                        _wantsPhoto = true;
+                        _confirm();
+                      },
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -530,7 +533,10 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                       icon: PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
                       label: 'Add attachment',
                       isActive: _wantsAttachment || parsed?.wantsAttachment == true,
-                      onTap: () => setState(() => _wantsAttachment = !_wantsAttachment),
+                      onTap: () {
+                        _wantsAttachment = true;
+                        _confirm();
+                      },
                     ),
                   ),
                 ],

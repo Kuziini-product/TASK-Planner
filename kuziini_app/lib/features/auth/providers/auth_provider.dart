@@ -70,14 +70,12 @@ class AuthNotifier extends AsyncNotifier<AuthStatus> {
     state = await AsyncValue.guard(() async {
       await _repo.signUp(email: email, password: password, fullName: fullName, birthDate: birthDate);
 
-      // Notify admins about new signup needing approval
+      // Notify admins about new signup via server-side function (bypasses RLS)
       try {
-        final notifRepo = NotificationRepository();
-        await notifRepo.notifyAdmins(
-          title: 'Cont nou: ${fullName ?? email}',
-          body: '$email solicită aprobare',
-          type: 'user_signup',
-        );
+        await SupabaseService.instance.client.rpc('notify_admins_of_signup', params: {
+          'user_email': email,
+          'user_name': fullName ?? email,
+        });
       } catch (_) {}
 
       return _repo.checkAuthStatus();

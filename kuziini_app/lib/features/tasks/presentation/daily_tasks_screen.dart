@@ -165,10 +165,6 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
             // Task content
             tasksAsync.when(
               data: (tasks) {
-                // Update PWA badge with today's task count
-                final todayTasks = tasks.where((t) => !t.isCompleted).length;
-                NotificationService.instance.setAppBadge(todayTasks);
-
                 if (tasks.isEmpty) {
                   return SliverFillRemaining(
                     child: EmptyState.tasks(

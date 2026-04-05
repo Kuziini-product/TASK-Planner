@@ -8,8 +8,10 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/constants/app_colors.dart';
 import '../core/router/app_router.dart';
 import '../core/services/birthday_service.dart';
+import '../core/services/notification_service.dart';
 import '../core/services/presence_service.dart';
 import '../core/services/voice_task_parser.dart';
+import '../features/notifications/providers/notifications_provider.dart';
 import '../core/widgets/birthday_banner.dart';
 import '../features/tasks/providers/tasks_provider.dart';
 
@@ -81,6 +83,12 @@ class MainShell extends ConsumerWidget {
     final hasBirthday = ref.watch(hasBirthdayTodayProvider);
     // Keep presence active on all screens
     ref.watch(onlineUsersProvider);
+
+    // Update app badge: notifications + today's tasks
+    final unreadNotifs = ref.watch(unreadCountProvider).valueOrNull ?? 0;
+    final todayTasks = ref.watch(dailyTasksProvider).valueOrNull
+        ?.where((t) => !t.isCompleted).length ?? 0;
+    NotificationService.instance.setAppBadge(unreadNotifs + todayTasks);
 
     return Scaffold(
       body: Column(

@@ -403,30 +403,236 @@ class _ConcediuButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isActive = ref.watch(showLeaveOverlayProvider);
 
     return Padding(
       padding: const EdgeInsets.only(right: 16),
       child: GestureDetector(
-        onTap: () => ref.read(showLeaveOverlayProvider.notifier).state = !isActive,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        onTap: () => _showLeaveDialog(context, ref),
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: isActive ? Colors.red.withValues(alpha: 0.12) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: AppColors.success.withValues(alpha: 0.1),
             borderRadius: AppSpacing.borderRadiusFull,
-            border: Border.all(color: isActive ? Colors.red.withValues(alpha: 0.5) : Colors.transparent),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(PhosphorIcons.sunHorizon(PhosphorIconsStyle.regular), size: 14,
-                color: isActive ? Colors.red : theme.colorScheme.onSurfaceVariant),
+              Icon(PhosphorIcons.sun(PhosphorIconsStyle.fill), size: 14, color: AppColors.success),
               const SizedBox(width: 4),
               Text('Concediu', style: TextStyle(fontSize: 11,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                color: isActive ? Colors.red : theme.colorScheme.onSurfaceVariant)),
+                fontWeight: FontWeight.w600, color: AppColors.success)),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLeaveDialog(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    String? selectedUserId;
+    String? selectedUserName;
+    DateTime startDate = DateTime.now();
+    DateTime endDate = DateTime.now().add(const Duration(days: 1));
+    final reasonCtrl = TextEditingController();
+    bool saving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4,
+                  decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(PhosphorIcons.sun(PhosphorIconsStyle.fill), color: AppColors.success),
+                    const SizedBox(width: 8),
+                    Text('Adaugă Concediu / Liber', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Select user
+                InkWell(
+                  onTap: () async {
+                    final result = await showUserPicker(ctx);
+                    if (result != null) {
+                      setSheetState(() {
+                        selectedUserId = result.userId;
+                        selectedUserName = result.userName;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: selectedUserId != null ? AppColors.success : theme.dividerColor),
+                      color: selectedUserId != null ? AppColors.success.withValues(alpha: 0.05) : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(PhosphorIcons.user(PhosphorIconsStyle.regular), size: 20,
+                          color: selectedUserId != null ? AppColors.success : theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(
+                          selectedUserName ?? 'Selectează persoana',
+                          style: TextStyle(
+                            fontWeight: selectedUserId != null ? FontWeight.w600 : FontWeight.w400,
+                            color: selectedUserId != null ? AppColors.success : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        )),
+                        Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.onSurfaceVariant),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Date range
+                Row(
+                  children: [
+                    Expanded(child: InkWell(
+                      onTap: () async {
+                        final d = await showDatePicker(context: ctx, initialDate: startDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                          lastDate: DateTime.now().add(const Duration(days: 365)));
+                        if (d != null) setSheetState(() {
+                          startDate = d;
+                          if (endDate.isBefore(startDate)) endDate = startDate;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: theme.dividerColor),
+                        ),
+                        child: Row(children: [
+                          Icon(PhosphorIcons.calendarBlank(PhosphorIconsStyle.regular), size: 18, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text('${startDate.day}/${startDate.month}/${startDate.year}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        ]),
+                      ),
+                    )),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(Icons.arrow_forward, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    Expanded(child: InkWell(
+                      onTap: () async {
+                        final d = await showDatePicker(context: ctx, initialDate: endDate,
+                          firstDate: startDate,
+                          lastDate: DateTime.now().add(const Duration(days: 365)));
+                        if (d != null) setSheetState(() => endDate = d);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: theme.dividerColor),
+                        ),
+                        child: Row(children: [
+                          Icon(PhosphorIcons.calendarBlank(PhosphorIconsStyle.regular), size: 18, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text('${endDate.day}/${endDate.month}/${endDate.year}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        ]),
+                      ),
+                    )),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Center(child: Text(
+                  '${endDate.difference(startDate).inDays + 1} zile',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success),
+                )),
+                const SizedBox(height: 12),
+
+                // Reason
+                TextField(
+                  controller: reasonCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Motiv (opțional)',
+                    hintText: 'Ex: Concediu de odihnă',
+                    prefixIcon: const Icon(Icons.note_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true, isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Save button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: selectedUserId == null || saving ? null : () async {
+                      setSheetState(() => saving = true);
+                      try {
+                        final currentUserId = ref.read(currentUserProfileProvider).valueOrNull?.id ?? '';
+                        await addUserLeave(
+                          userId: selectedUserId!,
+                          startDate: startDate,
+                          endDate: endDate,
+                          reason: reasonCtrl.text.trim().isEmpty ? 'Concediu' : reasonCtrl.text.trim(),
+                          createdBy: currentUserId,
+                        );
+                        // Also create a task so it shows in the daily list
+                        final repo = ref.read(taskRepositoryProvider);
+                        await repo.createTask(TaskModel(
+                          id: '',
+                          title: 'Concediu - ${selectedUserName ?? 'User'}',
+                          description: reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim(),
+                          priority: TaskPriority.none,
+                          createdBy: currentUserId,
+                          assigneeId: selectedUserId,
+                          assigneeName: selectedUserName,
+                          dueDate: startDate,
+                          endDate: endDate,
+                        ));
+                        ref.invalidate(dailyTasksProvider);
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Concediu setat pentru ${selectedUserName ?? 'user'}')),
+                          );
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Eroare: $e')),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) setSheetState(() => saving = false);
+                      }
+                    },
+                    icon: saving
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check, size: 18),
+                    label: Text(saving ? 'Se salvează...' : 'Setează Concediu'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      disabledBackgroundColor: AppColors.success.withValues(alpha: 0.3),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

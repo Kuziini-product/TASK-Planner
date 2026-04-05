@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
@@ -591,17 +592,21 @@ class _ConcediuButton extends ConsumerWidget {
                         );
                         // Also create a task so it shows in the daily list
                         final repo = ref.read(taskRepositoryProvider);
-                        await repo.createTask(TaskModel(
+                        final createdTask = await repo.createTask(TaskModel(
                           id: '',
                           title: 'Concediu - ${selectedUserName ?? 'User'}',
                           description: reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim(),
                           priority: TaskPriority.none,
                           createdBy: currentUserId,
-                          assigneeId: selectedUserId,
-                          assigneeName: selectedUserName,
                           dueDate: startDate,
                           endDate: endDate,
                         ));
+                        // Assign the leave task to the selected user
+                        await Supabase.instance.client.from('task_assignees').insert({
+                          'task_id': createdTask.id,
+                          'user_id': selectedUserId,
+                          'assigned_by': currentUserId,
+                        });
                         ref.invalidate(dailyTasksProvider);
                         if (ctx.mounted) {
                           Navigator.pop(ctx);

@@ -768,11 +768,7 @@ class _CustomBannerWidget extends StatelessWidget {
 
   Color _parseColor(String? hex, Color fallback) {
     if (hex == null || hex.length < 7) return fallback;
-    try {
-      return Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000);
-    } catch (_) {
-      return fallback;
-    }
+    try { return Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000); } catch (_) { return fallback; }
   }
 
   @override
@@ -783,46 +779,103 @@ class _CustomBannerWidget extends StatelessWidget {
     final effect = banner['effect'] as String? ?? 'none';
     final gradStart = _parseColor(banner['gradient_start'] as String?, const Color(0xFFFF6B9D));
     final gradEnd = _parseColor(banner['gradient_end'] as String?, const Color(0xFFFFA751));
+    final images = imageUrl != null && imageUrl.isNotEmpty ? imageUrl.split('|||') : <String>[];
 
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [gradStart, gradEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: () => _showFullBanner(context, banner),
+      child: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [gradStart, gradEnd], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Stack(
+                children: [
+                  if (images.isNotEmpty)
+                    Positioned.fill(child: Opacity(opacity: 0.3,
+                      child: images.length == 1
+                          ? Image.network(images.first, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink())
+                          : Row(children: images.take(4).map((url) => Expanded(
+                              child: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()))).toList()))),
+                  Center(child: Column(
+                    children: [
+                      if (title.isNotEmpty)
+                        Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
+                          shadows: [Shadow(color: Colors.black26, blurRadius: 4)]), textAlign: TextAlign.center),
+                      if (subtitle != null && subtitle.isNotEmpty)
+                        Padding(padding: const EdgeInsets.only(top: 2),
+                          child: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center)),
+                    ],
+                  )),
+                ],
+              ),
             ),
           ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                if (imageUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Image.network(imageUrl, height: 50, fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-                  ),
-                if (title.isNotEmpty)
-                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
-                    shadows: [Shadow(color: Colors.black26, blurRadius: 4)]),
-                    textAlign: TextAlign.center),
-                if (subtitle != null && subtitle.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12),
-                      textAlign: TextAlign.center),
-                  ),
-              ],
+          if (effect == 'confetti') const Positioned.fill(child: ConfettiOverlay(duration: Duration(seconds: 5))),
+        ],
+      ),
+    );
+  }
+
+  void _showFullBanner(BuildContext context, Map<String, dynamic> banner) {
+    final title = banner['title'] as String? ?? '';
+    final subtitle = banner['subtitle'] as String?;
+    final imageUrl = banner['image_url'] as String?;
+    final effect = banner['effect'] as String? ?? 'none';
+    final gradStart = _parseColor(banner['gradient_start'] as String?, const Color(0xFFFF6B9D));
+    final gradEnd = _parseColor(banner['gradient_end'] as String?, const Color(0xFFFFA751));
+    final images = imageUrl != null && imageUrl.isNotEmpty ? imageUrl.split('|||') : <String>[];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => GestureDetector(
+        onTap: () => Navigator.pop(ctx),
+        child: Scaffold(
+          backgroundColor: Colors.black54,
+          body: Center(
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              constraints: const BoxConstraints(maxHeight: 400),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [gradStart, gradEnd], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  children: [
+                    if (images.isNotEmpty)
+                      Positioned.fill(child: Opacity(opacity: 0.35,
+                        child: images.length == 1
+                            ? Image.network(images.first, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink())
+                            : Row(children: images.take(4).map((url) => Expanded(
+                                child: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()))).toList()))),
+                    Center(child: Padding(
+                      padding: const EdgeInsets.all(30),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        if (title.isNotEmpty)
+                          Text(title, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700,
+                            shadows: [Shadow(color: Colors.black38, blurRadius: 8)]), textAlign: TextAlign.center),
+                        if (subtitle != null && subtitle.isNotEmpty)
+                          Padding(padding: const EdgeInsets.only(top: 8),
+                            child: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 16), textAlign: TextAlign.center)),
+                      ]),
+                    )),
+                    if (effect == 'confetti') const Positioned.fill(child: ConfettiOverlay(duration: Duration(seconds: 6))),
+                    Positioned(top: 12, right: 12, child: IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close, color: Colors.white70, size: 28))),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-        if (effect == 'confetti')
-          const Positioned.fill(child: ConfettiOverlay(duration: Duration(seconds: 5))),
-      ],
+      ),
     );
   }
 }

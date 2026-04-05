@@ -28,43 +28,37 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
     final textInt = ref.watch(textIntensityProvider);
     final router = ref.watch(appRouterProvider);
 
-    // Auto-redirect to profile on first load
+    // Hide splash after delay
     if (!_redirected) {
       _redirected = true;
       Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted) {
-          router.go(AppRoutes.profile);
-          setState(() => _showLoader = false);
-        }
+        if (mounted) setState(() => _showLoader = false);
       });
     }
 
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Stack(
-      children: [
-        MaterialApp.router(
-      title: 'Kuziini Task Manager',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC, textIntensity: textInt),
-      darkTheme: AppTheme.darkTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC, textIntensity: textInt),
-      themeMode: themeMode,
-      routerConfig: router,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en', ''),
-        Locale('ro', ''),
-      ],
-    ),
-        // Splash logo while loading
-        if (_showLoader)
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Container(
+        children: [
+          MaterialApp.router(
+            title: 'Kuziini Task Manager',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC, textIntensity: textInt),
+            darkTheme: AppTheme.darkTheme(primaryColor, backgroundColor: bgColor, buttonColor: btnColor, borderWidth: borderW, borderColor: borderC, textIntensity: textInt),
+            themeMode: themeMode,
+            routerConfig: router,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en', ''),
+              Locale('ro', ''),
+            ],
+          ),
+          if (_showLoader)
+            Container(
               color: Colors.white,
               child: Center(
                 child: Image.asset(
@@ -74,9 +68,8 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
                 ),
               ),
             ),
-          ),
-      ],
-    ),
+        ],
+      ),
     );
   }
 }

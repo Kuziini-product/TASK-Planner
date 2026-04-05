@@ -83,7 +83,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
           );
 
       if (mounted) {
-        context.go(AppRoutes.today);
+        context.go(AppRoutes.calendar);
       }
     } catch (e) {
       if (mounted) {

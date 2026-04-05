@@ -5,20 +5,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/auth/domain/auth_state.dart';
+import 'features/auth/providers/auth_provider.dart';
 
-class KuziiniApp extends ConsumerStatefulWidget {
+class KuziiniApp extends ConsumerWidget {
   const KuziiniApp({super.key});
 
   @override
-  ConsumerState<KuziiniApp> createState() => _KuziiniAppState();
-}
-
-class _KuziiniAppState extends ConsumerState<KuziiniApp> {
-  bool _redirected = false;
-  bool _showLoader = true;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final primaryColor = ref.watch(primaryColorProvider);
     final bgColor = ref.watch(backgroundColorProvider);
@@ -27,14 +21,11 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
     final borderC = ref.watch(buttonBorderColorProvider);
     final textInt = ref.watch(textIntensityProvider);
     final router = ref.watch(appRouterProvider);
+    final authState = ref.watch(authStateProvider);
 
-    // Hide splash after delay
-    if (!_redirected) {
-      _redirected = true;
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted) setState(() => _showLoader = false);
-      });
-    }
+    // Show splash while auth is loading
+    final isLoading = authState.isLoading ||
+        authState.valueOrNull == AuthStatus.initial;
 
     return Directionality(
       textDirection: TextDirection.ltr,
@@ -57,7 +48,8 @@ class _KuziiniAppState extends ConsumerState<KuziiniApp> {
               Locale('ro', ''),
             ],
           ),
-          if (_showLoader)
+          // Splash — visible until auth resolves
+          if (isLoading)
             Container(
               color: Colors.white,
               child: Center(

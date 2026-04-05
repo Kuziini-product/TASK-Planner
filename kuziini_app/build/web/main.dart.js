@@ -127104,50 +127104,50 @@ A.aF_.prototype={
 $0(){return A.hc(this.a,"/settings",t.X)},
 $S:0}
 A.aF0.prototype={
-$1(a){var s,r,q,p,o,n,m,l,k,j,i,h,g=this,f=null,e=4e5
+$1(a){var s,r,q,p,o,n,m,l,k,j,i,h,g,f=this,e=null,d=4e5
 if(a==null)return B.SP
-s=g.a
-r=g.b
+s=f.a
+r=f.b
 q=A.bJl(a,r)
-p=g.c
+p=f.c
 o=A.dJ(p.fx,2)
 n=t.p
-o=A.a5j(A.dv(A.dC(A.ce(f,A.fL(B.br,A.b([q,A.xV(0,A.aC(f,A.aj(A.boN(B.ah),B.m,f,f,14),B.l,f,f,new A.aq(r,f,o,f,f,f,B.av),f,f,f,B.fq,f,f,f),f,f,f,0,f,f)],n),B.Q,B.bo),B.v,!1,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,new A.aET(s),f,f,f,f,f,f,!1,B.Y),f),f,A.aX(0,0,e,0,0,0)),B.IM,f,A.aX(0,0,e,0,0,0),f)
+o=A.a5j(A.dv(A.dC(A.ce(e,A.fL(B.br,A.b([q,A.xV(0,A.aC(e,A.aj(A.boN(B.ah),B.m,e,e,14),B.l,e,e,new A.aq(r,e,o,e,e,e,B.av),e,e,e,B.fq,e,e,e),e,e,e,0,e,e)],n),B.Q,B.bo),B.v,!1,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,new A.aET(s),e,e,e,e,e,e,!1,B.Y),e),e,A.aX(0,0,d,0,0,0)),B.IM,e,A.aX(0,0,d,0,0,0),e)
 q=p.ok
-m=A.dC(A.C(a.giX(0),f,f,f,f,q.r,f,f,f),f)
-l=A.aX(0,0,e,0,0,0)
+m=A.dC(A.C(a.giX(0),e,e,e,e,q.r,e,e,e),e)
+l=A.aX(0,0,d,0,0,0)
 l=A.dv(m,A.aX(0,0,1e5,0,0,0),l)
 m=a.b
 k=q.z
-if(k==null)k=f
+if(k==null)k=e
 else{j=p.ax
 i=j.rx
-k=k.b4(i==null?j.k3:i)}k=A.dC(A.C(m,f,f,f,f,k,f,f,f),f)
-m=A.aX(0,0,e,0,0,0)
+k=k.b4(i==null?j.k3:i)}k=A.dC(A.C(m,e,e,e,e,k,e,e,e),e)
+m=A.aX(0,0,d,0,0,0)
 m=A.dv(k,A.aX(0,0,15e4,0,0,0),m)
 k=r.Z(0.08)
 j=a.e
 q=q.ax
 i=q==null
-h=i?f:q.pE(r,B.I,1)
-k=A.b([A.aC(f,A.C(j.toUpperCase(),f,f,f,f,h,f,f,f),B.l,f,f,new A.aq(k,f,f,B.cn,f,f,B.u),f,f,f,B.pz,f,f,f)],n)
-j=j==="admin"
-if(j)B.b.K(k,A.b([B.ak,new A.aev(f)],n))
-k=A.dC(A.aB(k,B.k,B.h,B.T,0,f),f)
-h=A.aX(0,0,e,0,0,0)
-h=A.bY(A.aG(A.b([o,B.at,l,B.cY,m,B.ae,A.dv(k,A.aX(0,0,2e5,0,0,0),h)],n),B.k,B.h,B.i,0,B.p),f,f)
-if(i)p=f
+h=i?e:q.pE(r,B.I,1)
+k=A.b([A.aC(e,A.C(j.toUpperCase(),e,e,e,e,h,e,e,e),B.l,e,e,new A.aq(k,e,e,B.cn,e,e,B.u),e,e,e,B.pz,e,e,e)],n)
+h=j==="admin"
+if(h)B.b.K(k,A.b([B.ak,new A.aev(e)],n))
+k=A.dC(A.aB(k,B.k,B.h,B.T,0,e),e)
+g=A.aX(0,0,d,0,0,0)
+g=A.bY(A.aG(A.b([o,B.at,l,B.cY,m,B.ae,A.dv(k,A.aX(0,0,2e5,0,0,0),g)],n),B.k,B.h,B.i,0,B.p),e,e)
+if(i)p=e
 else{p=p.ax
 o=p.rx
-p=q.pE(o==null?p.k3:o,B.I,1)}o=g.e
+p=q.pE(o==null?p.k3:o,B.I,1)}o=f.e
 m=t._P
 l=t.u
-p=A.b([h,B.fS,A.C("TASK-URILE MELE",f,f,f,f,p,f,f,f),B.ae,A.fX(g.d,new A.aEU(s,o),new A.aEV(),new A.aEW(),!1,!0,!1,m,l)],n)
-if(j)B.b.K(p,A.b([B.a2,A.C("TASK-URI ECHIP\u0102 (GLOBAL)",f,f,f,f,i?f:q.pE(r,B.I,1),f,f,f),B.ae,A.fX(s.aR($.bxP(),t.iZ),new A.aEX(r,s,o),new A.aEY(),new A.aEZ(),!1,!0,!1,m,l)],n))
-p.push(B.a2)
-p.push(new A.Tc(f))
+p=A.b([g,B.fS,A.C("TASK-URILE MELE",e,e,e,e,p,e,e,e),B.ae,A.fX(f.d,new A.aEU(s,o),new A.aEV(),new A.aEW(),!1,!0,!1,m,l)],n)
+if(h||j==="manager"){k=h?"TASK-URI ECHIP\u0102 (GLOBAL)":"TASK-URI ECHIP\u0102"
+B.b.K(p,A.b([B.a2,A.C(k,e,e,e,e,i?e:q.pE(r,B.I,1),e,e,e),B.ae,A.fX(s.aR($.bxP(),t.iZ),new A.aEX(r,s,o),new A.aEY(),new A.aEZ(),!1,!0,!1,m,l)],n))}p.push(B.a2)
+p.push(new A.Tc(e))
 p.push(B.ib)
-return A.nb(A.aG(p,B.k,B.h,B.i,0,B.p),f,B.v,B.be,f,f,B.a9)},
+return A.nb(A.aG(p,B.k,B.h,B.i,0,B.p),e,B.v,B.be,e,e,B.a9)},
 $S:788}
 A.aET.prototype={
 $0(){var s=0,r=A.p(t.H),q=this,p,o

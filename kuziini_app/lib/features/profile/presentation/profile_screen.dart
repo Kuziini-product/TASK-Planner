@@ -227,10 +227,11 @@ class ProfileScreen extends ConsumerWidget {
                   error: (_, __) => const SizedBox.shrink(),
                 ),
 
-                // Global Stats (admin only)
-                if (profile.isAdmin) ...[
+                // Team Stats (admin & manager)
+                if (profile.isAdmin || profile.isManager) ...[
                   AppSpacing.vGapLg,
-                  Text('TASK-URI ECHIPĂ (GLOBAL)', style: theme.textTheme.labelSmall?.copyWith(
+                  Text(profile.isAdmin ? 'TASK-URI ECHIPĂ (GLOBAL)' : 'TASK-URI ECHIPĂ',
+                    style: theme.textTheme.labelSmall?.copyWith(
                     color: primaryColor, fontWeight: FontWeight.w700, letterSpacing: 1)),
                   AppSpacing.vGapSm,
                   ref.watch(globalTaskStatsProvider).when(

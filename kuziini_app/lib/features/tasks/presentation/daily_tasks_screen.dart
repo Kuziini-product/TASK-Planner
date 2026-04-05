@@ -95,8 +95,21 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
     final profile = ref.watch(currentUserProfileProvider);
     final progress = ref.watch(dailyProgressProvider);
 
+    final isToday = AppDateUtils.isToday(selectedDate);
+
     return Scaffold(
-      body: Container(
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity == null) return;
+          if (details.primaryVelocity! < -200) {
+            // Swipe left → next day
+            ref.read(selectedDateProvider.notifier).state = selectedDate.add(const Duration(days: 1));
+          } else if (details.primaryVelocity! > 200) {
+            // Swipe right → previous day
+            ref.read(selectedDateProvider.notifier).state = selectedDate.subtract(const Duration(days: 1));
+          }
+        },
+        child: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
             image: const AssetImage('assets/images/kuziini_logo_portrait.png'),
@@ -130,6 +143,19 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                 ],
               ),
               actions: [
+                if (!isToday)
+                  TextButton(
+                    onPressed: () {
+                      ref.read(selectedDateProvider.notifier).state = DateTime.now();
+                      ref.read(taskFilterProvider.notifier).state = TaskFilterType.today;
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text('Today', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: primaryColor)),
+                  ),
                 IconButton(
                   onPressed: () => context.push(AppRoutes.search),
                   icon: Icon(PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.regular)),
@@ -317,6 +343,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
+      ),
       ),
       ),
       // FAB removed – use bottom nav (+) button instead

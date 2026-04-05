@@ -111,9 +111,12 @@ class TaskModel {
     return t.contains('concediu') || t.contains('liber');
   }
 
-  /// Display name for leave card (creator or assignee name)
+  /// Display name for leave card: assignee → parsed from title → creator
   String get leavePerson {
     if (assigneeName != null && assigneeName!.isNotEmpty) return assigneeName!;
+    // Extract name from title "Concediu - Name" or "Liber - Name"
+    final match = RegExp(r'(?:concediu|liber)\s*[-–]\s*(.+)', caseSensitive: false).firstMatch(title);
+    if (match != null && match.group(1)!.trim().isNotEmpty) return match.group(1)!.trim();
     if (creatorName != null && creatorName!.isNotEmpty) return creatorName!;
     return 'Unknown';
   }

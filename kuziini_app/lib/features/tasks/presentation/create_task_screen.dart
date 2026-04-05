@@ -166,7 +166,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     if (p.containsKey('locName') || p.containsKey('locAddress')) {
       _useDefaultLocation = false;
       if (p.containsKey('locName')) _locationNameController.text = p['locName']!;
-      if (p.containsKey('locAddress')) _locationAddressController.text = p['locAddress']!;
+      if (p.containsKey('locAddress')) {
+        _locationNameController.text = p['locAddress']!;
+        // Auto-geocode the voice address
+        WidgetsBinding.instance.addPostFrameCallback((_) => _autoGeocodeVoiceAddress(p['locAddress']!));
+      }
     }
 
     // Assignee name is resolved after build via _resolveAssignee
@@ -184,6 +188,26 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         Future.delayed(Duration(milliseconds: p.containsKey('photo') ? 500 : 0), () {
           if (mounted) _pickDocument();
         });
+      });
+    }
+  }
+
+  Future<void> _autoGeocodeVoiceAddress(String query) async {
+    final result = await _geocodePlace(query);
+    if (result != null && mounted) {
+      setState(() {
+        _locationAddressController.text = result['address'] as String? ?? query;
+        if (result['lat'] != null && result['lng'] != null) {
+          _locationLat = result['lat'] as double?;
+          _locationLng = result['lng'] as double?;
+          _locationLinkController.text = 'https://www.google.com/maps?q=${result['lat']},${result['lng']}';
+        }
+        _useDefaultLocation = false;
+      });
+    } else if (mounted) {
+      setState(() {
+        _locationAddressController.text = query;
+        _useDefaultLocation = false;
       });
     }
   }
@@ -300,10 +324,45 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     return completer.future;
   }
 
+  /// Geocode a place name using OpenStreetMap Nominatim API
+  Future<Map<String, dynamic>?> _geocodePlace(String query) async {
+    try {
+      final encoded = Uri.encodeComponent(query);
+      final url = 'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1&addressdetails=1&accept-language=ro';
+      final response = await js_util.promiseToFuture(
+        js_util.callMethod(js_util.globalThis, 'fetch', [url]),
+      );
+      final text = await js_util.promiseToFuture<String>(
+        js_util.callMethod(response, 'text', []),
+      );
+      // Parse JSON manually
+      final parsed = await js_util.promiseToFuture(
+        js_util.callMethod(js_util.getProperty(js_util.globalThis, 'JSON'), 'parse', [text]),
+      );
+      final length = js_util.getProperty<int>(parsed, 'length');
+      if (length == 0) return null;
+
+      final first = js_util.callMethod(parsed, 'at', [0]);
+      final lat = double.tryParse(js_util.getProperty<String>(first, 'lat'));
+      final lng = double.tryParse(js_util.getProperty<String>(first, 'lon'));
+      final displayName = js_util.getProperty<String>(first, 'display_name');
+
+      return {
+        'lat': lat,
+        'lng': lng,
+        'address': displayName,
+      };
+    } catch (e) {
+      debugPrint('Geocode error: $e');
+      return null;
+    }
+  }
+
   Future<void> _showLocationPicker() async {
     final nameCtrl = TextEditingController(text: _locationNameController.text);
     final addressCtrl = TextEditingController(text: _locationAddressController.text);
     final linkCtrl = TextEditingController(text: _locationLinkController.text);
+    bool searching = false;
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -314,6 +373,28 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
+            Future<void> searchPlace() async {
+              final query = nameCtrl.text.trim();
+              if (query.isEmpty) return;
+              setSheetState(() => searching = true);
+              final result = await _geocodePlace(query);
+              if (result != null) {
+                addressCtrl.text = result['address'] as String? ?? '';
+                if (result['lat'] != null && result['lng'] != null) {
+                  linkCtrl.text = 'https://www.google.com/maps?q=${result['lat']},${result['lng']}';
+                  _locationLat = result['lat'] as double?;
+                  _locationLng = result['lng'] as double?;
+                }
+              } else {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Nu s-a găsit locația')),
+                  );
+                }
+              }
+              setSheetState(() => searching = false);
+            }
+
             return Padding(
               padding: EdgeInsets.only(
                 left: 20, right: 20, top: 16,
@@ -374,15 +455,28 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Custom fields
+                  // Location name + search button
                   TextField(
                     controller: nameCtrl,
                     decoration: InputDecoration(
                       labelText: 'Location name',
+                      hintText: 'Ex: Aeroportul Otopeni, IKEA...',
                       prefixIcon: const Icon(Icons.place_outlined),
+                      suffixIcon: searching
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                            )
+                          : IconButton(
+                              onPressed: searchPlace,
+                              icon: Icon(Icons.search, color: Theme.of(ctx).colorScheme.primary),
+                              tooltip: 'Caută adresa automat',
+                            ),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true, isDense: true,
                     ),
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => searchPlace(),
                   ),
                   const SizedBox(height: 10),
                   TextField(

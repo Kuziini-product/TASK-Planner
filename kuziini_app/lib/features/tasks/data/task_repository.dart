@@ -100,6 +100,32 @@ class TaskRepository {
     return _enrichTasksWithAssignees(tasks);
   }
 
+  /// Fetch all leave tasks (concediu/liber) that cover a specific date.
+  /// Uses a SECURITY DEFINER function to bypass RLS so all users can see leaves.
+  Future<List<TaskModel>> fetchLeaveTasksForDate(DateTime date) async {
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    try {
+      final response = await _supabase.client
+          .rpc('fetch_leave_tasks', params: {'target_date': dateStr});
+      final tasks = (response as List)
+          .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return _enrichTasksWithAssignees(tasks);
+    } catch (_) {
+      // Fallback: try direct query (works if RLS allows)
+      final response = await _supabase.client
+          .from(AppConstants.tableTasks)
+          .select('*')
+          .or('title.ilike.%concediu%,title.ilike.%liber%')
+          .lte('due_date', dateStr)
+          .gte('end_date', dateStr);
+      final tasks = (response as List)
+          .map((json) => TaskModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return _enrichTasksWithAssignees(tasks);
+    }
+  }
+
   Future<List<TaskModel>> fetchTodaysTasks() async {
     return fetchTasksByDate(DateTime.now());
   }

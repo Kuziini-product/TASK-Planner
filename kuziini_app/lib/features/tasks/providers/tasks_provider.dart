@@ -127,6 +127,18 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       tasks = await _repo.fetchTasksByDate(date);
     }
 
+    // Always fetch leave tasks for the selected date (visible to everyone)
+    try {
+      final leaveTasks = await _repo.fetchLeaveTasksForDate(date);
+      final existingIds = tasks.map((t) => t.id).toSet();
+      for (final lt in leaveTasks) {
+        if (!existingIds.contains(lt.id)) {
+          tasks.add(lt);
+          existingIds.add(lt.id);
+        }
+      }
+    } catch (_) {}
+
     // Apply all filters simultaneously
     var result = tasks.where((t) => !t.isArchived);
 

@@ -56,14 +56,26 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
   }
 
   void _toggleCalendar() {
-    setState(() => _showCalendar = !_showCalendar);
+    _pickDate();
+  }
+
+  Future<void> _pickDate() async {
+    final selectedDate = ref.read(selectedDateProvider);
+    final date = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+    if (date != null) {
+      ref.read(selectedDateProvider.notifier).state = date;
+      ref.read(taskFilterProvider.notifier).state = TaskFilterType.today;
+    }
   }
 
   void _selectDate(DateTime date) {
     ref.read(selectedDateProvider.notifier).state = date;
-    // Switch to today/day filter so tasks for selected date are shown
     ref.read(taskFilterProvider.notifier).state = TaskFilterType.today;
-    setState(() => _showCalendar = false);
   }
 
   void _addTaskAtHour(int hour) {
@@ -134,7 +146,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
                 progress: progress,
                 userName: profile.valueOrNull?.displayName,
                 onDateTap: _toggleCalendar,
-                showCalendar: _showCalendar,
+                showCalendar: false,
                 onTotalTap: () {
                   ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
                 },
@@ -147,14 +159,7 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
               ),
             ),
 
-            // Collapsible calendar
-            if (_showCalendar)
-              SliverToBoxAdapter(
-                child: _DateSelector(
-                  selectedDate: selectedDate,
-                  onDateSelected: _selectDate,
-                ).animate().fadeIn(duration: 200.ms).slideY(begin: -0.1, end: 0),
-              ),
+            // Calendar removed — tap on date in header opens date picker
 
             // Filter chips
             const SliverToBoxAdapter(

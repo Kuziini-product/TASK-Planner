@@ -138,27 +138,41 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
-    final images = await picker.pickMultiImage(maxWidth: 800);
-    for (final image in images) {
-      final bytes = await image.readAsBytes();
-      setState(() => _imageBytes.add(bytes));
-      try {
-        final fileName = '${const Uuid().v4()}.${image.name.split('.').last}';
-        await Supabase.instance.client.storage
-            .from('banners')
-            .uploadBinary(fileName, bytes, fileOptions: const FileOptions(upsert: true));
-        final url = Supabase.instance.client.storage.from('banners').getPublicUrl(fileName);
-        setState(() => _imageUrls.add(url));
-      } catch (e) {
-        if (mounted) context.showSnackBar('Upload failed: $e', isError: true);
+    final images = await picker.pickMultiImage(maxWidth: 400);
+    if (images.isEmpty) {
+      // Fallback: single image picker
+      final single = await picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
+      if (single != null) {
+        await _uploadSingleImage(single);
       }
+      return;
+    }
+    for (final image in images) {
+      await _uploadSingleImage(image);
+    }
+  }
+
+  Future<void> _uploadSingleImage(XFile image) async {
+    final bytes = await image.readAsBytes();
+    try {
+      final fileName = '${const Uuid().v4()}.${image.name.split('.').last}';
+      await Supabase.instance.client.storage
+          .from('banners')
+          .uploadBinary(fileName, bytes, fileOptions: const FileOptions(upsert: true));
+      final url = Supabase.instance.client.storage.from('banners').getPublicUrl(fileName);
+      setState(() {
+        _imageUrls.add(url);
+        _imageBytes.add(bytes);
+      });
+    } catch (e) {
+      if (mounted) context.showSnackBar('Upload failed: $e', isError: true);
     }
   }
 
   void _removeImage(int index) {
     setState(() {
-      if (index < _imageBytes.length) _imageBytes.removeAt(index);
       if (index < _imageUrls.length) _imageUrls.removeAt(index);
+      if (index < _imageBytes.length) _imageBytes.removeAt(index);
     });
   }
 
@@ -500,22 +514,48 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
   }
 
   Widget _buildImageCollage() {
-    final images = _imageBytes.isNotEmpty ? _imageBytes : <Uint8List>[];
-    final urls = _imageUrls;
-    final count = max(images.length, urls.length);
-    if (count == 0) return const SizedBox.shrink();
-    if (count == 1) {
-      return images.isNotEmpty
-          ? Image.memory(images.first, fit: BoxFit.cover, width: double.infinity)
-          : Image.network(urls.first, fit: BoxFit.cover, width: double.infinity);
+    if (_imageUrls.isEmpty) return const SizedBox.shrink();
+    final count = _imageUrls.length;
+
+    Widget buildImg(int i) {
+      // Prefer bytes (local preview), fallback to url
+      if (i < _imageBytes.length) {
+        return Image.memory(_imageBytes[i], fit: BoxFit.cover, width: double.infinity, height: 120);
+      }
+      return Image.network(_imageUrls[i], fit: BoxFit.cover, width: double.infinity, height: 120,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink());
     }
-    return Row(
-      children: List.generate(min(count, 4), (i) => Expanded(
-        child: i < images.length
-            ? Image.memory(images[i], fit: BoxFit.cover, height: 90)
-            : (i < urls.length ? Image.network(urls[i], fit: BoxFit.cover, height: 90) : const SizedBox.shrink()),
-      )),
-    );
+
+    if (count == 1) return buildImg(0);
+    if (count == 2) {
+      return Row(children: [Expanded(child: buildImg(0)), const SizedBox(width: 2), Expanded(child: buildImg(1))]);
+    }
+    if (count == 3) {
+      return Row(children: [
+        Expanded(flex: 2, child: buildImg(0)),
+        const SizedBox(width: 2),
+        Expanded(child: Column(children: [
+          Expanded(child: buildImg(1)), const SizedBox(height: 2), Expanded(child: buildImg(2)),
+        ])),
+      ]);
+    }
+    // 4+ images: 2x2 grid
+    return Column(children: [
+      Expanded(child: Row(children: [
+        Expanded(child: buildImg(0)), const SizedBox(width: 2), Expanded(child: buildImg(1)),
+      ])),
+      const SizedBox(height: 2),
+      Expanded(child: Row(children: [
+        Expanded(child: buildImg(min(2, count - 1))), const SizedBox(width: 2),
+        Expanded(child: Stack(children: [
+          buildImg(min(3, count - 1)),
+          if (count > 4) Positioned.fill(child: Container(
+            color: Colors.black38,
+            child: Center(child: Text('+${count - 4}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700))),
+          )),
+        ])),
+      ])),
+    ]);
   }
 
   Widget _sectionLabel(ThemeData theme, String text) => Padding(

@@ -315,6 +315,14 @@ const _presets = [
     backgroundColor: Color(0xFF0F0E17),
     textIntensity: 0.85,
   ),
+  _ThemePreset(
+    name: 'Kuziini',
+    emoji: '🏢',
+    mode: ThemeMode.light,
+    primaryColor: Color(0xFF0D7377),
+    backgroundColor: Color(0xFFF0F0F0),
+    textIntensity: 0.6,
+  ),
 ];
 
 class _ThemePresets extends ConsumerWidget {

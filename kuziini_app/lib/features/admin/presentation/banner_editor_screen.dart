@@ -89,7 +89,8 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
   bool _saving = false;
   bool _isEdit = false;
   String? _editId;
-  Offset _textOffset = Offset.zero; // drag position relative to center
+  Offset _textOffset = Offset.zero;
+  double _textScale = 1.0; // pinch/stretch scale
 
   @override
   void initState() {
@@ -283,7 +284,14 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
                                       _textOffset.dx + d.delta.dx,
                                       _textOffset.dy + d.delta.dy,
                                     )),
-                                  child: Container(
+                                  onScaleUpdate: (d) {
+                                    if (d.pointerCount >= 2) {
+                                      setState(() => _textScale = (_textScale * d.scale).clamp(0.5, 3.0));
+                                    }
+                                  },
+                                  child: Transform.scale(
+                                    scale: _textScale,
+                                    child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       border: Border.all(color: Colors.white30, width: 1),
@@ -306,6 +314,7 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
                                           Text('Drag text here', style: TextStyle(color: Colors.white38, fontSize: 12)),
                                       ],
                                     ),
+                                  ),
                                   ),
                                 ),
                               ),
@@ -370,6 +379,24 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
                 ),
               );
             }).toList(),
+          ),
+
+          AppSpacing.vGapMd,
+
+          // ── TEXT SIZE ──
+          Row(
+            children: [
+              Text('Aa', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+              Expanded(
+                child: Slider(
+                  value: _textScale,
+                  min: 0.5, max: 3.0,
+                  onChanged: (v) => setState(() => _textScale = v),
+                  activeColor: theme.colorScheme.primary,
+                ),
+              ),
+              Text('Aa', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant)),
+            ],
           ),
 
           AppSpacing.vGapXl,

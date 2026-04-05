@@ -148,13 +148,15 @@ class ProfileScreen extends ConsumerWidget {
 
                 AppSpacing.vGapXxl,
 
-                // Stats
+                // My Stats
+                Text('TASK-URILE MELE', style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                AppSpacing.vGapSm,
                 statsAsync.when(
                   data: (stats) {
                     final overdue = stats['overdue'] ?? 0;
                     return Column(
                       children: [
-                        // Overdue badge - prominent at top
                         if (overdue > 0)
                           GestureDetector(
                             onTap: () {
@@ -224,6 +226,56 @@ class ProfileScreen extends ConsumerWidget {
                   loading: () => const LoadingIndicator(size: 24),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
+
+                // Global Stats (admin only)
+                if (profile.isAdmin) ...[
+                  AppSpacing.vGapLg,
+                  Text('TASK-URI ECHIPĂ (GLOBAL)', style: theme.textTheme.labelSmall?.copyWith(
+                    color: primaryColor, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                  AppSpacing.vGapSm,
+                  ref.watch(globalTaskStatsProvider).when(
+                    data: (gStats) {
+                      return Row(
+                        children: [
+                          _StatCard(
+                            label: 'Total',
+                            value: '${gStats['total'] ?? 0}',
+                            color: primaryColor,
+                            onTap: () {
+                              ref.read(selectedTeamUserProvider.notifier).state = 'all';
+                              ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                              context.go(AppRoutes.today);
+                            },
+                          ),
+                          AppSpacing.hGapMd,
+                          _StatCard(
+                            label: 'Done',
+                            value: '${gStats['done'] ?? 0}',
+                            color: AppColors.success,
+                            onTap: () {
+                              ref.read(selectedTeamUserProvider.notifier).state = 'all';
+                              ref.read(taskFilterProvider.notifier).state = TaskFilterType.done;
+                              context.go(AppRoutes.today);
+                            },
+                          ),
+                          AppSpacing.hGapMd,
+                          _StatCard(
+                            label: 'Overdue',
+                            value: '${gStats['overdue'] ?? 0}',
+                            color: AppColors.error,
+                            onTap: () {
+                              ref.read(selectedTeamUserProvider.notifier).state = 'all';
+                              ref.read(taskFilterProvider.notifier).state = TaskFilterType.overdue;
+                              context.go(AppRoutes.today);
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                    loading: () => const LoadingIndicator(size: 16),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                ],
 
                 AppSpacing.vGapLg,
 

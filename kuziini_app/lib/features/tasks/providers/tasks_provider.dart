@@ -308,9 +308,17 @@ final dailyProgressProvider = Provider<double>((ref) {
   );
 });
 
-// ── Task Stats ──
+// ── Task Stats (own tasks only) ──
 
 final taskStatsProvider = FutureProvider<Map<String, int>>((ref) async {
+  final repo = ref.watch(taskRepositoryProvider);
+  final userId = SupabaseService.instance.currentUserId;
+  return repo.getTaskStats(userId: userId);
+});
+
+// ── Global Task Stats (all team — admin only) ──
+
+final globalTaskStatsProvider = FutureProvider<Map<String, int>>((ref) async {
   final repo = ref.watch(taskRepositoryProvider);
   return repo.getTaskStats();
 });

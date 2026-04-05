@@ -207,14 +207,24 @@ class TaskCard extends ConsumerWidget {
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
-            // Assignee
+            // Creator avatar
+            const SizedBox(width: 6),
+            _UserAvatar(
+              name: task.creatorName,
+              avatarUrl: task.creatorAvatarUrl,
+              color: theme.colorScheme.onSurfaceVariant,
+              tooltip: task.creatorName != null ? 'Creat de ${task.creatorName}' : null,
+            ),
+            // Assignee avatar (if different from creator)
             if (task.isAssigned) ...[
-              const SizedBox(width: 6),
-              CircleAvatar(
-                radius: 10,
-                backgroundColor: _accentColor.withValues(alpha: 0.15),
-                child: Text((task.assigneeName ?? 'U')[0].toUpperCase(),
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: _accentColor)),
+              const SizedBox(width: 3),
+              Icon(Icons.arrow_forward, size: 10, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+              const SizedBox(width: 3),
+              _UserAvatar(
+                name: task.assigneeName,
+                avatarUrl: task.assigneeAvatarUrl,
+                color: _accentColor,
+                tooltip: task.assigneeName != null ? 'Asignat: ${task.assigneeName}' : null,
               ),
             ],
           ],
@@ -352,5 +362,39 @@ class TaskCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({this.name, this.avatarUrl, required this.color, this.tooltip});
+
+  final String? name;
+  final String? avatarUrl;
+  final Color color;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = (name ?? 'U')[0].toUpperCase();
+
+    Widget avatar;
+    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      avatar = CircleAvatar(
+        radius: 11,
+        backgroundImage: NetworkImage(avatarUrl!),
+        backgroundColor: color.withValues(alpha: 0.15),
+      );
+    } else {
+      avatar = CircleAvatar(
+        radius: 11,
+        backgroundColor: color.withValues(alpha: 0.15),
+        child: Text(initial, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+      );
+    }
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip!, child: avatar);
+    }
+    return avatar;
   }
 }

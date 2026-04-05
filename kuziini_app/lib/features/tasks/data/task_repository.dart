@@ -319,12 +319,12 @@ class TaskRepository {
 
     final taskIds = tasks.map((t) => t.id).toList();
 
+    // Fetch assignees
     final assigneeRows = await _supabase.client
         .from('task_assignees')
         .select('task_id, profiles:user_id(id, full_name, avatar_url)')
         .inFilter('task_id', taskIds);
 
-    // Build a map: taskId -> first assignee info
     final assigneeMap = <String, Map<String, dynamic>>{};
     for (final row in (assigneeRows as List)) {
       final taskId = row['task_id'] as String;
@@ -336,17 +336,38 @@ class TaskRepository {
       }
     }
 
-    // Enrich tasks
+    // Fetch creator profiles
+    final creatorIds = tasks.map((t) => t.createdBy).toSet().toList();
+    final creatorRows = await _supabase.client
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .inFilter('id', creatorIds);
+
+    final creatorMap = <String, Map<String, dynamic>>{};
+    for (final row in (creatorRows as List)) {
+      final map = row as Map<String, dynamic>;
+      creatorMap[map['id'] as String] = map;
+    }
+
+    // Enrich tasks with assignee + creator info
     return tasks.map((task) {
+      var enriched = task;
       final assignee = assigneeMap[task.id];
       if (assignee != null) {
-        return task.copyWith(
+        enriched = enriched.copyWith(
           assigneeId: assignee['id'] as String?,
           assigneeName: assignee['full_name'] as String?,
           assigneeAvatarUrl: assignee['avatar_url'] as String?,
         );
       }
-      return task;
+      final creator = creatorMap[task.createdBy];
+      if (creator != null) {
+        enriched = enriched.copyWith(
+          creatorName: creator['full_name'] as String?,
+          creatorAvatarUrl: creator['avatar_url'] as String?,
+        );
+      }
+      return enriched;
     }).toList();
   }
 

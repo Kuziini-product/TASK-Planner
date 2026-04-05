@@ -415,6 +415,13 @@ class _LiveUsersCount extends ConsumerWidget {
                 Text('$count active on the app', style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
                 const SizedBox(height: 12),
                 ...onlineUsers.map((user) => ListTile(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    // Navigate to tasks filtered by this user
+                    ref.read(selectedTeamUserProvider.notifier).state = user.id;
+                    ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
+                    context.go(AppRoutes.today);
+                  },
                   leading: CircleAvatar(
                     radius: 18,
                     backgroundColor: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.1),
@@ -439,6 +446,9 @@ class _LiveUsersCount extends ConsumerWidget {
                       Container(width: 8, height: 8,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success,
                           boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)])),
+                      const SizedBox(width: 4),
+                      Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.regular), size: 14,
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                     ],
                   ),
                   dense: true,

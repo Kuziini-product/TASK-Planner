@@ -328,9 +328,9 @@ const _presets = [
     name: 'Kuziini',
     emoji: '🏢',
     mode: ThemeMode.light,
-    primaryColor: Color(0xFF0D7377),
-    backgroundColor: Color(0xFFF0F0F0),
-    textIntensity: 0.6,
+    primaryColor: Color(0xFF2D6A4F),
+    backgroundColor: Color(0xFFE8E8E0),
+    textIntensity: 0.9,
   ),
 ];
 

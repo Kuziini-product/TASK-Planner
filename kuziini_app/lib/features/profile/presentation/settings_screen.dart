@@ -59,6 +59,15 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
 
+          // Sound toggle
+          _NotifSoundTile(),
+
+          // Reminder before
+          _ReminderBeforeTile(),
+
+          // Repeat interval
+          _ReminderRepeatTile(),
+
           AppSpacing.vGapXl,
 
           // Task Settings
@@ -1165,6 +1174,164 @@ class _TextIntensitySlider extends ConsumerWidget {
           style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
         ),
       ],
+    );
+  }
+}
+
+// ── Notification Sound Toggle ──
+
+class _NotifSoundTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final soundOn = ref.watch(notificationSoundProvider);
+
+    return InkWell(
+      onTap: () => ref.read(notificationSoundProvider.notifier).toggle(),
+      borderRadius: AppSpacing.borderRadiusMd,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        child: Row(
+          children: [
+            Icon(soundOn
+                ? PhosphorIcons.speakerHigh(PhosphorIconsStyle.regular)
+                : PhosphorIcons.speakerSlash(PhosphorIconsStyle.regular),
+              size: 22, color: theme.colorScheme.onSurface),
+            AppSpacing.hGapLg,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Sunet notificări', style: theme.textTheme.bodyLarge),
+                  Text(soundOn ? 'Activat' : 'Dezactivat',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Switch(
+              value: soundOn,
+              onChanged: (_) => ref.read(notificationSoundProvider.notifier).toggle(),
+              activeColor: theme.colorScheme.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Reminder Before Tile ──
+
+class _ReminderBeforeTile extends ConsumerWidget {
+  static const _options = [5, 10, 15, 30, 60];
+
+  static String _label(int minutes) {
+    if (minutes < 60) return '$minutes min înainte';
+    return '${minutes ~/ 60} oră înainte';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(reminderBeforeProvider);
+
+    return _SettingsTile(
+      icon: PhosphorIcons.alarm(PhosphorIconsStyle.regular),
+      title: 'Reminder înainte de task',
+      subtitle: _label(current),
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          builder: (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 16),
+                  Text('Cu cât timp înainte?', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Text('Vei fi notificat înainte de task', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 16),
+                  ..._options.map((mins) => ListTile(
+                    leading: Icon(
+                      mins == current ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(PhosphorIconsStyle.regular),
+                      color: mins == current ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    title: Text(_label(mins)),
+                    onTap: () {
+                      ref.read(reminderBeforeProvider.notifier).setMinutes(mins);
+                      Navigator.pop(ctx);
+                    },
+                  )),
+                  SizedBox(height: MediaQuery.of(ctx).padding.bottom),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Reminder Repeat Tile ──
+
+class _ReminderRepeatTile extends ConsumerWidget {
+  static const _options = [0, 2, 5, 10, 15, 30];
+
+  static String _label(int minutes) {
+    if (minutes == 0) return 'Nu repeta';
+    return 'La fiecare $minutes min';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(reminderRepeatProvider);
+
+    return _SettingsTile(
+      icon: PhosphorIcons.repeat(PhosphorIconsStyle.regular),
+      title: 'Repetă notificarea',
+      subtitle: _label(current),
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          builder: (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 16),
+                  Text('Interval de repetare', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Text('Până confirmi din clopoțel', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 16),
+                  ..._options.map((mins) => ListTile(
+                    leading: Icon(
+                      mins == current ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(PhosphorIconsStyle.regular),
+                      color: mins == current ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    title: Text(_label(mins)),
+                    onTap: () {
+                      ref.read(reminderRepeatProvider.notifier).setMinutes(mins);
+                      Navigator.pop(ctx);
+                    },
+                  )),
+                  SizedBox(height: MediaQuery.of(ctx).padding.bottom),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

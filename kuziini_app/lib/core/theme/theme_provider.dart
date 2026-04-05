@@ -267,3 +267,72 @@ class DefaultTaskDurationNotifier extends StateNotifier<int> {
     await prefs.setInt(_durationKey, minutes);
   }
 }
+
+// ── Notification Sound Provider ──
+const _notifSoundKey = 'notification_sound';
+
+final notificationSoundProvider =
+    StateNotifierProvider<NotificationSoundNotifier, bool>(
+  (ref) => NotificationSoundNotifier(),
+);
+
+class NotificationSoundNotifier extends StateNotifier<bool> {
+  NotificationSoundNotifier() : super(true) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool(_notifSoundKey) ?? true;
+  }
+
+  Future<void> toggle() async {
+    state = !state;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notifSoundKey, state);
+  }
+}
+
+// ── Reminder Before (minutes) Provider ──
+const _reminderBeforeKey = 'reminder_before_minutes';
+
+final reminderBeforeProvider =
+    StateNotifierProvider<ReminderBeforeNotifier, int>(
+  (ref) => ReminderBeforeNotifier(),
+);
+
+class ReminderBeforeNotifier extends StateNotifier<int> {
+  ReminderBeforeNotifier() : super(15) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getInt(_reminderBeforeKey) ?? 15;
+  }
+
+  Future<void> setMinutes(int minutes) async {
+    state = minutes;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_reminderBeforeKey, minutes);
+  }
+}
+
+// ── Reminder Repeat Interval (minutes) Provider ──
+const _reminderRepeatKey = 'reminder_repeat_minutes';
+
+final reminderRepeatProvider =
+    StateNotifierProvider<ReminderRepeatNotifier, int>(
+  (ref) => ReminderRepeatNotifier(),
+);
+
+class ReminderRepeatNotifier extends StateNotifier<int> {
+  ReminderRepeatNotifier() : super(5) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getInt(_reminderRepeatKey) ?? 5;
+  }
+
+  Future<void> setMinutes(int minutes) async {
+    state = minutes;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_reminderRepeatKey, minutes);
+  }
+}

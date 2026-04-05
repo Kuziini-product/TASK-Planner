@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_util' as js_util;
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationService {
   NotificationService._();
@@ -89,6 +90,9 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final soundEnabled = prefs.getBool('notification_sound') ?? true;
+    if (soundEnabled) _playAlertSound();
     await showLocalNotification(title: title, body: body, id: DateTime.now().millisecondsSinceEpoch % 100000);
   }
 
@@ -101,6 +105,11 @@ class NotificationService {
     _reminderTimer?.cancel();
     _reminderTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
       try {
+        final prefs = await SharedPreferences.getInstance();
+        final reminderBefore = prefs.getInt('reminder_before_minutes') ?? 15;
+        final reminderRepeat = prefs.getInt('reminder_repeat_minutes') ?? 5;
+        final soundEnabled = prefs.getBool('notification_sound') ?? true;
+
         final tasks = await fetchTasks();
         final now = DateTime.now();
 
@@ -109,22 +118,30 @@ class NotificationService {
           final startLocal = task.startTime!.toLocal();
           final diff = startLocal.difference(now).inMinutes;
 
-          // Alert 15 minutes before
-          if (diff > 0 && diff <= 15 && !_notifiedTaskIds.contains(task.id)) {
-            _notifiedTaskIds.add(task.id);
-            // Play sound
-            _playAlertSound();
-            // Show notification
-            await showLocalNotification(
-              title: '\u{23F0} Task in $diff min',
-              body: task.title,
-              id: task.id.hashCode,
-            );
+          // Alert based on user's reminder setting
+          if (diff > 0 && diff <= reminderBefore) {
+            final taskKey = '${task.id}_$diff';
+            // For repeat: notify every X minutes (allow re-notify)
+            final shouldNotify = !_notifiedTaskIds.contains(task.id) ||
+                (reminderRepeat > 0 && diff % reminderRepeat == 0 && !_notifiedTaskIds.contains(taskKey));
+
+            if (shouldNotify) {
+              _notifiedTaskIds.add(task.id);
+              _notifiedTaskIds.add(taskKey);
+              if (soundEnabled) _playAlertSound();
+              await showLocalNotification(
+                title: '\u{23F0} Task in $diff min',
+                body: task.title,
+                id: (task.id.hashCode + diff).toInt(),
+              );
+            }
           }
         }
 
         // Clean old entries
-        _notifiedTaskIds.removeWhere((id) => _notifiedTaskIds.length > 100);
+        if (_notifiedTaskIds.length > 200) {
+          _notifiedTaskIds.clear();
+        }
       } catch (_) {}
     });
   }

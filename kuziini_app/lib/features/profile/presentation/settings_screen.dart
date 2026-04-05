@@ -31,53 +31,10 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: AppSpacing.paddingLg,
         children: [
-          // Appearance
-          _SectionHeader(title: 'Appearance'),
+          // Theme Presets
+          _SectionHeader(title: 'Temă'),
           AppSpacing.vGapSm,
-
-          _SettingsTile(
-            icon: PhosphorIcons.sun(PhosphorIconsStyle.regular),
-            title: 'Theme',
-            subtitle: themeMode == ThemeMode.dark
-                ? 'Dark'
-                : themeMode == ThemeMode.light
-                    ? 'Light'
-                    : 'System',
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (dialogCtx) => _ThemePickerDialog(
-                  currentThemeMode: themeMode,
-                  currentColor: currentColor,
-                  onThemeModeChanged: (mode) {
-                    ref.read(themeModeProvider.notifier).setThemeMode(mode);
-                  },
-                  onColorChanged: (color) {
-                    ref.read(primaryColorProvider.notifier).setColor(color);
-                  },
-                ),
-              );
-            },
-          ),
-
-          AppSpacing.vGapLg,
-
-          // Accent Color
-          _SectionHeader(title: 'Accent Color'),
-          AppSpacing.vGapSm,
-          _AccentColorPicker(
-            currentColor: currentColor,
-            onColorSelected: (color) {
-              ref.read(primaryColorProvider.notifier).setColor(color);
-            },
-          ),
-
-          AppSpacing.vGapLg,
-
-          // Text Intensity
-          _SectionHeader(title: 'Text Intensity'),
-          AppSpacing.vGapSm,
-          _TextIntensitySlider(),
+          _ThemePresets(),
 
           AppSpacing.vGapXl,
 
@@ -298,6 +255,149 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
+// ── Theme Presets ──
+
+class _ThemePreset {
+  final String name;
+  final String emoji;
+  final ThemeMode mode;
+  final Color primaryColor;
+  final Color? backgroundColor;
+  final double textIntensity;
+
+  const _ThemePreset({
+    required this.name,
+    required this.emoji,
+    required this.mode,
+    required this.primaryColor,
+    this.backgroundColor,
+    this.textIntensity = 0.5,
+  });
+}
+
+const _presets = [
+  _ThemePreset(
+    name: 'Classic',
+    emoji: '☀️',
+    mode: ThemeMode.light,
+    primaryColor: Color(0xFF0D7377),
+    textIntensity: 0.5,
+  ),
+  _ThemePreset(
+    name: 'Ocean',
+    emoji: '🌊',
+    mode: ThemeMode.light,
+    primaryColor: Color(0xFF2196F3),
+    backgroundColor: Color(0xFFF0F8FF),
+    textIntensity: 0.5,
+  ),
+  _ThemePreset(
+    name: 'Sunset',
+    emoji: '🌅',
+    mode: ThemeMode.light,
+    primaryColor: Color(0xFFE91E63),
+    backgroundColor: Color(0xFFFFF0F5),
+    textIntensity: 0.5,
+  ),
+  _ThemePreset(
+    name: 'Forest',
+    emoji: '🌲',
+    mode: ThemeMode.dark,
+    primaryColor: Color(0xFF4CAF50),
+    backgroundColor: Color(0xFF0A1F0A),
+    textIntensity: 0.85,
+  ),
+  _ThemePreset(
+    name: 'Midnight',
+    emoji: '🌙',
+    mode: ThemeMode.dark,
+    primaryColor: Color(0xFF7C3AED),
+    backgroundColor: Color(0xFF0F0E17),
+    textIntensity: 0.85,
+  ),
+];
+
+class _ThemePresets extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final currentColor = ref.watch(primaryColorProvider);
+    final currentBg = ref.watch(backgroundColorProvider);
+
+    return Column(
+      children: _presets.map((preset) {
+        final isSelected = preset.primaryColor.value == currentColor.value &&
+            preset.backgroundColor == currentBg;
+
+        return GestureDetector(
+          onTap: () {
+            ref.read(themeModeProvider.notifier).setThemeMode(preset.mode);
+            ref.read(primaryColorProvider.notifier).setColor(preset.primaryColor);
+            ref.read(backgroundColorProvider.notifier).setColor(preset.backgroundColor);
+            ref.read(textIntensityProvider.notifier).setIntensity(preset.textIntensity);
+            ref.read(buttonColorProvider.notifier).setColor(null);
+            ref.read(buttonBorderWidthProvider.notifier).setWidth(0);
+            ref.read(buttonBorderColorProvider.notifier).setColor(null);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: preset.backgroundColor ?? (preset.mode == ThemeMode.dark ? const Color(0xFF1A1A2E) : Colors.white),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected ? preset.primaryColor : theme.dividerColor.withValues(alpha: 0.3),
+                width: isSelected ? 2.5 : 1,
+              ),
+              boxShadow: isSelected ? [BoxShadow(color: preset.primaryColor.withValues(alpha: 0.2), blurRadius: 8)] : null,
+            ),
+            child: Row(
+              children: [
+                Text(preset.emoji, style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        preset.name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: preset.mode == ThemeMode.dark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        preset.mode == ThemeMode.dark ? 'Dark theme' : 'Light theme',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: preset.mode == ThemeMode.dark ? Colors.white60 : Colors.black45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Color preview dots
+                Container(width: 18, height: 18,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: preset.primaryColor)),
+                const SizedBox(width: 8),
+                if (isSelected)
+                  Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 22, color: preset.primaryColor)
+                else
+                  Icon(PhosphorIcons.circle(PhosphorIconsStyle.regular), size: 22,
+                    color: preset.mode == ThemeMode.dark ? Colors.white30 : Colors.black26),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// The old widgets below are no longer used but kept for reference
 class _AccentColorPicker extends StatefulWidget {
   const _AccentColorPicker({
     required this.currentColor,

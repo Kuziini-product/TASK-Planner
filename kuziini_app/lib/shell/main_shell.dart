@@ -37,8 +37,13 @@ class MainShell extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _VoiceTaskSheet(),
-    ).then((transcript) {
-      if (transcript != null && transcript.isNotEmpty) {
+    ).then((rawTranscript) {
+      if (rawTranscript != null && rawTranscript.isNotEmpty) {
+        // Extract flag markers appended by _confirm()
+        final hasPhotoMarker = rawTranscript.contains('__PHOTO__');
+        final hasAttachMarker = rawTranscript.contains('__ATTACHMENT__');
+        final transcript = rawTranscript.replaceAll('__PHOTO__', '').replaceAll('__ATTACHMENT__', '').trim();
+
         final result = VoiceTaskParser.parse(transcript);
         // Build query params from parsed voice data
         // Title auto-generates from description, so voice title goes to desc
@@ -52,8 +57,8 @@ class MainShell extends ConsumerWidget {
         if (result.priority != null) params['priority'] = result.priority!;
         if (result.address != null) params['locAddress'] = result.address!;
         if (result.assignees.isNotEmpty) params['assignee'] = result.assignees.first;
-        if (result.wantsPhoto) params['photo'] = '1';
-        if (result.wantsAttachment) params['attachment'] = '1';
+        if (hasPhotoMarker || result.wantsPhoto) params['photo'] = '1';
+        if (hasAttachMarker || result.wantsAttachment) params['attachment'] = '1';
 
         final uri = Uri(path: AppRoutes.createTask, queryParameters: params.isNotEmpty ? params : null);
         context.push(uri.toString());
@@ -273,6 +278,8 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
   String _text = '';
   bool _listening = false;
   String _error = '';
+  bool _wantsPhoto = false;
+  bool _wantsAttachment = false;
   late AnimationController _pulse;
   late Animation<double> _pulseAnim;
   Object? _rec;
@@ -346,7 +353,14 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
     try { if (_rec != null) _jsCallMethod(_rec!, 'stop', []); } catch (_) {}
   }
 
-  void _confirm() { _stop(); Navigator.of(context).pop(_text); }
+  void _confirm() {
+    _stop();
+    // Append flag markers so _openVoiceTaskCreator can detect them
+    var result = _text;
+    if (_wantsPhoto) result += ' __PHOTO__';
+    if (_wantsAttachment) result += ' __ATTACHMENT__';
+    Navigator.of(context).pop(result);
+  }
   void _cancel() { _stop(); Navigator.of(context).pop(null); }
 
   @override
@@ -496,8 +510,8 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     child: _ActionCard(
                       icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
                       label: 'Take a picture',
-                      isActive: parsed?.wantsPhoto == true,
-                      onTap: () {},
+                      isActive: _wantsPhoto || parsed?.wantsPhoto == true,
+                      onTap: () => setState(() => _wantsPhoto = !_wantsPhoto),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -505,8 +519,8 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
                     child: _ActionCard(
                       icon: PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
                       label: 'Add attachment',
-                      isActive: parsed?.wantsAttachment == true,
-                      onTap: () {},
+                      isActive: _wantsAttachment || parsed?.wantsAttachment == true,
+                      onTap: () => setState(() => _wantsAttachment = !_wantsAttachment),
                     ),
                   ),
                 ],

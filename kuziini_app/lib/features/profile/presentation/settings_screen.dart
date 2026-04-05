@@ -133,24 +133,26 @@ class SettingsScreen extends ConsumerWidget {
                   AppSpacing.vGapXl,
                   _SectionHeader(title: 'Administration'),
                   AppSpacing.vGapSm,
-                  _SettingsTile(
-                    icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.regular),
-                    title: 'Admin Dashboard',
-                    subtitle: 'Overview and statistics',
-                    onTap: () => context.push(AppRoutes.adminDashboard),
-                  ),
-                  _SettingsTile(
-                    icon: PhosphorIcons.userCheck(PhosphorIconsStyle.regular),
-                    title: 'User Approvals',
-                    subtitle: 'Approve or reject pending users',
-                    onTap: () => context.push(AppRoutes.userApproval),
-                  ),
-                  _SettingsTile(
-                    icon: PhosphorIcons.envelopeSimple(PhosphorIconsStyle.regular),
-                    title: 'Invitations',
-                    subtitle: 'Send and manage invitations',
-                    onTap: () => context.push(AppRoutes.invitations),
-                  ),
+                  if (isAdmin) ...[
+                    _SettingsTile(
+                      icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.regular),
+                      title: 'Admin Dashboard',
+                      subtitle: 'Overview and statistics',
+                      onTap: () => context.push(AppRoutes.adminDashboard),
+                    ),
+                    _SettingsTile(
+                      icon: PhosphorIcons.userCheck(PhosphorIconsStyle.regular),
+                      title: 'User Approvals',
+                      subtitle: 'Approve or reject pending users',
+                      onTap: () => context.push(AppRoutes.userApproval),
+                    ),
+                    _SettingsTile(
+                      icon: PhosphorIcons.envelopeSimple(PhosphorIconsStyle.regular),
+                      title: 'Invitations',
+                      subtitle: 'Send and manage invitations',
+                      onTap: () => context.push(AppRoutes.invitations),
+                    ),
+                  ],
                   _SettingsTile(
                     icon: PhosphorIcons.megaphone(PhosphorIconsStyle.regular),
                     title: 'Banner Personalizat',

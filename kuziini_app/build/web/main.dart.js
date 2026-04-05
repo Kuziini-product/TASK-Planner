@@ -128366,12 +128366,17 @@ A.aM_.prototype={
 $0(){A.lv(A.ch("https://kuziini.app/terms",0,null),B.xP)},
 $S:0}
 A.aM0.prototype={
-$1(a){var s,r=null,q=this.a.aJ($.pj(),t.J3),p=A.cG(q)
-p=p==null?r:p.e==="admin"
-s=A.cG(q)
-s=s==null?r:s.e==="manager"
-if(p!==!0&&s!==!0)return B.ao
-return A.aA(A.b([B.b0,new A.vj("Administration",r),B.aa,new A.jJ(A.bqd(B.q),"Admin Dashboard","Overview and statistics",new A.aLT(a),r,r),new A.jJ(A.bqf(B.q),"User Approvals","Approve or reject pending users",new A.aLU(a),r,r),new A.jJ(A.bq4(B.q),"Invitations","Send and manage invitations",new A.aLV(a),r,r),new A.jJ(A.bF4(B.q),"Banner Personalizat","Creeaz\u0103 anun\u021buri cu efecte \u0219i imagini",new A.aLW(a),r,r)],t.p),B.P,B.h,B.i,0,B.p)},
+$1(a){var s,r,q=null,p=this.a.aJ($.pj(),t.J3),o=A.cG(p)
+o=o==null?q:o.e==="admin"
+s=o===!0
+o=A.cG(p)
+o=o==null?q:o.e==="manager"
+if(!s&&o!==!0)return B.ao
+o=t.p
+r=A.b([B.b0,new A.vj("Administration",q),B.aa],o)
+if(s)B.b.J(r,A.b([new A.jJ(A.bqd(B.q),"Admin Dashboard","Overview and statistics",new A.aLT(a),q,q),new A.jJ(A.bqf(B.q),"User Approvals","Approve or reject pending users",new A.aLU(a),q,q),new A.jJ(A.bq4(B.q),"Invitations","Send and manage invitations",new A.aLV(a),q,q)],o))
+r.push(new A.jJ(A.bF4(B.q),"Banner Personalizat","Creeaz\u0103 anun\u021buri cu efecte \u0219i imagini",new A.aLW(a),q,q))
+return A.aA(r,B.P,B.h,B.i,0,B.p)},
 $S:814}
 A.aLT.prototype={
 $0(){return A.h4(this.a,"/admin",t.X)},

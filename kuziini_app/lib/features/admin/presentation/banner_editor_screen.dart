@@ -138,13 +138,10 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
-    final images = await picker.pickMultiImage(maxWidth: 400);
+    final images = await picker.pickMultiImage(maxWidth: 600, maxHeight: 300, imageQuality: 80);
     if (images.isEmpty) {
-      // Fallback: single image picker
-      final single = await picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
-      if (single != null) {
-        await _uploadSingleImage(single);
-      }
+      final single = await picker.pickImage(source: ImageSource.gallery, maxWidth: 600, maxHeight: 300, imageQuality: 80);
+      if (single != null) await _uploadSingleImage(single);
       return;
     }
     for (final image in images) {
@@ -154,11 +151,17 @@ class _BannerEditorScreenState extends ConsumerState<BannerEditorScreen> {
 
   Future<void> _uploadSingleImage(XFile image) async {
     final bytes = await image.readAsBytes();
+    // Skip if too large (>2MB after resize)
+    if (bytes.length > 2 * 1024 * 1024) {
+      if (mounted) context.showSnackBar('Imaginea e prea mare (max 2MB)', isError: true);
+      return;
+    }
     try {
-      final fileName = '${const Uuid().v4()}.${image.name.split('.').last}';
+      final ext = image.name.contains('.') ? image.name.split('.').last : 'jpg';
+      final fileName = '${const Uuid().v4()}.$ext';
       await Supabase.instance.client.storage
           .from('banners')
-          .uploadBinary(fileName, bytes, fileOptions: const FileOptions(upsert: true));
+          .uploadBinary(fileName, bytes, fileOptions: FileOptions(upsert: true, contentType: 'image/$ext'));
       final url = Supabase.instance.client.storage.from('banners').getPublicUrl(fileName);
       setState(() {
         _imageUrls.add(url);

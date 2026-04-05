@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  // ── Primary Palette ──
-  static const Color primary = Color(0xFF0D7377);
-  static const Color primaryLight = Color(0xFF14B8A6);
-  static const Color primaryDark = Color(0xFF0A5C5F);
-  static const Color primaryContainer = Color(0xFFB2DFDB);
+  // ── Primary Palette (Lime Green) ──
+  static const Color primary = Color(0xFF7CB342);
+  static const Color primaryLight = Color(0xFF9CCC65);
+  static const Color primaryDark = Color(0xFF558B2F);
+  static const Color primaryContainer = Color(0xFFDCEDC8);
   static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color onPrimaryContainer = Color(0xFF002020);
+  static const Color onPrimaryContainer = Color(0xFF1B3409);
 
   // ── Secondary Palette ──
   static const Color secondary = Color(0xFF4A6572);

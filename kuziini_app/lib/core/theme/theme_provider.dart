@@ -13,6 +13,7 @@ class AccentColorOption {
 }
 
 const List<AccentColorOption> accentColorOptions = [
+  AccentColorOption('Lime', Color(0xFF7CB342)),
   AccentColorOption('Teal', Color(0xFF0D7377)),
   AccentColorOption('Blue', Color(0xFF2196F3)),
   AccentColorOption('Purple', Color(0xFF9C27B0)),

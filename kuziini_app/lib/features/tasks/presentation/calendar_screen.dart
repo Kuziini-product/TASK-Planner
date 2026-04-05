@@ -27,7 +27,10 @@ final _calendarMonthProvider = StateProvider<DateTime>((ref) {
   return DateTime(now.year, now.month, 1);
 });
 
-final _calendarSelectedDayProvider = StateProvider<DateTime?>((ref) => null);
+final _calendarSelectedDayProvider = StateProvider<DateTime?>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+});
 
 // Navigation reference date (used by Day and Week views)
 final _calendarRefDateProvider = StateProvider<DateTime>((ref) {

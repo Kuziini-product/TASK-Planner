@@ -269,23 +269,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         leadingWidth: 90,
         title: const Text('Task Detail'),
         actions: [
-          // Location button (clickable, opens map)
-          Builder(
-            builder: (context) {
-              final task = ref.watch(taskDetailProvider(widget.taskId)).valueOrNull;
-              if (task == null || !task.hasLocation) return const SizedBox.shrink();
-              return IconButton(
-                onPressed: () {
-                  final url = task.locationMapUrl;
-                  if (url != null) {
-                    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                  }
-                },
-                icon: Icon(PhosphorIcons.mapPin(PhosphorIconsStyle.fill), color: theme.colorScheme.primary),
-                tooltip: task.locationDisplay,
-              );
-            },
-          ),
           // Relocate button
           IconButton(
             onPressed: () => _showRelocateDialog(),
@@ -428,12 +411,79 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. TITLE
+          // 1. LOCATION (clickable, top)
+          if (task.hasLocation)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: () {
+                  final url = task.locationMapUrl;
+                  if (url != null) launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: primaryColor.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(PhosphorIcons.mapPin(PhosphorIconsStyle.fill), size: 18, color: primaryColor),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(task.locationDisplay, style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontSize: 14))),
+                      if (task.locationMapUrl != null)
+                        Icon(PhosphorIcons.arrowSquareOut(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // 2. DATE + TIME (big, prominent)
+          if (task.dueDate != null || task.startTime != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: (task.isOverdue ? AppColors.error : primaryColor).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    if (task.dueDate != null) ...[
+                      Icon(PhosphorIcons.calendar(PhosphorIconsStyle.fill), size: 22, color: task.isOverdue ? AppColors.error : primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        task.isMultiDay
+                            ? '${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}'
+                            : AppDateUtils.formatFull(task.dueDate!),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: task.isOverdue ? AppColors.error : primaryColor),
+                      ),
+                    ],
+                    if (task.dueDate != null && task.startTime != null) const Spacer(),
+                    if (task.startTime != null) ...[
+                      Icon(PhosphorIcons.clock(PhosphorIconsStyle.fill), size: 22, color: task.isOverdue ? AppColors.error : primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        task.endTime != null
+                            ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
+                            : AppDateUtils.formatTime(task.startTime!),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurface),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+          // 3. TITLE
           Text(task.title, style: theme.textTheme.headlineSmall?.copyWith(
             decoration: task.isCompleted ? TextDecoration.lineThrough : null,
           )),
 
-          // 2. DESCRIPTION (full, no expandable)
+          // 4. DESCRIPTION (full, no expandable)
           if (task.description != null && task.description!.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(task.description!, style: theme.textTheme.bodyMedium?.copyWith(
@@ -443,12 +493,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
           const SizedBox(height: 16),
 
-          // 3. ATTACHMENTS (visible thumbnails, clickable, no expandable)
+          // 5. ATTACHMENTS (visible thumbnails, clickable, single add button)
           AttachmentSection(taskId: widget.taskId),
 
           const SizedBox(height: 16),
 
-          // 4. COMMENTS
+          // 6. COMMENTS
           _ExpandableCard(
             icon: PhosphorIcons.chatCircle(PhosphorIconsStyle.regular),
             title: 'Comments',
@@ -458,7 +508,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
           const SizedBox(height: 12),
 
-          // 5. ASSIGNEE (only if assigned → show name + reassign, else → "Add assign" button)
+          // 7. ASSIGNEE
           if (task.isAssigned)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -511,48 +561,17 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           const Divider(),
           const SizedBox(height: 8),
 
-          // 6. REST: Status, Date/Time info
-          // Status chips
+          // 8. Status chips (no archived)
           Center(
             child: Wrap(
               alignment: WrapAlignment.center,
               spacing: 6,
               runSpacing: 6,
-              children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done, TaskStatus.archived]
+              children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done]
                   .map((status) => StatusChip(status: status, isSelected: task.status == status, onTap: () => _updateStatus(status)))
                   .toList(),
             ),
           ),
-
-          // Date + Time
-          if (task.dueDate != null || task.startTime != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (task.dueDate != null) ...[
-                  Icon(PhosphorIcons.calendar(PhosphorIconsStyle.regular), size: 16, color: task.isOverdue ? AppColors.error : theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(
-                    task.isMultiDay
-                        ? '${task.dueDate!.day}/${task.dueDate!.month} → ${task.endDate!.day}/${task.endDate!.month}'
-                        : AppDateUtils.formatFull(task.dueDate!),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: task.isOverdue ? AppColors.error : primaryColor),
-                  ),
-                ],
-                if (task.dueDate != null && task.startTime != null) const Spacer(),
-                if (task.startTime != null) ...[
-                  Icon(PhosphorIcons.clock(PhosphorIconsStyle.regular), size: 16, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(
-                    task.endTime != null
-                        ? '${AppDateUtils.formatTime(task.startTime!)} - ${AppDateUtils.formatTime(task.endTime!)}'
-                        : AppDateUtils.formatTime(task.startTime!),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ],
-            ),
-          ],
 
           const SizedBox(height: 16),
 
@@ -762,7 +781,7 @@ class _ActivityLog extends ConsumerWidget {
         if (logs.isEmpty) {
           return Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('Nicio activitate înregistrată', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            child: Text('Nicio activitate înregistrată', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
           );
         }
         return Column(

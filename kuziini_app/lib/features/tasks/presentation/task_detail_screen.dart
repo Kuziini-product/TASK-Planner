@@ -400,6 +400,86 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
   }
 
+  void _showNavigationPicker(TaskModel task) {
+    final theme = Theme.of(context);
+
+    // Build URLs for both apps
+    String? googleMapsUrl;
+    String? wazeUrl;
+
+    if (task.locationLat != null && task.locationLng != null) {
+      googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=${task.locationLat},${task.locationLng}';
+      wazeUrl = 'https://waze.com/ul?ll=${task.locationLat},${task.locationLng}&navigate=yes';
+    } else if (task.locationAddress != null) {
+      final encoded = Uri.encodeComponent(task.locationAddress!);
+      googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=$encoded';
+      wazeUrl = 'https://waze.com/ul?q=$encoded&navigate=yes';
+    } else if (task.locationUrl != null) {
+      googleMapsUrl = task.locationUrl;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Navighează la ${task.locationDisplay}', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 12),
+            if (googleMapsUrl != null)
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(child: Text('G', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF4285F4)))),
+                ),
+                title: const Text('Google Maps'),
+                subtitle: const Text('Deschide în Google Maps'),
+                trailing: Icon(PhosphorIcons.arrowSquareOut(PhosphorIconsStyle.regular), size: 18),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  launchUrl(Uri.parse(googleMapsUrl!), mode: LaunchMode.externalApplication);
+                },
+              ),
+            if (wazeUrl != null)
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF05C8F7).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(child: Text('W', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF05C8F7)))),
+                ),
+                title: const Text('Waze'),
+                subtitle: const Text('Deschide în Waze'),
+                trailing: Icon(PhosphorIcons.arrowSquareOut(PhosphorIconsStyle.regular), size: 18),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  launchUrl(Uri.parse(wazeUrl!), mode: LaunchMode.externalApplication);
+                },
+              ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildContent(BuildContext context, TaskModel task) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
@@ -411,15 +491,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. LOCATION (clickable, top)
+          // 1. LOCATION (clickable, top — choose Google Maps or Waze)
           if (task.hasLocation)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: GestureDetector(
-                onTap: () {
-                  final url = task.locationMapUrl;
-                  if (url != null) launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                },
+                onTap: () => _showNavigationPicker(task),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -432,8 +509,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       Icon(PhosphorIcons.mapPin(PhosphorIconsStyle.fill), size: 18, color: primaryColor),
                       const SizedBox(width: 8),
                       Expanded(child: Text(task.locationDisplay, style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontSize: 14))),
-                      if (task.locationMapUrl != null)
-                        Icon(PhosphorIcons.arrowSquareOut(PhosphorIconsStyle.regular), size: 16, color: primaryColor),
+                      Icon(PhosphorIcons.navigationArrow(PhosphorIconsStyle.fill), size: 16, color: primaryColor),
                     ],
                   ),
                 ),

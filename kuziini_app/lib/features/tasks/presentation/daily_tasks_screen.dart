@@ -61,6 +61,8 @@ class _DailyTasksScreenState extends ConsumerState<DailyTasksScreen> {
 
   void _selectDate(DateTime date) {
     ref.read(selectedDateProvider.notifier).state = date;
+    // Switch to today/day filter so tasks for selected date are shown
+    ref.read(taskFilterProvider.notifier).state = TaskFilterType.today;
     setState(() => _showCalendar = false);
   }
 

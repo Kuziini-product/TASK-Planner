@@ -484,40 +484,54 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Auto-generate title if empty
+    if (_titleController.text.trim().isEmpty) {
+      final desc = _descriptionController.text.trim();
+      if (desc.isEmpty) {
+        context.showSnackBar('Adaugă o descriere', isError: true);
+        return;
+      }
+      _titleController.text = desc.split(RegExp(r'\s+')).take(3).join(' ');
+    }
 
     setState(() => _isSubmitting = true);
 
     try {
       final userId = SupabaseService.instance.currentUserId!;
-      final now = _dueDate ?? DateTime.now();
+      final currentNow = DateTime.now();
 
-      DateTime? startDateTime;
+      // Default: if no date set, use today
+      final effectiveDate = _dueDate ?? currentNow;
+
+      // Default: if no time set, use current time
+      final effectiveStartTime = _startTime ?? TimeOfDay(hour: currentNow.hour, minute: currentNow.minute);
+
+      DateTime? startDateTime = DateTime(
+        effectiveDate.year,
+        effectiveDate.month,
+        effectiveDate.day,
+        effectiveStartTime.hour,
+        effectiveStartTime.minute,
+      );
+
       DateTime? endDateTime;
-
-      if (_startTime != null) {
-        startDateTime = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          _startTime!.hour,
-          _startTime!.minute,
-        );
-      }
-
       if (_endTime != null) {
         endDateTime = DateTime(
-          now.year,
-          now.month,
-          now.day,
+          effectiveDate.year,
+          effectiveDate.month,
+          effectiveDate.day,
           _endTime!.hour,
           _endTime!.minute,
         );
-      } else if (startDateTime != null) {
-        // Auto-apply default duration when no end time set
+      } else {
+        // Auto-apply default duration
         final defaultMinutes = ref.read(defaultTaskDurationProvider);
         endDateTime = startDateTime.add(Duration(minutes: defaultMinutes));
       }
+
+      // Use effective date as dueDate if not set
+      if (_dueDate == null) _dueDate = DateTime(currentNow.year, currentNow.month, currentNow.day);
+      final now = _dueDate!;
 
       // Resolve location
       String? locName;
@@ -721,46 +735,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                 ],
               ),
 
-              AppSpacing.vGapSm,
-
-              // Title (auto-generated, editable)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: KuziiniTextField(
-                      controller: _titleController,
-                      hint: 'Titlu (auto din descriere)',
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.next,
-                      onChanged: (_) => _titleManuallyEdited = true,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Titlul e obligatoriu';
-                        }
-                        return null;
-                      },
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
-                      fillColor: Colors.transparent,
-                      borderRadius: 0,
-                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: VoiceInputButton(
-                      mini: true,
-                      hintText: 'Dictează titlul...',
-                      onResult: (text) {
-                        _titleManuallyEdited = true;
-                        _titleController.text = text;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
               AppSpacing.vGapXl,
 
               // Date - show as compact info if pre-set, full picker if not
@@ -827,26 +801,27 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       : null,
                 ),
 
-              // End date (for multi-day tasks)
-              _OptionTile(
-                icon: PhosphorIcons.calendarDots(PhosphorIconsStyle.regular),
-                label: _endDate != null
-                    ? 'End date: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                    : 'Add end date',
-                isActive: _endDate != null,
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _endDate ?? _dueDate ?? DateTime.now(),
-                    firstDate: _dueDate ?? DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-                  );
-                  if (date != null) setState(() => _endDate = date);
-                },
-                onClear: _endDate != null
-                    ? () => setState(() => _endDate = null)
-                    : null,
-              ),
+              // End date (only if due date is set)
+              if (_dueDate != null)
+                _OptionTile(
+                  icon: PhosphorIcons.calendarDots(PhosphorIconsStyle.regular),
+                  label: _endDate != null
+                      ? 'End date: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                      : 'Add end date',
+                  isActive: _endDate != null,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _endDate ?? _dueDate ?? DateTime.now(),
+                      firstDate: _dueDate ?? DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                    );
+                    if (date != null) setState(() => _endDate = date);
+                  },
+                  onClear: _endDate != null
+                      ? () => setState(() => _endDate = null)
+                      : null,
+                ),
 
               // Period indicator
               if (_endDate != null && _dueDate != null && _endDate != _dueDate)
@@ -967,82 +942,33 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
               AppSpacing.vGapXl,
 
-              // Checklist
-              Text('Checklist', style: theme.textTheme.labelLarge),
+              // Add Photo / Doc
+              Text('Atașamente', style: theme.textTheme.labelLarge),
               AppSpacing.vGapSm,
-
-              // Existing items
-              ...List.generate(_checklistItems.length, (index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      Icon(
-                        PhosphorIcons.checkSquare(PhosphorIconsStyle.regular),
-                        size: 18,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      AppSpacing.hGapSm,
-                      Expanded(
-                        child: Text(
-                          _checklistItems[index],
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          setState(() => _checklistItems.removeAt(index));
-                        },
-                        icon: Icon(
-                          PhosphorIcons.x(PhosphorIconsStyle.regular),
-                          size: 16,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 28,
-                          minHeight: 28,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-
-              // Add item
               Row(
                 children: [
                   Expanded(
-                    child: KuziiniTextField(
-                      controller: _checklistController,
-                      hint: 'Add item...',
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _addChecklistItem(),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+                    child: _OptionTile(
+                      icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
+                      label: 'Adaugă foto',
+                      isActive: false,
+                      onTap: () {
+                        context.showSnackBar('Poți adăuga foto după creare din detalii task');
+                      },
                     ),
                   ),
-                  IconButton(
-                    onPressed: _addChecklistItem,
-                    icon: Icon(
-                      PhosphorIcons.plus(PhosphorIconsStyle.bold),
-                      size: 18,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _OptionTile(
+                      icon: PhosphorIcons.file(PhosphorIconsStyle.regular),
+                      label: 'Adaugă doc',
+                      isActive: false,
+                      onTap: () {
+                        context.showSnackBar('Poți adăuga documente după creare din detalii task');
+                      },
                     ),
                   ),
                 ],
-              ),
-
-              AppSpacing.vGapXxl,
-
-              // Create button
-              KuziiniButton(
-                label: _isEditMode ? 'Save Changes' : 'Create Task',
-                onPressed: _submit,
-                isLoading: _isSubmitting,
-                icon: _isEditMode
-                    ? PhosphorIcons.floppyDisk(PhosphorIconsStyle.bold)
-                    : PhosphorIcons.plus(PhosphorIconsStyle.bold),
               ),
 
               const SizedBox(height: 40),

@@ -41,9 +41,11 @@ class MainShell extends ConsumerWidget {
       if (transcript != null && transcript.isNotEmpty) {
         final result = VoiceTaskParser.parse(transcript);
         // Build query params from parsed voice data
+        // Title auto-generates from description, so voice title goes to desc
         final params = <String, String>{};
-        if (result.title != null) params['title'] = result.title!;
-        if (result.description != null) params['desc'] = result.description!;
+        // Combine title + description as full description
+        final fullDesc = [result.title, result.description].whereType<String>().join(' ').trim();
+        if (fullDesc.isNotEmpty) params['desc'] = fullDesc;
         if (result.dueDate != null) params['date'] = result.dueDate!.toIso8601String().split('T').first;
         if (result.hour != null) params['hour'] = result.hour.toString();
         if (result.minute != null) params['minute'] = result.minute.toString();
@@ -427,18 +429,12 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
             _FieldCard(
               field: VoiceField.title,
               activeField: activeField,
-              icon: PhosphorIcons.textT(PhosphorIconsStyle.bold),
-              label: 'Title',
-              value: parsed?.title,
-              placeholder: 'Start speaking to set the title...',
-            ),
-            _FieldCard(
-              field: VoiceField.description,
-              activeField: activeField,
               icon: PhosphorIcons.article(PhosphorIconsStyle.regular),
               label: 'Description',
-              value: parsed?.description,
-              placeholder: 'Say "descriere" to switch here',
+              value: parsed?.title != null
+                  ? '${parsed!.title!}${parsed.description != null ? '\n${parsed.description}' : ''}'
+                  : null,
+              placeholder: 'Start speaking — title auto-generates...',
             ),
 
             // Time + Date in a row
@@ -487,6 +483,34 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
             _AssignCard(
               activeField: activeField,
               assignees: parsed?.assignees ?? [],
+            ),
+
+            // Take a picture + Add attachment buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ActionCard(
+                      icon: PhosphorIcons.camera(PhosphorIconsStyle.regular),
+                      label: 'Take a picture',
+                      onTap: () {
+                        // Will be handled after task creation
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ActionCard(
+                      icon: PhosphorIcons.paperclip(PhosphorIconsStyle.regular),
+                      label: 'Add attachment',
+                      onTap: () {
+                        // Will be handled after task creation
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -752,6 +776,40 @@ class _AssignCard extends StatelessWidget {
               child: Text('Say "cc Radu" or "trimite și la Radu"', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Action Card (Take picture / Add attachment) ──
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+          color: primaryColor.withValues(alpha: 0.05),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: primaryColor),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor)),
+          ],
+        ),
       ),
     );
   }

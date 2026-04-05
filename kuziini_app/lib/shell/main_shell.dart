@@ -84,11 +84,9 @@ class MainShell extends ConsumerWidget {
     // Keep presence active on all screens
     ref.watch(onlineUsersProvider);
 
-    // Update app badge: notifications + today's tasks
+    // Update app badge: unread notifications only
     final unreadNotifs = ref.watch(unreadCountProvider).valueOrNull ?? 0;
-    final todayTasks = ref.watch(dailyTasksProvider).valueOrNull
-        ?.where((t) => !t.isCompleted).length ?? 0;
-    NotificationService.instance.setAppBadge(unreadNotifs + todayTasks);
+    NotificationService.instance.setAppBadge(unreadNotifs);
 
     return Scaffold(
       body: Column(

@@ -364,7 +364,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       ),
       bottomNavigationBar: taskAsync.whenOrNull(
         data: (task) {
-          // Priority color bar at bottom
+          // Hide bottom bar for leave tasks
+          if (task.isLeave) return null;
+
           Color prioColor;
           switch (task.priority) {
             case TaskPriority.urgent: prioColor = AppColors.priorityUrgent;
@@ -584,70 +586,72 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
           const SizedBox(height: 12),
 
-          // 7. ASSIGNEE
-          if (task.isAssigned)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  CircleAvatar(radius: 14, backgroundColor: primaryColor.withValues(alpha: 0.1),
-                    child: Text((task.assigneeName ?? 'U')[0].toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor))),
-                  AppSpacing.hGapSm,
-                  Expanded(child: Text(task.assigneeName ?? 'Unknown', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final result = await showUserPicker(context);
-                      if (result != null && mounted) {
-                        try {
-                          await ref.read(taskRepositoryProvider).reassignTask(widget.taskId, result.userId);
-                          ref.invalidate(taskDetailProvider(widget.taskId));
-                          ref.invalidate(taskAssigneesProvider(widget.taskId));
-                          ref.invalidate(dailyTasksProvider);
-                          if (mounted) context.showSnackBar('Task reassigned to ${result.userName}');
-                        } catch (e) { if (mounted) context.showSnackBar('Failed to reassign', isError: true); }
-                      }
-                    },
-                    icon: Icon(PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.regular), size: 14),
-                    label: const Text('Reassign'),
-                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), visualDensity: VisualDensity.compact, textStyle: theme.textTheme.labelSmall),
-                  ),
-                ],
+          // 7. ASSIGNEE (hidden for leave tasks)
+          if (!task.isLeave) ...[
+            if (task.isAssigned)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 14, backgroundColor: primaryColor.withValues(alpha: 0.1),
+                      child: Text((task.assigneeName ?? 'U')[0].toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor))),
+                    AppSpacing.hGapSm,
+                    Expanded(child: Text(task.assigneeName ?? 'Unknown', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final result = await showUserPicker(context);
+                        if (result != null && mounted) {
+                          try {
+                            await ref.read(taskRepositoryProvider).reassignTask(widget.taskId, result.userId);
+                            ref.invalidate(taskDetailProvider(widget.taskId));
+                            ref.invalidate(taskAssigneesProvider(widget.taskId));
+                            ref.invalidate(dailyTasksProvider);
+                            if (mounted) context.showSnackBar('Task reassigned to ${result.userName}');
+                          } catch (e) { if (mounted) context.showSnackBar('Failed to reassign', isError: true); }
+                        }
+                      },
+                      icon: Icon(PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.regular), size: 14),
+                      label: const Text('Reassign'),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), visualDensity: VisualDensity.compact, textStyle: theme.textTheme.labelSmall),
+                    ),
+                  ],
+                ),
+              )
+            else
+              TextButton.icon(
+                onPressed: () async {
+                  final result = await showUserPicker(context);
+                  if (result != null && mounted) {
+                    try {
+                      await ref.read(taskRepositoryProvider).assignTask(widget.taskId, result.userId);
+                      ref.invalidate(taskDetailProvider(widget.taskId));
+                      ref.invalidate(taskAssigneesProvider(widget.taskId));
+                      ref.invalidate(dailyTasksProvider);
+                      if (mounted) context.showSnackBar('Task assigned to ${result.userName}');
+                    } catch (e) { if (mounted) context.showSnackBar('Failed to assign task', isError: true); }
+                  }
+                },
+                icon: Icon(PhosphorIcons.userPlus(PhosphorIconsStyle.regular), size: 16),
+                label: const Text('Add assign'),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
               ),
-            )
-          else
-            TextButton.icon(
-              onPressed: () async {
-                final result = await showUserPicker(context);
-                if (result != null && mounted) {
-                  try {
-                    await ref.read(taskRepositoryProvider).assignTask(widget.taskId, result.userId);
-                    ref.invalidate(taskDetailProvider(widget.taskId));
-                    ref.invalidate(taskAssigneesProvider(widget.taskId));
-                    ref.invalidate(dailyTasksProvider);
-                    if (mounted) context.showSnackBar('Task assigned to ${result.userName}');
-                  } catch (e) { if (mounted) context.showSnackBar('Failed to assign task', isError: true); }
-                }
-              },
-              icon: Icon(PhosphorIcons.userPlus(PhosphorIconsStyle.regular), size: 16),
-              label: const Text('Add assign'),
-              style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
-            ),
 
-          const SizedBox(height: 8),
-          const Divider(),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+            const Divider(),
+            const SizedBox(height: 8),
 
-          // 8. Status chips (no archived)
-          Center(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 6,
-              runSpacing: 6,
-              children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done]
-                  .map((status) => StatusChip(status: status, isSelected: task.status == status, onTap: () => _updateStatus(status)))
-                  .toList(),
+            // 8. Status chips (no archived)
+            Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [TaskStatus.in_progress, TaskStatus.review, TaskStatus.done]
+                    .map((status) => StatusChip(status: status, isSelected: task.status == status, onTap: () => _updateStatus(status)))
+                    .toList(),
+              ),
             ),
-          ),
+          ],
 
           const SizedBox(height: 16),
 

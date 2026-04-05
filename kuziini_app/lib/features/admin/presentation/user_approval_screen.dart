@@ -199,7 +199,7 @@ class UserApprovalScreen extends ConsumerWidget {
 
   void _showManageAccessSheet(BuildContext context, WidgetRef ref, UserProfile manager, List<UserProfile> allUsers) {
     // Get non-admin, non-self users
-    final assignableUsers = allUsers.where((u) => u.id != manager.id && !u.isAdmin && u.isApproved).toList();
+    final assignableUsers = allUsers.where((u) => u.id != manager.id && u.isApproved).toList();
 
     showModalBottomSheet(
       context: context,

@@ -8,6 +8,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/constants/app_colors.dart';
 import '../core/router/app_router.dart';
 import '../core/services/birthday_service.dart';
+import '../core/services/presence_service.dart';
 import '../core/services/voice_task_parser.dart';
 import '../core/widgets/birthday_banner.dart';
 import '../features/tasks/providers/tasks_provider.dart';
@@ -78,6 +79,8 @@ class MainShell extends ConsumerWidget {
     final primaryColor = theme.colorScheme.primary;
 
     final hasBirthday = ref.watch(hasBirthdayTodayProvider);
+    // Keep presence active on all screens
+    ref.watch(onlineUsersProvider);
 
     return Scaffold(
       body: Column(

@@ -338,7 +338,16 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
     }));
 
     _jsSetProp(recognition, 'onend', _jsAllowInterop((event) {
-      if (mounted) setState(() => _listening = false);
+      // Chrome stops recognition after silence — auto-restart to keep listening
+      if (mounted && _listening) {
+        try {
+          _jsCallMethod(recognition!, 'start', []);
+        } catch (_) {
+          setState(() => _listening = false);
+        }
+      } else if (mounted) {
+        setState(() => _listening = false);
+      }
     }));
 
     try {
@@ -350,6 +359,7 @@ class _VoiceTaskSheetState extends State<_VoiceTaskSheet> with SingleTickerProvi
   }
 
   void _stop() {
+    _listening = false;
     try { if (_rec != null) _jsCallMethod(_rec!, 'stop', []); } catch (_) {}
   }
 

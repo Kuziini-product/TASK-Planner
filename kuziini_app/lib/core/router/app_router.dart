@@ -16,6 +16,7 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/settings_screen.dart';
 import '../../features/admin/presentation/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/user_approval_screen.dart';
+import '../../features/admin/presentation/banner_editor_screen.dart';
 import '../../features/admin/presentation/invitations_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../shell/main_shell.dart';
@@ -38,6 +39,7 @@ abstract final class AppRoutes {
   static const String adminDashboard = '/admin';
   static const String userApproval = '/admin/approvals';
   static const String invitations = '/admin/invitations';
+  static const String bannerEditor = '/admin/banner';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -167,6 +169,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.invitations,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const InvitationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.bannerEditor,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BannerEditorScreen(),
       ),
     ],
   );

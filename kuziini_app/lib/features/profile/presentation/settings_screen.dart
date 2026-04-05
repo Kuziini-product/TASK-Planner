@@ -120,12 +120,13 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
 
-          // Admin section (visible only to admins)
+          // Admin/Manager section
           Builder(
             builder: (context) {
               final profile = ref.watch(currentUserProfileProvider);
               final isAdmin = profile.valueOrNull?.isAdmin ?? false;
-              if (!isAdmin) return const SizedBox.shrink();
+              final isManager = profile.valueOrNull?.isManager ?? false;
+              if (!isAdmin && !isManager) return const SizedBox.shrink();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -149,6 +150,12 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Invitations',
                     subtitle: 'Send and manage invitations',
                     onTap: () => context.push(AppRoutes.invitations),
+                  ),
+                  _SettingsTile(
+                    icon: PhosphorIcons.megaphone(PhosphorIconsStyle.regular),
+                    title: 'Banner Personalizat',
+                    subtitle: 'Creează anunțuri cu efecte și imagini',
+                    onTap: () => context.push(AppRoutes.bannerEditor),
                   ),
                 ],
               );

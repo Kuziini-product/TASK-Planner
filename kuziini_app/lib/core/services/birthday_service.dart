@@ -56,3 +56,25 @@ final birthdayDatesProvider = Provider<Map<String, List<String>>>((ref) {
   }
   return map;
 });
+
+// ── Active Custom Banner ──
+
+final activeCustomBannerProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  ref.keepAlive();
+  try {
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final response = await SupabaseService.instance.client
+        .from('custom_banners')
+        .select('*')
+        .eq('is_active', true)
+        .lte('start_date', todayStr)
+        .gte('end_date', todayStr)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return response;
+  } catch (_) {
+    return null;
+  }
+});

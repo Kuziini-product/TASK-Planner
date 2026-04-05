@@ -13,6 +13,7 @@ import '../core/services/presence_service.dart';
 import '../core/services/voice_task_parser.dart';
 import '../features/notifications/providers/notifications_provider.dart';
 import '../core/widgets/birthday_banner.dart';
+import '../core/widgets/confetti_widget.dart';
 import '../features/tasks/providers/tasks_provider.dart';
 
 class MainShell extends ConsumerWidget {
@@ -88,11 +89,16 @@ class MainShell extends ConsumerWidget {
     final unreadNotifs = ref.watch(unreadCountProvider).valueOrNull ?? 0;
     NotificationService.instance.setAppBadge(unreadNotifs);
 
+    final customBanner = ref.watch(activeCustomBannerProvider).valueOrNull;
+
     return Scaffold(
       body: Column(
         children: [
-          // Birthday banner — persistent across all screens
-          if (hasBirthday) const BirthdayBanner(),
+          // Custom banner takes priority over birthday banner
+          if (customBanner != null)
+            _CustomBannerWidget(banner: customBanner)
+          else if (hasBirthday)
+            const BirthdayBanner(),
           Expanded(child: child),
         ],
       ),
@@ -753,6 +759,73 @@ class _AssignCard extends StatelessWidget {
 
 // ── JS interop helpers ──
 Object get _jsGlobalThis => js_util.globalThis;
+
+// ── Custom Banner Widget ──
+
+class _CustomBannerWidget extends StatelessWidget {
+  const _CustomBannerWidget({required this.banner});
+  final Map<String, dynamic> banner;
+
+  Color _parseColor(String? hex, Color fallback) {
+    if (hex == null || hex.length < 7) return fallback;
+    try {
+      return Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = banner['title'] as String? ?? '';
+    final subtitle = banner['subtitle'] as String?;
+    final imageUrl = banner['image_url'] as String?;
+    final effect = banner['effect'] as String? ?? 'none';
+    final gradStart = _parseColor(banner['gradient_start'] as String?, const Color(0xFFFF6B9D));
+    final gradEnd = _parseColor(banner['gradient_end'] as String?, const Color(0xFFFFA751));
+
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [gradStart, gradEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                if (imageUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Image.network(imageUrl, height: 50, fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                  ),
+                if (title.isNotEmpty)
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
+                    shadows: [Shadow(color: Colors.black26, blurRadius: 4)]),
+                    textAlign: TextAlign.center),
+                if (subtitle != null && subtitle.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      textAlign: TextAlign.center),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (effect == 'confetti')
+          const Positioned.fill(child: ConfettiOverlay(duration: Duration(seconds: 5))),
+      ],
+    );
+  }
+}
 Object? _jsGetProp(Object o, String prop) => js_util.getProperty(o, prop);
 int _jsGetPropInt(Object o, String prop) => js_util.getProperty<int>(o, prop);
 String _jsGetPropString(Object o, String prop) => js_util.getProperty<String>(o, prop);

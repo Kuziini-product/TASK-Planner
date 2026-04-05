@@ -135,9 +135,8 @@ class DailyTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     if (!showAll && teamUserId != null && filter != TaskFilterType.all) {
       result = result.where((t) => t.isLeave || t.createdBy == teamUserId || t.assigneeId == teamUserId);
     }
-    // "Me" filter for today/overdue — show only my tasks + all leave tasks
-    if (teamUserId == null && userId != null &&
-        (filter == TaskFilterType.today || filter == TaskFilterType.overdue)) {
+    // "Me" filter for overdue only — today shows all tasks for the selected date
+    if (teamUserId == null && userId != null && filter == TaskFilterType.overdue) {
       result = result.where((t) => t.isLeave || t.createdBy == userId || t.assigneeId == userId);
     }
 

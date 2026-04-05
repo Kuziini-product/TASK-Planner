@@ -329,35 +329,26 @@ class _StatCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Expanded(
-      child: GestureDetector(
+      child: KuziiniCard(
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(10),
-            border: Border(
-              left: BorderSide(color: color, width: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
+            AppSpacing.vGapXs,
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              AppSpacing.vGapXs,
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

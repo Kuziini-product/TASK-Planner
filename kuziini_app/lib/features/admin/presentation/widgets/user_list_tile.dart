@@ -17,6 +17,7 @@ class UserListTile extends StatelessWidget {
     this.onBirthDateChanged,
     this.onRoleChange,
     this.onManageAccess,
+    this.onTap,
     this.showActions = true,
     this.isPending = false,
   });
@@ -28,6 +29,7 @@ class UserListTile extends StatelessWidget {
   final ValueChanged<DateTime>? onBirthDateChanged;
   final ValueChanged<String>? onRoleChange;
   final VoidCallback? onManageAccess;
+  final VoidCallback? onTap;
   final bool showActions;
   final bool isPending;
 
@@ -81,7 +83,9 @@ class UserListTile extends StatelessWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       margin: const EdgeInsets.symmetric(vertical: 3),
       decoration: BoxDecoration(
@@ -205,6 +209,15 @@ class UserListTile extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   padding: EdgeInsets.zero,
                 ),
+              // Report button
+              if (onTap != null)
+                IconButton(
+                  onPressed: onTap,
+                  icon: Icon(PhosphorIcons.chartBar(PhosphorIconsStyle.regular), size: 18, color: primaryColor),
+                  tooltip: 'Raport',
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                ),
               // Delete button
               if (onDelete != null)
                 IconButton(
@@ -258,6 +271,7 @@ class UserListTile extends StatelessWidget {
           ],
         ],
       ),
+    ),
     );
   }
 }

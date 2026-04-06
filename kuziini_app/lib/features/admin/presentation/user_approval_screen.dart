@@ -130,6 +130,7 @@ class UserApprovalScreen extends ConsumerWidget {
                     user: user,
                     isPending: false,
                     showActions: false,
+                    onTap: () => showUserReport(context, user.id, user.displayName),
                     onBirthDateChanged: (date) async {
                       try {
                         await Supabase.instance.client.from('profiles').update({

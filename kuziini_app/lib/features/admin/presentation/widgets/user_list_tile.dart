@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/widgets/birthday_banner.dart';
 import '../../../auth/domain/auth_state.dart';
 
@@ -78,6 +80,38 @@ class UserListTile extends StatelessWidget {
     );
   }
 
+  void _editPhone(BuildContext context) {
+    final ctrl = TextEditingController(text: user.phone ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Telefon ${user.displayName}', style: const TextStyle(fontSize: 16)),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.phone,
+          decoration: InputDecoration(
+            hintText: '+40 7XX XXX XXX',
+            prefixIcon: Icon(PhosphorIcons.whatsappLogo(PhosphorIconsStyle.regular), color: AppColors.success),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anulează')),
+          FilledButton(onPressed: () async {
+            final phone = ctrl.text.trim();
+            try {
+              await Supabase.instance.client.from('profiles').update({'phone': phone}).eq('id', user.id);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) context.showSnackBar('Telefon salvat pentru ${user.displayName}');
+            } catch (e) {
+              if (context.mounted) context.showSnackBar('Eroare: $e', isError: true);
+            }
+          }, child: const Text('Salvează')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -135,6 +169,35 @@ class UserListTile extends StatelessWidget {
                     ),
                     Row(
                       children: [
+                        // Phone
+                        if (user.phone != null && user.phone!.isNotEmpty)
+                          GestureDetector(
+                            onTap: () => _editPhone(context),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Row(
+                                children: [
+                                  Icon(PhosphorIcons.whatsappLogo(PhosphorIconsStyle.regular), size: 11, color: AppColors.success),
+                                  const SizedBox(width: 3),
+                                  Text(user.phone!, style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                          )
+                        else if (onBirthDateChanged != null)
+                          GestureDetector(
+                            onTap: () => _editPhone(context),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Row(
+                                children: [
+                                  Icon(PhosphorIcons.whatsappLogo(PhosphorIconsStyle.regular), size: 11, color: theme.colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 3),
+                                  Text('Add phone', style: TextStyle(fontSize: 10, color: theme.colorScheme.primary, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                          ),
                         if (user.birthDate != null)
                           GestureDetector(
                             onTap: onBirthDateChanged != null ? () async {

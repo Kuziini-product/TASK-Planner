@@ -129628,8 +129628,8 @@ q=q.ax
 i=q==null
 h=i?e:q.no(r,B.y,1)
 k=A.b([A.am(e,A.z(j.toUpperCase(),e,e,e,e,h,e,e,e),B.k,e,e,new A.ag(k,e,e,B.cr,e,e,B.r),e,e,e,B.pU,e,e,e)],n)
-h=j==="admin"
-if(h)B.b.J(k,A.b([B.a8,new A.aff(e)],n))
+h=j!=="admin"
+if(!h||j==="manager")B.b.J(k,A.b([B.a8,new A.aff(e)],n))
 k=A.dI(A.as(k,B.j,B.h,B.U,0,e),e)
 g=A.aY(0,0,d,0,0,0)
 g=A.bL(A.az(A.b([o,B.ak,l,B.cM,m,B.ah,A.dC(k,A.aY(0,0,2e5,0,0,0),g)],n),B.j,B.h,B.i,0,B.o),e,e)
@@ -129640,7 +129640,7 @@ q=q.no(m==null?o.k3:m,B.y,1)}o=f.e
 m=t._P
 l=t.u
 q=A.b([g,B.h4,A.z("TASK-URILE MELE",e,e,e,e,q,e,e,e),B.ah,A.h5(f.d,new A.aFU(s,o),new A.aFV(),new A.aFW(),!1,!0,!1,m,l)],n)
-if(h||j==="manager")B.b.J(q,A.b([B.a0,new A.ez(new A.aFX(a,s,p,r),e),B.ah,A.h5(s.aS($.bAJ(),t.iZ),new A.aFY(r,s,o),new A.aFZ(),new A.aG_(),!1,!0,!1,m,l)],n))
+if(!h||j==="manager")B.b.J(q,A.b([B.a0,new A.ez(new A.aFX(a,s,p,r),e),B.ah,A.h5(s.aS($.bAJ(),t.iZ),new A.aFY(r,s,o),new A.aFZ(),new A.aG_(),!1,!0,!1,m,l)],n))
 q.push(B.a0)
 q.push(new A.TQ(e))
 q.push(B.h5)

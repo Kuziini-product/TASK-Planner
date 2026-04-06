@@ -136,7 +136,7 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (profile.isAdmin) ...[
+                          if (profile.isAdmin || profile.isManager) ...[
                             const SizedBox(width: 8),
                             _LiveUsersCount(),
                           ],

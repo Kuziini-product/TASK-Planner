@@ -48,6 +48,12 @@ class PresenceService {
               'email': user.email,
               'online_at': DateTime.now().toIso8601String(),
             });
+            // Save last_seen to profiles
+            try {
+              await Supabase.instance.client.from('profiles').update({
+                'last_seen': DateTime.now().toIso8601String(),
+              }).eq('id', user.id);
+            } catch (_) {}
           }
         });
 

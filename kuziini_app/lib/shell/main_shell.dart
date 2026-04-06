@@ -7,10 +7,12 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/router/app_router.dart';
+import '../core/services/alert_service.dart';
 import '../core/services/birthday_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/presence_service.dart';
 import '../core/services/voice_task_parser.dart';
+import '../features/auth/providers/auth_provider.dart';
 import '../features/notifications/providers/notifications_provider.dart';
 import '../core/widgets/birthday_banner.dart';
 import '../core/widgets/confetti_widget.dart';
@@ -97,6 +99,13 @@ class MainShell extends ConsumerWidget {
     // Update app badge: unread notifications only
     final unreadNotifs = ref.watch(unreadCountProvider).valueOrNull ?? 0;
     NotificationService.instance.setAppBadge(unreadNotifs);
+
+    // Run auto-alert checks (admin only, once per day)
+    ref.listen(currentUserProfileProvider, (_, next) {
+      if (next.valueOrNull?.isAdmin == true) {
+        AlertService.instance.checkAndSendAlerts();
+      }
+    });
 
     final customBanner = ref.watch(activeCustomBannerProvider).valueOrNull;
 

@@ -13,6 +13,7 @@ import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../auth/domain/auth_state.dart';
 import '../providers/admin_provider.dart';
+import 'user_report_sheet.dart';
 import 'widgets/user_list_tile.dart';
 
 class UserApprovalScreen extends ConsumerWidget {
@@ -234,12 +235,15 @@ class UserApprovalScreen extends ConsumerWidget {
                             final total = d['total'] as int;
                             final done = d['done'] as int;
                             final pct = total > 0 ? (done * 100 / total).round() : 0;
-                            return _ReportRow(
-                              rank: rank,
-                              name: d['name'] as String,
-                              value: '$done/$total ($pct%)',
-                              barValue: total > 0 ? done / total : 0,
-                              color: rank == 1 ? Colors.amber : rank == 2 ? Colors.grey : rank == 3 ? Colors.brown : primaryColor,
+                            return GestureDetector(
+                              onTap: () => showUserReport(ctx, d['id'] as String, d['name'] as String),
+                              child: _ReportRow(
+                                rank: rank,
+                                name: d['name'] as String,
+                                value: '$done/$total ($pct%)',
+                                barValue: total > 0 ? done / total : 0,
+                                color: rank == 1 ? Colors.amber : rank == 2 ? Colors.grey : rank == 3 ? Colors.brown : primaryColor,
+                              ),
                             );
                           }).toList(),
                         ),
@@ -252,20 +256,23 @@ class UserApprovalScreen extends ConsumerWidget {
                           icon: PhosphorIcons.warning(PhosphorIconsStyle.fill),
                           color: Colors.red,
                           children: reportData.where((d) => (d['overdue'] as int) > 0).map((d) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(radius: 14, backgroundColor: Colors.red.withValues(alpha: 0.1),
-                                    child: Text((d['name'] as String)[0], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red))),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: Text(d['name'] as String, style: const TextStyle(fontWeight: FontWeight.w500))),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                    child: Text('${d['overdue']} overdue', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red)),
-                                  ),
-                                ],
+                            return GestureDetector(
+                              onTap: () => showUserReport(ctx, d['id'] as String, d['name'] as String),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(radius: 14, backgroundColor: Colors.red.withValues(alpha: 0.1),
+                                      child: Text((d['name'] as String)[0], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red))),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: Text(d['name'] as String, style: const TextStyle(fontWeight: FontWeight.w500))),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                      child: Text('${d['overdue']} overdue', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           }).toList(),
@@ -283,25 +290,28 @@ class UserApprovalScreen extends ConsumerWidget {
                             final done = d['done'] as int;
                             final inProg = d['in_progress'] as int;
                             final todo = d['todo'] as int;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(d['name'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      _MiniStat('Total', '$total', primaryColor),
-                                      const SizedBox(width: 8),
-                                      _MiniStat('Done', '$done', Colors.green),
-                                      const SizedBox(width: 8),
-                                      _MiniStat('In Prog', '$inProg', Colors.orange),
-                                      const SizedBox(width: 8),
-                                      _MiniStat('To Do', '$todo', Colors.blue),
-                                    ],
-                                  ),
-                                ],
+                            return GestureDetector(
+                              onTap: () => showUserReport(ctx, d['id'] as String, d['name'] as String),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(d['name'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        _MiniStat('Total', '$total', primaryColor),
+                                        const SizedBox(width: 8),
+                                        _MiniStat('Done', '$done', Colors.green),
+                                        const SizedBox(width: 8),
+                                        _MiniStat('In Prog', '$inProg', Colors.orange),
+                                        const SizedBox(width: 8),
+                                        _MiniStat('To Do', '$todo', Colors.blue),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           }).toList(),
@@ -347,6 +357,7 @@ class UserApprovalScreen extends ConsumerWidget {
         }).length;
 
         results.add({
+          'id': user.id,
           'name': user.displayName,
           'total': total,
           'done': done,

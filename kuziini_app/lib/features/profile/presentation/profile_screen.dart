@@ -16,6 +16,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/kuziini_card.dart';
 import '../../../core/widgets/loading_indicator.dart';
+import '../../admin/presentation/user_report_sheet.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../tasks/data/models/task_model.dart';
@@ -432,10 +433,7 @@ class _LiveUsersCount extends ConsumerWidget {
                 ...onlineUsers.map((user) => ListTile(
                   onTap: () {
                     Navigator.pop(ctx);
-                    // Navigate to tasks filtered by this user
-                    ref.read(selectedTeamUserProvider.notifier).state = user.id;
-                    ref.read(taskFilterProvider.notifier).state = TaskFilterType.all;
-                    context.go(AppRoutes.today);
+                    showUserReport(context, user.id, user.displayName);
                   },
                   leading: CircleAvatar(
                     radius: 18,
@@ -462,8 +460,8 @@ class _LiveUsersCount extends ConsumerWidget {
                         decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.success,
                           boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)])),
                       const SizedBox(width: 4),
-                      Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.regular), size: 14,
-                        color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                      Icon(PhosphorIcons.chartBar(PhosphorIconsStyle.regular), size: 14,
+                        color: Theme.of(ctx).colorScheme.primary),
                     ],
                   ),
                   dense: true,

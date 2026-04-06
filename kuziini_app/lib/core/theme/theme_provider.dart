@@ -35,7 +35,8 @@ final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
 );
 
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.system) {
+  // Default: dark (Midnight)
+  ThemeModeNotifier() : super(ThemeMode.dark) {
     _loadTheme();
   }
 
@@ -68,7 +69,8 @@ final primaryColorProvider =
 );
 
 class PrimaryColorNotifier extends StateNotifier<Color> {
-  PrimaryColorNotifier() : super(accentColorOptions.first.color) {
+  // Default: Midnight purple
+  PrimaryColorNotifier() : super(const Color(0xFF7C3AED)) {
     _loadColor();
   }
 
@@ -100,7 +102,8 @@ final backgroundColorProvider =
 );
 
 class BackgroundColorNotifier extends StateNotifier<Color?> {
-  BackgroundColorNotifier() : super(null) {
+  // Default: Midnight at 10% intensity (black + 10% purple)
+  BackgroundColorNotifier() : super(const Color(0xFF14121E)) {
     _load();
   }
 
@@ -231,7 +234,8 @@ final textIntensityProvider =
 );
 
 class TextIntensityNotifier extends StateNotifier<double> {
-  TextIntensityNotifier() : super(0.5) { _load(); }
+  // Default: Midnight text intensity
+  TextIntensityNotifier() : super(0.85) { _load(); }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
